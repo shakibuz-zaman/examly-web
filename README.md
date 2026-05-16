@@ -2,7 +2,7 @@
 
 React + Vite + TypeScript SPA for the Examly examiner-side console.
 
-Backend lives in the sibling `examly` repository (`Examly.Api`).
+Backend lives in the sibling `../examly-api` repository (same workspace folder, separate git repo).
 
 ## Local development
 
@@ -35,4 +35,4 @@ npm run build
 ## Related
 
 - Design spec: `~/.claude/plans/i-want-to-build-eager-octopus.md`.
-- Implementation plan 1 (bootstrap + auth): in the API repo at `docs/superpowers/plans/2026-05-15-examly-bootstrap-and-auth.md`.
+- Implementation plan 1 (bootstrap + auth): in the API repo at `../examly-api/docs/superpowers/plans/2026-05-15-examly-bootstrap-and-auth.md`.
