@@ -19,3 +19,34 @@ export type CreateOrgRequest = {
 export type UpdateOrgRequest = Partial<CreateOrgRequest> & {
   logoMediaId?: string;
 };
+
+export type BilingualText = { bn?: string; en?: string };
+
+export type SubjectResponse = {
+  id: string;
+  name: BilingualText;
+  slug: string;
+  scope: "global" | "org";
+  orgId?: string | null;
+  status: "active" | "archived";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TopicResponse = {
+  id: string;
+  subjectId: string;
+  name: BilingualText;
+  slug: string;
+  scope: "global" | "org";
+  orgId?: string | null;
+  status: "active" | "archived";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateSubjectRequest = { name: BilingualText; slug?: string };
+export type UpdateSubjectRequest = { name?: BilingualText; slug?: string; status?: "active" | "archived" };
+
+export type CreateTopicRequest = { name: BilingualText; slug?: string };
+export type UpdateTopicRequest = { name?: BilingualText; slug?: string; status?: "active" | "archived" };
