@@ -2,18 +2,36 @@ import { Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { OnboardingPage } from "./pages/OnboardingPage";
+import { OrgProfilePage } from "./pages/OrgProfilePage";
 import { RequireAuth } from "./auth/RequireAuth";
+import { RequireOnboarded } from "./auth/RequireOnboarded";
+import { AppShell } from "./layout/AppShell";
 
 export const routes: RouteObject[] = [
-  { path: "/", element: <Navigate to="/dashboard" replace /> },
   { path: "/login", element: <LoginPage /> },
   {
-    path: "/dashboard",
+    path: "/onboarding",
     element: (
       <RequireAuth>
-        <DashboardPage />
+        <OnboardingPage />
       </RequireAuth>
     ),
   },
-  { path: "*", element: <Navigate to="/dashboard" replace /> },
+  {
+    path: "/",
+    element: (
+      <RequireAuth>
+        <RequireOnboarded>
+          <AppShell />
+        </RequireOnboarded>
+      </RequireAuth>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: "dashboard", element: <DashboardPage /> },
+      { path: "org/profile", element: <OrgProfilePage /> },
+      { path: "*", element: <Navigate to="/dashboard" replace /> },
+    ],
+  },
 ];

@@ -1,21 +1,22 @@
-import { Button, Card, Descriptions, Typography } from "antd";
+import { Card, Typography } from "antd";
 import { useAuth } from "../auth/useAuth";
+import { useMyOrg } from "../api/me";
 
 export function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { data: org } = useMyOrg();
 
   return (
-    <Card style={{ maxWidth: 720, margin: "40px auto" }}>
-      <Typography.Title level={3}>Dashboard</Typography.Title>
-      <Descriptions column={1} bordered>
-        <Descriptions.Item label="User ID">{user?.sub}</Descriptions.Item>
-        <Descriptions.Item label="Email">{user?.email ?? "—"}</Descriptions.Item>
-        <Descriptions.Item label="Role">{user?.role}</Descriptions.Item>
-        <Descriptions.Item label="Org ID">{user?.orgId ?? "—"}</Descriptions.Item>
-      </Descriptions>
-      <Button danger style={{ marginTop: 16 }} onClick={logout}>
-        Logout
-      </Button>
+    <Card style={{ maxWidth: 800 }}>
+      <Typography.Title level={3}>Welcome{org ? `, ${org.name}` : ""}</Typography.Title>
+      <Typography.Paragraph>
+        Signed in as <strong>{user?.email}</strong> ({user?.role}).
+      </Typography.Paragraph>
+      {org && (
+        <Typography.Paragraph type="secondary">
+          Your organization is active. Use the sidebar to manage your profile and (soon) your question bank, exams, and model tests.
+        </Typography.Paragraph>
+      )}
     </Card>
   );
 }
