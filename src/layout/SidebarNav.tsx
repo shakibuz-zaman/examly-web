@@ -7,7 +7,8 @@ type Item = { key: string; label: string; path: string; roles?: string[] };
 const items: Item[] = [
   { key: "dashboard", label: "Dashboard", path: "/dashboard" },
   { key: "org", label: "Organization", path: "/org/profile", roles: ["examiner"] },
-  { key: "admin-orgs", label: "Organizations", path: "/admin/orgs", roles: ["platform_admin"] },
+  { key: "taxonomy", label: "Taxonomy", path: "/taxonomy", roles: ["examiner"] },
+  { key: "admin-taxonomy", label: "Global Taxonomy", path: "/admin/taxonomy", roles: ["platform_admin"] },
 ];
 
 export function SidebarNav() {

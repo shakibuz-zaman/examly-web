@@ -4,6 +4,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { OrgProfilePage } from "./pages/OrgProfilePage";
+import { TaxonomyPage } from "./pages/TaxonomyPage";
+import { AdminTaxonomyPage } from "./pages/AdminTaxonomyPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { AppShell } from "./layout/AppShell";
@@ -31,6 +33,8 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
       { path: "org/profile", element: <OrgProfilePage /> },
+      { path: "taxonomy", element: <TaxonomyPage /> },
+      { path: "admin/taxonomy", element: <AdminTaxonomyPage /> },
       { path: "*", element: <Navigate to="/dashboard" replace /> },
     ],
   },
