@@ -2,6 +2,7 @@ import { Button, Card, Descriptions, Form, Input, Modal, Typography, message } f
 import { useState } from "react";
 import { useMyOrg, useUpdateMyOrg } from "../api/me";
 import type { UpdateOrgRequest } from "../api/types";
+import { MediaUploader } from "../features/media/MediaUploader";
 
 export function OrgProfilePage() {
   const { data: org } = useMyOrg();
@@ -38,6 +39,19 @@ export function OrgProfilePage() {
         <Descriptions.Item label="Name">{org.name}</Descriptions.Item>
         <Descriptions.Item label="Contact email">{org.contactEmail}</Descriptions.Item>
         <Descriptions.Item label="Description">{org.description ?? "—"}</Descriptions.Item>
+        <Descriptions.Item label="Logo">
+          <MediaUploader
+            value={org.logoMediaId ?? null}
+            onChange={async (mediaId) => {
+              try {
+                await update.mutateAsync({ logoMediaId: mediaId ?? "" });
+                message.success(mediaId ? "Logo updated" : "Logo removed");
+              } catch {
+                message.error("Failed to update logo");
+              }
+            }}
+          />
+        </Descriptions.Item>
         <Descriptions.Item label="Status">{org.status}</Descriptions.Item>
         <Descriptions.Item label="Currency">{org.defaultCurrency}</Descriptions.Item>
         <Descriptions.Item label="Created">{new Date(org.createdAt).toLocaleString()}</Descriptions.Item>
