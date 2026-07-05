@@ -50,3 +50,11 @@ export type UpdateSubjectRequest = { name?: BilingualText; slug?: string; status
 
 export type CreateTopicRequest = { name: BilingualText; slug?: string };
 export type UpdateTopicRequest = { name?: BilingualText; slug?: string; status?: "active" | "archived" };
+
+export type MediaItemResponse = {
+  id: string;
+  url: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+};
