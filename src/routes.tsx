@@ -3,6 +3,7 @@ import type { RouteObject } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QuestionsListPage } from "./pages/QuestionsListPage";
+import { QuestionEditorPage } from "./pages/QuestionEditorPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { OrgProfilePage } from "./pages/OrgProfilePage";
 import { TaxonomyPage } from "./pages/TaxonomyPage";
@@ -34,6 +35,8 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
       { path: "questions", element: <QuestionsListPage /> },
+      { path: "questions/new", element: <QuestionEditorPage /> },
+      { path: "questions/:id", element: <QuestionEditorPage /> },
       { path: "org/profile", element: <OrgProfilePage /> },
       { path: "taxonomy", element: <TaxonomyPage /> },
       { path: "admin/taxonomy", element: <AdminTaxonomyPage /> },
