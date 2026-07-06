@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { QuestionsListPage } from "./pages/QuestionsListPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { OrgProfilePage } from "./pages/OrgProfilePage";
 import { TaxonomyPage } from "./pages/TaxonomyPage";
@@ -32,6 +33,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
+      { path: "questions", element: <QuestionsListPage /> },
       { path: "org/profile", element: <OrgProfilePage /> },
       { path: "taxonomy", element: <TaxonomyPage /> },
       { path: "admin/taxonomy", element: <AdminTaxonomyPage /> },
