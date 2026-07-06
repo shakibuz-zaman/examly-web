@@ -58,3 +58,83 @@ export type MediaItemResponse = {
   contentType: string;
   sizeBytes: number;
 };
+
+// ---- Questions (Plan 4) ----
+
+export type QuestionOption = {
+  id: string;
+  html: string;
+  isCorrect: boolean;
+};
+
+export type QuestionOptionInput = {
+  id?: string | null;
+  html: string;
+  isCorrect: boolean;
+};
+
+export type QuestionResponse = {
+  id: string;
+  type: string;
+  language: "bn" | "en";
+  status: "draft" | "active" | "archived";
+  stemHtml: string;
+  multipleCorrect: boolean;
+  lockOptionOrder: boolean;
+  options: QuestionOption[];
+  explanationHtml: string | null;
+  difficulty: "easy" | "medium" | "hard";
+  subjectId: string | null;
+  topicId: string | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type QuestionSummary = {
+  id: string;
+  type: string;
+  language: "bn" | "en";
+  status: "draft" | "active" | "archived";
+  stemExcerpt: string;
+  multipleCorrect: boolean;
+  optionCount: number;
+  difficulty: "easy" | "medium" | "hard";
+  subjectId: string | null;
+  topicId: string | null;
+  tags: string[];
+  updatedAt: string;
+};
+
+export type QuestionListResponse = {
+  items: QuestionSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type SaveQuestionRequest = {
+  language: "bn" | "en";
+  status: "draft" | "active";
+  stemHtml: string;
+  multipleCorrect: boolean;
+  lockOptionOrder: boolean;
+  options: QuestionOptionInput[];
+  explanationHtml: string | null;
+  difficulty: "easy" | "medium" | "hard";
+  subjectId: string | null;
+  topicId: string | null;
+  tags: string[];
+};
+
+export type QuestionListFilters = {
+  page: number;
+  pageSize: number;
+  search?: string;
+  subjectId?: string;
+  topicId?: string;
+  difficulty?: string;
+  language?: string;
+  status?: string;
+  tags?: string[];
+};
