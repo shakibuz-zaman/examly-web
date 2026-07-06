@@ -109,3 +109,12 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+.rich-text-content .ProseMirror {
+  outline: none;
+  min-height: inherit;
+}
+.rich-text-content img {
+  max-width: 100%;
+  height: auto;
+}

@@ -6,6 +6,7 @@ import { ConfigProvider } from "antd";
 import { AuthProvider } from "./auth/AuthContext";
 import { routes } from "./routes";
 import "antd/dist/reset.css";
+import "./index.css";
 
 const queryClient = new QueryClient();
 const router = createBrowserRouter(routes);
