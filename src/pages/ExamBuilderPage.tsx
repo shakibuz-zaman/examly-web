@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Alert, Button, Card, Col, DatePicker, Input, InputNumber, Row, Space, Spin,
+  Alert, Button, Card, Col, DatePicker, Input, InputNumber, Popconfirm, Row, Space, Spin,
   Switch, Tag, Typography, message,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { AxiosError } from "axios";
-import { useExam, useSaveExam } from "../api/exams";
+import { useExam, usePublishExam, useSaveExam, useUnpublishExam } from "../api/exams";
+import { ExamPreview } from "../features/exams/ExamPreview";
 import { QuestionPickerDrawer } from "../features/exams/QuestionPickerDrawer";
 import { SectionCard } from "../features/exams/SectionCard";
 import { SortableList } from "../features/exams/SortableList";
@@ -26,9 +27,13 @@ export function ExamBuilderPage() {
   const navigate = useNavigate();
   const { data: exam, isLoading } = useExam(id);
   const save = useSaveExam();
+  const publish = usePublishExam();
+  const unpublish = useUnpublishExam();
 
   const [draft, setDraft] = useState<ExamDraft>(emptyDraft);
   const [dirty, setDirty] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [picker, setPicker] = useState<{ sectionKey: string; tab: "browse" | "random" } | null>(null);
   // Load the fetched exam into local state exactly once per id — a react-query
   // window-focus refetch must never wipe unsaved edits (same guard as the question editor).
@@ -86,6 +91,30 @@ export function ExamBuilderPage() {
     }
   };
 
+  const onPublish = async () => {
+    setPublishError(null);
+    const savedId = await onSaveDraft();
+    if (!savedId) return;
+    try {
+      await publish.mutateAsync(savedId);
+      loadedForIdRef.current = null; // reload the (now frozen) exam into local state
+      message.success("Exam published");
+    } catch (e) {
+      setPublishError(serverError(e, "Publish failed"));
+    }
+  };
+
+  const onUnpublish = async () => {
+    if (!exam) return;
+    try {
+      await unpublish.mutateAsync(exam.id);
+      loadedForIdRef.current = null; // reload as editable draft
+      message.success("Exam unpublished — it is a draft again");
+    } catch (e) {
+      message.error(serverError(e, "Unpublish failed"));
+    }
+  };
+
   if (id && isLoading) return <Spin style={{ display: "block", marginTop: 80 }} />;
 
   const questionCount = draftQuestionCount(draft);
@@ -106,6 +135,32 @@ export function ExamBuilderPage() {
         />
       )}
 
+      {publishError && (
+        <Alert
+          type="error"
+          showIcon
+          closable
+          onClose={() => setPublishError(null)}
+          style={{ marginBottom: 16 }}
+          message="Cannot publish"
+          description={<div style={{ whiteSpace: "pre-line" }}>{publishError}</div>}
+        />
+      )}
+
+      {preview && exam ? (
+        <>
+          {dirty && (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="Preview shows the last saved version — save the draft to refresh it."
+            />
+          )}
+          <ExamPreview exam={exam} />
+        </>
+      ) : (
+        <>
       <Card title={exam ? (readOnly ? "Exam" : "Edit exam") : "New exam"} style={{ marginBottom: 16 }}>
         <Row gutter={[16, 12]}>
           <Col xs={24} md={12}>
@@ -223,6 +278,8 @@ export function ExamBuilderPage() {
           Add section
         </Button>
       )}
+        </>
+      )}
 
       <div
         style={{
@@ -242,10 +299,28 @@ export function ExamBuilderPage() {
         </Space>
         <Space>
           <Button onClick={() => navigate("/exams")}>Back</Button>
+          {exam && (
+            <Button onClick={() => setPreview((p) => !p)}>
+              {preview ? "Back to editor" : "Preview"}
+            </Button>
+          )}
           {!readOnly && (
             <Button type="primary" loading={save.isPending} onClick={() => void onSaveDraft()}>
               Save draft
             </Button>
+          )}
+          {!readOnly && exam?.modelTestId == null && (
+            <Button type="primary" ghost loading={publish.isPending} onClick={() => void onPublish()}>
+              Publish
+            </Button>
+          )}
+          {exam?.status === "published" && exam.modelTestId == null && (
+            <Popconfirm
+              title="Unpublish this exam? It becomes an editable draft."
+              onConfirm={() => void onUnpublish()}
+            >
+              <Button loading={unpublish.isPending}>Unpublish</Button>
+            </Popconfirm>
           )}
         </Space>
       </div>
