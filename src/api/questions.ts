@@ -4,6 +4,8 @@ import type {
   QuestionListFilters,
   QuestionListResponse,
   QuestionResponse,
+  QuestionSummary,
+  SampleQuestionsRequest,
   SaveQuestionRequest,
 } from "./types";
 
@@ -82,5 +84,12 @@ export function useQuestionTags() {
   return useQuery<string[]>({
     queryKey: ["questions", "tags"],
     queryFn: async () => (await apiClient.get<string[]>("/api/v1/questions/tags")).data,
+  });
+}
+
+export function useSampleQuestions() {
+  return useMutation({
+    mutationFn: async (body: SampleQuestionsRequest) =>
+      (await apiClient.post<QuestionSummary[]>("/api/v1/questions/sample", body)).data,
   });
 }

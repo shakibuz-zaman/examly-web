@@ -138,3 +138,162 @@ export type QuestionListFilters = {
   status?: string;
   tags?: string[];
 };
+
+// ---- Exams & Model Tests (Plan 5a) ----
+
+export type ExamStatus = "draft" | "published" | "archived";
+export type BankStatus = "active" | "draft" | "archived" | "missing";
+
+export type ExamOption = { id: string; html: string; isCorrect: boolean };
+
+export type ExamQuestionDetail = {
+  questionId: string;
+  marksOverride: number | null;
+  effectiveMarks: number;
+  bankStatus: BankStatus;
+  stemHtml: string;
+  options: ExamOption[];
+  explanationHtml: string | null;
+  multipleCorrect: boolean;
+  lockOptionOrder: boolean;
+};
+
+export type ExamSectionDetail = {
+  id: string;
+  title: string | null;
+  questions: ExamQuestionDetail[];
+};
+
+export type ExamResponse = {
+  id: string;
+  modelTestId: string | null;
+  title: string;
+  description: string | null;
+  status: ExamStatus;
+  sections: ExamSectionDetail[];
+  defaultMarks: number;
+  negativeMarks: number;
+  durationMinutes: number;
+  windowStartUtc: string | null;
+  windowEndUtc: string | null;
+  shufflePerStudent: boolean;
+  allowRetakes: boolean;
+  publishedAt: string | null;
+  questionCount: number;
+  totalMarks: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ExamSummary = {
+  id: string;
+  title: string;
+  status: ExamStatus;
+  modelTestId: string | null;
+  modelTestTitle: string | null;
+  questionCount: number;
+  totalMarks: number;
+  durationMinutes: number;
+  windowStartUtc: string | null;
+  windowEndUtc: string | null;
+  shufflePerStudent: boolean;
+  allowRetakes: boolean;
+  publishedAt: string | null;
+  updatedAt: string;
+};
+
+export type ExamListResponse = {
+  items: ExamSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type ExamQuestionInput = { questionId: string; marksOverride: number | null };
+export type ExamSectionInput = {
+  id: string | null;
+  title: string | null;
+  questions: ExamQuestionInput[];
+};
+
+export type SaveExamRequest = {
+  title: string;
+  description: string | null;
+  sections: ExamSectionInput[];
+  defaultMarks: number;
+  negativeMarks: number;
+  durationMinutes: number;
+  windowStartUtc: string | null;
+  windowEndUtc: string | null;
+  shufflePerStudent: boolean;
+  allowRetakes: boolean;
+};
+
+export type ExamListFilters = {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: string;
+  modelTestId?: string;
+  standalone?: boolean;
+};
+
+export type SampleQuestionsRequest = {
+  count: number;
+  subjectId?: string | null;
+  topicId?: string | null;
+  difficulty?: string | null;
+  language?: string | null;
+  tags?: string[];
+  excludeIds: string[];
+};
+
+export type ModelTestExamItem = {
+  id: string;
+  title: string;
+  status: ExamStatus;
+  questionCount: number;
+  totalMarks: number;
+  durationMinutes: number;
+  isArchived: boolean;
+};
+
+export type ModelTestResponse = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: ExamStatus;
+  exams: ModelTestExamItem[];
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ModelTestSummary = {
+  id: string;
+  title: string;
+  status: ExamStatus;
+  examCount: number;
+  publishedAt: string | null;
+  updatedAt: string;
+};
+
+export type ModelTestListResponse = {
+  items: ModelTestSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type SaveModelTestRequest = {
+  title: string;
+  description: string | null;
+  examIds: string[];
+};
+
+export type ModelTestListFilters = {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: string;
+};
