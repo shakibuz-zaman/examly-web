@@ -8,6 +8,7 @@ const items: Item[] = [
   { key: "dashboard", label: "Dashboard", path: "/dashboard" },
   { key: "questions", label: "Questions", path: "/questions", roles: ["examiner"] },
   { key: "exams", label: "Exams", path: "/exams", roles: ["examiner"] },
+  { key: "model-tests", label: "Model Tests", path: "/model-tests", roles: ["examiner"] },
   { key: "org", label: "Organization", path: "/org/profile", roles: ["examiner"] },
   { key: "taxonomy", label: "Taxonomy", path: "/taxonomy", roles: ["examiner"] },
   { key: "admin-taxonomy", label: "Global Taxonomy", path: "/admin/taxonomy", roles: ["platform_admin"] },
