@@ -8,13 +8,14 @@ import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { AxiosError } from "axios";
 import { useExam, useSaveExam } from "../api/exams";
+import { QuestionPickerDrawer } from "../features/exams/QuestionPickerDrawer";
 import { SectionCard } from "../features/exams/SectionCard";
 import { SortableList } from "../features/exams/SortableList";
 import {
-  draftQuestionCount, draftTotalMarks, emptyDraft, fromResponse,
+  allQuestionIds, draftQuestionCount, draftTotalMarks, emptyDraft, fromResponse,
   nextKey, toSaveRequest,
 } from "../features/exams/examDraft";
-import type { DraftSection, ExamDraft } from "../features/exams/examDraft";
+import type { DraftQuestion, DraftSection, ExamDraft } from "../features/exams/examDraft";
 
 function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
@@ -28,6 +29,7 @@ export function ExamBuilderPage() {
 
   const [draft, setDraft] = useState<ExamDraft>(emptyDraft);
   const [dirty, setDirty] = useState(false);
+  const [picker, setPicker] = useState<{ sectionKey: string; tab: "browse" | "random" } | null>(null);
   // Load the fetched exam into local state exactly once per id — a react-query
   // window-focus refetch must never wipe unsaved edits (same guard as the question editor).
   const loadedForIdRef = useRef<string | null>(null);
@@ -48,6 +50,21 @@ export function ExamBuilderPage() {
 
   const mutateSection = (key: string, section: DraftSection) =>
     mutate({ sections: draft.sections.map((s) => (s.key === key ? section : s)) });
+
+  const addQuestions = (sectionKey: string, questions: DraftQuestion[]) => {
+    setDraft((d) => {
+      const existing = new Set(d.sections.flatMap((s) => s.questions.map((q) => q.questionId)));
+      const fresh = questions.filter((q) => !existing.has(q.questionId));
+      if (fresh.length === 0) return d;
+      return {
+        ...d,
+        sections: d.sections.map((s) =>
+          s.key === sectionKey ? { ...s, questions: [...s.questions, ...fresh] } : s,
+        ),
+      };
+    });
+    setDirty(true);
+  };
 
   const onSaveDraft = async (): Promise<string | null> => {
     if (!draft.title.trim()) {
@@ -185,6 +202,8 @@ export function ExamBuilderPage() {
             onChange={(s) => mutateSection(section.key, s)}
             onRemove={() =>
               mutate({ sections: draft.sections.filter((s) => s.key !== section.key) })}
+            onAddQuestions={() => setPicker({ sectionKey: section.key, tab: "browse" })}
+            onRandomFill={() => setPicker({ sectionKey: section.key, tab: "random" })}
           />
         )}
       />
@@ -230,6 +249,16 @@ export function ExamBuilderPage() {
           )}
         </Space>
       </div>
+
+      {picker && (
+        <QuestionPickerDrawer
+          open
+          initialTab={picker.tab}
+          existingIds={allQuestionIds(draft)}
+          onAdd={(questions) => addQuestions(picker.sectionKey, questions)}
+          onClose={() => setPicker(null)}
+        />
+      )}
     </div>
   );
 }
