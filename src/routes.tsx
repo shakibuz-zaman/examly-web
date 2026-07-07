@@ -5,6 +5,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { QuestionsListPage } from "./pages/QuestionsListPage";
 import { QuestionEditorPage } from "./pages/QuestionEditorPage";
 import { ExamsListPage } from "./pages/ExamsListPage";
+import { ExamBuilderPage } from "./pages/ExamBuilderPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { OrgProfilePage } from "./pages/OrgProfilePage";
 import { TaxonomyPage } from "./pages/TaxonomyPage";
@@ -39,6 +40,8 @@ export const routes: RouteObject[] = [
       { path: "questions/new", element: <QuestionEditorPage /> },
       { path: "questions/:id", element: <QuestionEditorPage /> },
       { path: "exams", element: <ExamsListPage /> },
+      { path: "exams/new", element: <ExamBuilderPage /> },
+      { path: "exams/:id", element: <ExamBuilderPage /> },
       { path: "org/profile", element: <OrgProfilePage /> },
       { path: "taxonomy", element: <TaxonomyPage /> },
       { path: "admin/taxonomy", element: <AdminTaxonomyPage /> },
