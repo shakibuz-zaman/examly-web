@@ -25,7 +25,7 @@ function serverError(e: unknown, fallback: string): string {
 export function ExamBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: exam, isLoading } = useExam(id);
+  const { data: exam, isLoading, isError } = useExam(id);
   const save = useSaveExam();
   const publish = usePublishExam();
   const unpublish = useUnpublishExam();
@@ -45,6 +45,13 @@ export function ExamBuilderPage() {
       setDirty(false);
     }
   }, [exam]);
+
+  useEffect(() => {
+    if (id && isError) {
+      message.error("Exam not found");
+      navigate("/exams", { replace: true });
+    }
+  }, [id, isError, navigate]);
 
   const readOnly = exam ? exam.status !== "draft" : false;
 

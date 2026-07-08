@@ -31,7 +31,7 @@ type BundleDraft = {
 export function ModelTestBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: modelTest, isLoading } = useModelTest(id);
+  const { data: modelTest, isLoading, isError } = useModelTest(id);
   const save = useSaveModelTest();
   const publish = usePublishModelTest();
   const unpublish = useUnpublishModelTest();
@@ -51,6 +51,13 @@ export function ModelTestBuilderPage() {
       setDirty(false);
     }
   }, [modelTest]);
+
+  useEffect(() => {
+    if (id && isError) {
+      message.error("Model test not found");
+      navigate("/model-tests", { replace: true });
+    }
+  }, [id, isError, navigate]);
 
   const readOnly = modelTest ? modelTest.status !== "draft" : false;
 
@@ -200,6 +207,7 @@ export function ModelTestBuilderPage() {
                     {e.title}
                   </Typography.Link>
                   <Tag color={STATUS_COLORS[e.status]}>{e.status}</Tag>
+                  {e.isArchived && <Tag color="red">archived — hidden from students</Tag>}
                   <Typography.Text type="secondary">
                     {e.questionCount} questions · {e.totalMarks} marks · {e.durationMinutes} min
                   </Typography.Text>

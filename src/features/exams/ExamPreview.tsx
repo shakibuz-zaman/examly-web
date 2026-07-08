@@ -11,7 +11,10 @@ type ExamPreviewProps = { exam: ExamResponse };
 // shuffle happens per-student at runtime). Correct answers and explanations are
 // visible because this is the EXAMINER's preview.
 export function ExamPreview({ exam }: ExamPreviewProps) {
-  let number = 0;
+  const sectionOffsets = exam.sections.reduce<number[]>((acc, _s, i) => {
+    acc.push(i === 0 ? 0 : acc[i - 1] + exam.sections[i - 1].questions.length);
+    return acc;
+  }, []);
   return (
     <div>
       <Typography.Title level={3} style={{ marginBottom: 0 }}>{exam.title}</Typography.Title>
@@ -31,12 +34,11 @@ export function ExamPreview({ exam }: ExamPreviewProps) {
               {section.title ?? `Section ${sIndex + 1}`}
             </Typography.Title>
           )}
-          {section.questions.map((q) => {
-            number += 1;
+          {section.questions.map((q, qIndex) => {
             return (
               <Card key={q.questionId} size="small" style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <Typography.Text strong>{number}.</Typography.Text>
+                  <Typography.Text strong>{sectionOffsets[sIndex] + qIndex + 1}.</Typography.Text>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <QuestionContentView html={q.stemHtml} />
                     <div style={{ marginTop: 8 }}>
