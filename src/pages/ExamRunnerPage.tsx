@@ -147,6 +147,7 @@ export function ExamRunnerPage() {
             description={`${totalQuestions - answeredCount} unanswered`}
             onConfirm={() => void doSubmit()}
             okText="Submit"
+            placement="bottomRight"
           >
             <Button type="primary" loading={submitting}>
               Submit
