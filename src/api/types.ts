@@ -297,3 +297,233 @@ export type ModelTestListFilters = {
   search?: string;
   status?: string;
 };
+
+// ---- Student runtime (Plan 5b) ----
+
+export type AttemptState = "in_progress" | "submitted" | "expired";
+
+export type CatalogItem = {
+  kind: "exam" | "model_test";
+  id: string;
+  title: string;
+  description: string | null;
+  orgName: string | null;
+  examCount: number;
+  questionCount: number;
+  totalMarks: number;
+  durationMinutes: number;
+  windowStartUtc: string | null;
+  windowEndUtc: string | null;
+  publishedAt: string | null;
+};
+
+export type CatalogResponse = {
+  items: CatalogItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type StudentBundleExam = {
+  id: string;
+  title: string;
+  questionCount: number;
+  totalMarks: number;
+  durationMinutes: number;
+  windowStartUtc: string | null;
+  windowEndUtc: string | null;
+  revealAtUtc: string | null;
+  myStatus: "not_started" | AttemptState;
+  myRevealed: boolean;
+  myAttemptId: string | null;
+  myScore: number | null;
+  myMaxScore: number | null;
+};
+
+export type StudentModelTest = {
+  id: string;
+  title: string;
+  description: string | null;
+  orgName: string | null;
+  exams: StudentBundleExam[];
+};
+
+export type MyAttemptSummary = {
+  id: string;
+  attemptNumber: number;
+  status: AttemptState;
+  startedAt: string;
+  deadlineUtc: string;
+  submittedAt: string | null;
+  revealed: boolean;
+  score: number | null;
+  maxScore: number | null;
+};
+
+export type StudentExam = {
+  id: string;
+  title: string;
+  description: string | null;
+  orgName: string | null;
+  modelTestId: string | null;
+  modelTestTitle: string | null;
+  questionCount: number;
+  totalMarks: number;
+  durationMinutes: number;
+  negativeMarks: number;
+  allowRetakes: boolean;
+  shufflePerStudent: boolean;
+  windowStartUtc: string | null;
+  windowEndUtc: string | null;
+  revealAtUtc: string | null;
+  myAttempts: MyAttemptSummary[];
+  canStart: boolean;
+  cannotStartReason: string | null;
+};
+
+export type TakeOption = { id: string; html: string };
+
+export type TakeQuestion = {
+  questionId: string;
+  stemHtml: string;
+  multipleCorrect: boolean;
+  effectiveMarks: number;
+  options: TakeOption[];
+};
+
+export type TakeSection = { title: string | null; questions: TakeQuestion[] };
+
+export type SavedAnswer = { questionId: string; selectedOptionIds: string[] };
+
+export type AttemptTake = {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  attemptNumber: number;
+  durationMinutes: number;
+  negativeMarks: number;
+  totalMarks: number;
+  deadlineUtc: string;
+  remainingSeconds: number;
+  sections: TakeSection[];
+  answers: SavedAnswer[];
+};
+
+export type SaveAnswersRequest = { answers: SavedAnswer[] };
+export type SaveAnswersResponse = { savedAt: string; remainingSeconds: number };
+
+export type AttemptStatusResponse = {
+  id: string;
+  examId: string;
+  examTitle: string;
+  attemptNumber: number;
+  status: AttemptState;
+  startedAt: string;
+  deadlineUtc: string;
+  submittedAt: string | null;
+  revealAtUtc: string | null;
+  revealed: boolean;
+  score: number | null;
+  maxScore: number | null;
+  correct: number | null;
+  wrong: number | null;
+  unanswered: number | null;
+};
+
+export type ReviewOption = { id: string; html: string; isCorrect: boolean; selected: boolean };
+
+export type ReviewQuestion = {
+  questionId: string;
+  stemHtml: string;
+  multipleCorrect: boolean;
+  effectiveMarks: number;
+  marksEarned: number;
+  outcome: "correct" | "wrong" | "unanswered";
+  options: ReviewOption[];
+  explanationHtml: string | null;
+};
+
+export type ReviewSection = { title: string | null; questions: ReviewQuestion[] };
+
+export type AttemptReview = {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  attemptNumber: number;
+  score: number;
+  maxScore: number;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  timeTakenSeconds: number;
+  sections: ReviewSection[];
+};
+
+export type LeaderboardRow = {
+  rank: number;
+  studentName: string;
+  score: number;
+  timeTakenSeconds: number;
+  isMe: boolean;
+};
+
+export type LeaderboardMe = { rank: number; score: number; percentile: number };
+
+export type LeaderboardResponse = {
+  items: LeaderboardRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  participants: number;
+  averageScore: number | null;
+  topScore: number | null;
+  me: LeaderboardMe | null;
+};
+
+export type MyAttemptItem = {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  orgName: string | null;
+  attemptNumber: number;
+  status: AttemptState;
+  startedAt: string;
+  revealAtUtc: string | null;
+  revealed: boolean;
+  score: number | null;
+  maxScore: number | null;
+};
+
+export type MyAttemptsResponse = {
+  items: MyAttemptItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type ExamResultRow = {
+  rank: number | null;
+  attemptId: string;
+  studentId: string;
+  studentName: string;
+  attemptNumber: number;
+  status: AttemptState;
+  score: number | null;
+  maxScore: number | null;
+  correct: number | null;
+  wrong: number | null;
+  unanswered: number | null;
+  startedAt: string;
+  submittedAt: string | null;
+  timeTakenSeconds: number | null;
+};
+
+export type ExamResultsResponse = {
+  items: ExamResultRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  participants: number;
+  averageScore: number | null;
+  topScore: number | null;
+};

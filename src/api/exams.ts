@@ -4,6 +4,7 @@ import type {
   ExamListFilters,
   ExamListResponse,
   ExamResponse,
+  ExamResultsResponse,
   SaveExamRequest,
 } from "./types";
 
@@ -80,5 +81,20 @@ export function useRestoreExam() {
     mutationFn: async (id: string) =>
       (await apiClient.post<ExamResponse>(`/api/v1/exams/${id}/restore`)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["exams"] }),
+  });
+}
+
+export function useExamResults(
+  id: string | undefined,
+  page: number,
+  pageSize: number,
+  practice: boolean,
+) {
+  return useQuery<ExamResultsResponse>({
+    queryKey: ["exams", "results", id, page, pageSize, practice],
+    enabled: !!id,
+    queryFn: async () =>
+      (await apiClient.get<ExamResultsResponse>(
+        `/api/v1/exams/${id}/results?page=${page}&pageSize=${pageSize}&practice=${practice}`)).data,
   });
 }
