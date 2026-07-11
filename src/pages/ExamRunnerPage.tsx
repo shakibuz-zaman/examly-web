@@ -13,8 +13,15 @@ function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
 }
 
+// Remount on exam-id change so all per-attempt state resets — React Router reuses
+// the element on a param-only change, which would otherwise strand exam A's state
+// under exam B's URL (autosaving B's answers to A).
 export function ExamRunnerPage() {
   const { id } = useParams();
+  return <ExamRunner key={id} id={id} />;
+}
+
+function ExamRunner({ id }: { id: string | undefined }) {
   const navigate = useNavigate();
   const start = useStartAttempt();
   const submitMutation = useSubmitAttempt();
