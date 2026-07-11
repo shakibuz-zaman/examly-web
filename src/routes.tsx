@@ -18,6 +18,7 @@ import { AppShell } from "./layout/AppShell";
 import { StudentCatalogPage } from "./pages/StudentCatalogPage";
 import { StudentModelTestPage } from "./pages/StudentModelTestPage";
 import { StudentExamLobbyPage } from "./pages/StudentExamLobbyPage";
+import { ExamRunnerPage } from "./pages/ExamRunnerPage";
 import { StudentRedirect } from "./auth/StudentRedirect";
 import { StudentShell } from "./layout/StudentShell";
 
@@ -43,6 +44,7 @@ export const routes: RouteObject[] = [
       { path: "catalog", element: <StudentCatalogPage /> },
       { path: "model-tests/:id", element: <StudentModelTestPage /> },
       { path: "exams/:id", element: <StudentExamLobbyPage /> },
+      { path: "exams/:id/take", element: <ExamRunnerPage /> },
       { path: "*", element: <Navigate to="/student/catalog" replace /> },
     ],
   },
