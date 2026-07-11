@@ -20,7 +20,7 @@ export function ExamResultsPage() {
   const [tab, setTab] = useState<"ranked" | "practice">("ranked");
   const [page, setPage] = useState(1);
 
-  const { data: exam } = useExam(id);
+  const { data: exam, isError: examError } = useExam(id);
   const { data, isLoading } = useExamResults(id, page, PAGE_SIZE, tab === "practice");
 
   const columns: ColumnsType<ExamResultRow> = [
@@ -67,7 +67,7 @@ export function ExamResultsPage() {
         ← Exams
       </Button>
       <Typography.Title level={3} style={{ marginBottom: 12 }}>
-        Results — {exam?.title ?? "…"}
+        {examError ? "Results" : `Results — ${exam?.title ?? "…"}`}
       </Typography.Title>
 
       {tab === "ranked" && data && (
