@@ -20,6 +20,7 @@ export function useAutosave(args: {
   const { attemptId, onRemainingSeconds, onFinished } = args;
   const save = useSaveAnswers();
   const pendingRef = useRef(new Map<string, string[]>());
+  const inFlightRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryDelayRef = useRef(INITIAL_RETRY_MS);
   const flushRef = useRef<() => Promise<void>>(async () => {});
@@ -33,11 +34,17 @@ export function useAutosave(args: {
 
   // Kept in a ref so schedule() always calls the latest closure.
   flushRef.current = async () => {
+    // At most one PUT in flight: a stale earlier request landing after a newer
+    // one would silently overwrite the newer answers server-side. Anything queued
+    // mid-flight stays pending; the in-flight flush's completion path reschedules
+    // (success → schedule(0) when pending remains, failure → backoff schedule).
+    if (inFlightRef.current) return;
     if (pendingRef.current.size === 0) return;
     const batch: SavedAnswer[] = Array.from(
       pendingRef.current,
       ([questionId, selectedOptionIds]) => ({ questionId, selectedOptionIds }),
     );
+    inFlightRef.current = true;
     setState("saving");
     try {
       const result = await save.mutateAsync({ attemptId, body: { answers: batch } });
@@ -72,6 +79,8 @@ export function useAutosave(args: {
       const delay = retryDelayRef.current;
       retryDelayRef.current = Math.min(delay * 2, MAX_RETRY_MS);
       schedule(delay);
+    } finally {
+      inFlightRef.current = false;
     }
   };
 
