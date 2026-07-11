@@ -21,6 +21,8 @@ export function useAutosave(args: {
   const save = useSaveAnswers();
   const pendingRef = useRef(new Map<string, string[]>());
   const inFlightRef = useRef(false);
+  const inFlightPromiseRef = useRef<Promise<void> | null>(null);
+  const lastFlushFailedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryDelayRef = useRef(INITIAL_RETRY_MS);
   const flushRef = useRef<() => Promise<void>>(async () => {});
@@ -45,42 +47,51 @@ export function useAutosave(args: {
       ([questionId, selectedOptionIds]) => ({ questionId, selectedOptionIds }),
     );
     inFlightRef.current = true;
+    lastFlushFailedRef.current = false;
     setState("saving");
-    try {
-      const result = await save.mutateAsync({ attemptId, body: { answers: batch } });
-      for (const answer of batch) {
-        // Only clear entries the student hasn't changed again mid-flight.
-        if (pendingRef.current.get(answer.questionId) === answer.selectedOptionIds) {
-          pendingRef.current.delete(answer.questionId);
+    const flight = (async () => {
+      try {
+        const result = await save.mutateAsync({ attemptId, body: { answers: batch } });
+        for (const answer of batch) {
+          // Only clear entries the student hasn't changed again mid-flight.
+          if (pendingRef.current.get(answer.questionId) === answer.selectedOptionIds) {
+            pendingRef.current.delete(answer.questionId);
+          }
         }
+        setSavedIds((prev) => {
+          const next = new Set(prev);
+          batch.forEach((answer) => next.add(answer.questionId));
+          return next;
+        });
+        retryDelayRef.current = INITIAL_RETRY_MS;
+        onRemainingSeconds(result.remainingSeconds);
+        if (pendingRef.current.size > 0) {
+          schedule(0);
+        } else {
+          setState("saved");
+        }
+      } catch (error) {
+        const status = (error as AxiosError).response?.status;
+        if (status === 409) {
+          // Time is up or the attempt is already finished — stop saving.
+          pendingRef.current.clear();
+          onFinished();
+          return;
+        }
+        // Network failure / 5xx: keep the batch pending and retry with backoff.
+        lastFlushFailedRef.current = true;
+        setState("offline");
+        const delay = retryDelayRef.current;
+        retryDelayRef.current = Math.min(delay * 2, MAX_RETRY_MS);
+        schedule(delay);
       }
-      setSavedIds((prev) => {
-        const next = new Set(prev);
-        batch.forEach((answer) => next.add(answer.questionId));
-        return next;
-      });
-      retryDelayRef.current = INITIAL_RETRY_MS;
-      onRemainingSeconds(result.remainingSeconds);
-      if (pendingRef.current.size > 0) {
-        schedule(0);
-      } else {
-        setState("saved");
-      }
-    } catch (error) {
-      const status = (error as AxiosError).response?.status;
-      if (status === 409) {
-        // Time is up or the attempt is already finished — stop saving.
-        pendingRef.current.clear();
-        onFinished();
-        return;
-      }
-      // Network failure / 5xx: keep the batch pending and retry with backoff.
-      setState("offline");
-      const delay = retryDelayRef.current;
-      retryDelayRef.current = Math.min(delay * 2, MAX_RETRY_MS);
-      schedule(delay);
+    })();
+    inFlightPromiseRef.current = flight;
+    try {
+      await flight;
     } finally {
       inFlightRef.current = false;
+      inFlightPromiseRef.current = null;
     }
   };
 
@@ -108,9 +119,25 @@ export function useAutosave(args: {
     });
   }, []);
 
+  // Drain semantics (pre-submit): on return, everything pending at call time has
+  // genuinely reached the server — or the attempt is finished (409 clears pending
+  // and fires onFinished), or a network/5xx failure occurred (pending kept, backoff
+  // already scheduled; return and let the caller's error handling take over). A
+  // scheduled flush already in flight is awaited first, then whatever was queued
+  // during that flight is flushed too — never a silent no-op that would let submit
+  // finalize the attempt while newer answers sit undelivered.
   const flushNow = useCallback(async () => {
     if (timerRef.current !== null) clearTimeout(timerRef.current);
-    await flushRef.current();
+    for (;;) {
+      const inFlight = inFlightPromiseRef.current;
+      if (inFlight) {
+        await inFlight;
+        continue; // re-check: the flight may have drained pending or left re-edits
+      }
+      if (pendingRef.current.size === 0) return;
+      await flushRef.current(); // no flight in progress, so the guard passes
+      if (lastFlushFailedRef.current) return; // bounded: don't loop on a dead connection
+    }
   }, []);
 
   useEffect(() => {
