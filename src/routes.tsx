@@ -15,6 +15,9 @@ import { AdminTaxonomyPage } from "./pages/AdminTaxonomyPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { AppShell } from "./layout/AppShell";
+import { StudentCatalogPage } from "./pages/StudentCatalogPage";
+import { StudentRedirect } from "./auth/StudentRedirect";
+import { StudentShell } from "./layout/StudentShell";
 
 export const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
@@ -27,12 +30,27 @@ export const routes: RouteObject[] = [
     ),
   },
   {
+    path: "/student",
+    element: (
+      <RequireAuth role="student">
+        <StudentShell />
+      </RequireAuth>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/student/catalog" replace /> },
+      { path: "catalog", element: <StudentCatalogPage /> },
+      { path: "*", element: <Navigate to="/student/catalog" replace /> },
+    ],
+  },
+  {
     path: "/",
     element: (
       <RequireAuth>
-        <RequireOnboarded>
-          <AppShell />
-        </RequireOnboarded>
+        <StudentRedirect>
+          <RequireOnboarded>
+            <AppShell />
+          </RequireOnboarded>
+        </StudentRedirect>
       </RequireAuth>
     ),
     children: [

@@ -6,6 +6,7 @@ import { useAuth } from "../auth/useAuth";
 type FormValues = {
   sub: string;
   email: string;
+  name?: string;
   role: "platform_admin" | "examiner" | "student";
   orgId?: string;
 };
@@ -19,7 +20,7 @@ export function LoginPage() {
       const { data } = await apiClient.post<{ token: string }>("/api/v1/dev/issue-token", values);
       setToken(data.token);
       message.success("Logged in");
-      navigate("/dashboard");
+      navigate(values.role === "student" ? "/student/catalog" : "/dashboard");
     } catch {
       message.error("Token issuance failed");
     }
@@ -37,6 +38,9 @@ export function LoginPage() {
         </Form.Item>
         <Form.Item name="email" label="Email" rules={[{ required: true, type: "email" }]}>
           <Input placeholder="u@example.com" />
+        </Form.Item>
+        <Form.Item name="name" label="Display name">
+          <Input placeholder="Rahim Uddin" />
         </Form.Item>
         <Form.Item name="role" label="Role" rules={[{ required: true }]}>
           <Select

@@ -6,6 +6,7 @@ import { registerUnauthorizedHandler } from "../api/client";
 export type DecodedClaims = {
   sub: string;
   email?: string;
+  name?: string;
   role: string;
   orgId?: string;
   exp: number;
