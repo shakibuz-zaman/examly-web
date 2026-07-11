@@ -6,6 +6,7 @@ import { QuestionsListPage } from "./pages/QuestionsListPage";
 import { QuestionEditorPage } from "./pages/QuestionEditorPage";
 import { ExamsListPage } from "./pages/ExamsListPage";
 import { ExamBuilderPage } from "./pages/ExamBuilderPage";
+import { ExamResultsPage } from "./pages/ExamResultsPage";
 import { ModelTestsListPage } from "./pages/ModelTestsListPage";
 import { ModelTestBuilderPage } from "./pages/ModelTestBuilderPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
@@ -72,6 +73,7 @@ export const routes: RouteObject[] = [
       { path: "exams", element: <ExamsListPage /> },
       { path: "exams/new", element: <ExamBuilderPage /> },
       { path: "exams/:id", element: <ExamBuilderPage /> },
+      { path: "exams/:id/results", element: <ExamResultsPage /> },
       { path: "model-tests", element: <ModelTestsListPage /> },
       { path: "model-tests/new", element: <ModelTestBuilderPage /> },
       { path: "model-tests/:id", element: <ModelTestBuilderPage /> },

@@ -79,12 +79,17 @@ export function ExamsListPage() {
       render: (d: string) => new Date(d).toLocaleString(),
     },
     {
-      title: "Actions", width: 280,
+      title: "Actions", width: 340,
       render: (_, r) => (
         <Space size="small" wrap>
           {r.status !== "archived" && (
             <Button size="small" onClick={() => navigate(`/exams/${r.id}`)}>
               {r.status === "draft" ? "Edit" : "View"}
+            </Button>
+          )}
+          {(r.status === "published" || r.status === "archived") && (
+            <Button size="small" onClick={() => navigate(`/exams/${r.id}/results`)}>
+              Results
             </Button>
           )}
           {r.status === "draft" && !r.modelTestId && (
