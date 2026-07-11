@@ -16,6 +16,8 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { AppShell } from "./layout/AppShell";
 import { StudentCatalogPage } from "./pages/StudentCatalogPage";
+import { StudentModelTestPage } from "./pages/StudentModelTestPage";
+import { StudentExamLobbyPage } from "./pages/StudentExamLobbyPage";
 import { StudentRedirect } from "./auth/StudentRedirect";
 import { StudentShell } from "./layout/StudentShell";
 
@@ -39,6 +41,8 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="/student/catalog" replace /> },
       { path: "catalog", element: <StudentCatalogPage /> },
+      { path: "model-tests/:id", element: <StudentModelTestPage /> },
+      { path: "exams/:id", element: <StudentExamLobbyPage /> },
       { path: "*", element: <Navigate to="/student/catalog" replace /> },
     ],
   },
