@@ -1,5 +1,7 @@
+import { lazy, Suspense } from "react";
 import { Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
+import { Spin } from "antd";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QuestionsListPage } from "./pages/QuestionsListPage";
@@ -24,6 +26,11 @@ import { AttemptResultPage } from "./pages/AttemptResultPage";
 import { MyAttemptsPage } from "./pages/MyAttemptsPage";
 import { StudentRedirect } from "./auth/StudentRedirect";
 import { StudentShell } from "./layout/StudentShell";
+
+// routes.tsx is a route-config module (not fast-refreshed); the lazy wrapper lives here so the page keeps its own chunk.
+// eslint-disable-next-line react-refresh/only-export-components
+const StudentProgressPage = lazy(() =>
+  import("./pages/StudentProgressPage").then((m) => ({ default: m.StudentProgressPage })));
 
 export const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
@@ -50,6 +57,14 @@ export const routes: RouteObject[] = [
       { path: "exams/:id/take", element: <ExamRunnerPage /> },
       { path: "attempts/:id/result", element: <AttemptResultPage /> },
       { path: "me", element: <MyAttemptsPage /> },
+      {
+        path: "progress",
+        element: (
+          <Suspense fallback={<Spin style={{ display: "block", margin: "48px auto" }} />}>
+            <StudentProgressPage />
+          </Suspense>
+        ),
+      },
       { path: "*", element: <Navigate to="/student/catalog" replace /> },
     ],
   },

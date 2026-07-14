@@ -26,6 +26,9 @@ export function StudentShell() {
           </Link>
         </Typography.Title>
         <Space>
+          <Button type="text" style={{ color: "white" }} onClick={() => navigate("/student/progress")}>
+            Progress
+          </Button>
           <Button type="text" style={{ color: "white" }} onClick={() => navigate("/student/me")}>
             My exams
           </Button>
