@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Button, Card, Checkbox, Col, Divider, Form, Radio, Row, Select, Space, Spin,
-  Switch, Tag, Typography, message,
+  Switch, Tag, TreeSelect, Typography, message,
 } from "antd";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import type { AxiosError } from "axios";
@@ -272,16 +272,25 @@ export function QuestionEditorPage() {
                   control={control}
                   name="topicId"
                   render={({ field }) => (
-                    <Select
+                    <TreeSelect
                       value={field.value}
                       allowClear
                       disabled={!subjectId}
                       placeholder="Topic"
-                      style={{ width: 200 }}
-                      options={(topics ?? []).map((t) => ({
-                        value: t.id,
-                        label: t.name.bn && t.name.en ? `${t.name.bn} — ${t.name.en}` : t.name.bn ?? t.name.en ?? t.slug,
-                      }))}
+                      style={{ width: 220 }}
+                      treeDefaultExpandAll
+                      treeData={(topics ?? [])
+                        .filter((t) => !t.parentTopicId)
+                        .map((t) => ({
+                          value: t.id,
+                          title: t.name.bn && t.name.en ? `${t.name.bn} — ${t.name.en}` : t.name.bn ?? t.name.en ?? t.slug,
+                          children: (topics ?? [])
+                            .filter((s) => s.parentTopicId === t.id)
+                            .map((s) => ({
+                              value: s.id,
+                              title: s.name.bn && s.name.en ? `${s.name.bn} — ${s.name.en}` : s.name.bn ?? s.name.en ?? s.slug,
+                            })),
+                        }))}
                       onChange={(v) => field.onChange(v ?? null)}
                     />
                   )}

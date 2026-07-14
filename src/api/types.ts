@@ -36,6 +36,7 @@ export type SubjectResponse = {
 export type TopicResponse = {
   id: string;
   subjectId: string;
+  parentTopicId: string | null;
   name: BilingualText;
   slug: string;
   scope: "global" | "org";
@@ -48,8 +49,14 @@ export type TopicResponse = {
 export type CreateSubjectRequest = { name: BilingualText; slug?: string };
 export type UpdateSubjectRequest = { name?: BilingualText; slug?: string; status?: "active" | "archived" };
 
-export type CreateTopicRequest = { name: BilingualText; slug?: string };
-export type UpdateTopicRequest = { name?: BilingualText; slug?: string; status?: "active" | "archived" };
+export type CreateTopicRequest = { name: BilingualText; slug?: string; parentTopicId?: string | null };
+// parentTopicId sentinel: null/absent = unchanged, "" = clear (make top-level), id = set as subtopic.
+export type UpdateTopicRequest = {
+  name?: BilingualText;
+  slug?: string;
+  status?: "active" | "archived";
+  parentTopicId?: string | null;
+};
 
 export type MediaItemResponse = {
   id: string;

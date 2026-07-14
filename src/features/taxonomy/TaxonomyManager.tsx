@@ -1,4 +1,4 @@
-import { Button, Card, Drawer, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
+import { Button, Card, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message } from "antd";
 import { useState } from "react";
 import {
   useCreateSubject, useCreateTopic, useDeleteSubject, useDeleteTopic,
@@ -9,7 +9,7 @@ import type { BilingualText, SubjectResponse, TopicResponse } from "../../api/ty
 type Mode = "examiner" | "admin";
 
 type SubjectFormValues = { nameEn?: string; nameBn?: string; slug?: string };
-type TopicFormValues = { nameEn?: string; nameBn?: string; slug?: string };
+type TopicFormValues = { nameEn?: string; nameBn?: string; slug?: string; parentTopicId?: string | null };
 
 function toBilingual(v: { nameEn?: string; nameBn?: string }): BilingualText {
   const out: BilingualText = {};
@@ -171,8 +171,25 @@ function TopicsDrawer({
 
   const subjectIsEditable = canEditScope(subject.scope);
 
+  const allTopics = topicsQ.data ?? [];
+  const topLevel = allTopics.filter((t) => !t.parentTopicId);
+  const byParent = new Map<string, TopicResponse[]>();
+  for (const t of allTopics) {
+    if (!t.parentTopicId) continue;
+    byParent.set(t.parentTopicId, [...(byParent.get(t.parentTopicId) ?? []), t]);
+  }
+  const treeData = topLevel.map((t) => {
+    const children = byParent.get(t.id);
+    return children ? { ...t, children } : t;
+  });
+
   async function onSubmit(values: TopicFormValues) {
-    const body = { name: toBilingual(values), slug: values.slug?.trim() || undefined };
+    const body = {
+      name: toBilingual(values),
+      slug: values.slug?.trim() || undefined,
+      // create: null = top-level; update: "" clears, id sets (API sentinel contract)
+      parentTopicId: editingTopic ? (values.parentTopicId ?? "") : (values.parentTopicId ?? null),
+    };
     try {
       if (editingTopic) {
         await updateTopic.mutateAsync({ id: editingTopic.id, body });
@@ -206,8 +223,9 @@ function TopicsDrawer({
         rowKey="id"
         size="small"
         loading={topicsQ.isLoading}
-        dataSource={topicsQ.data ?? []}
+        dataSource={treeData}
         pagination={false}
+        expandable={{ defaultExpandAllRows: true }}
         columns={[
           { title: "Name (EN)", dataIndex: ["name", "en"], render: (v?: string) => v ?? "—" },
           { title: "Name (BN)", dataIndex: ["name", "bn"], render: (v?: string) => v ?? "—" },
@@ -226,14 +244,19 @@ function TopicsDrawer({
                     setEditingTopic(record);
                     form.setFieldsValue({
                       nameEn: record.name.en, nameBn: record.name.bn, slug: record.slug,
+                      parentTopicId: record.parentTopicId ?? undefined,
                     });
                     setModalOpen(true);
                   }}>Edit</Button>
                   <Popconfirm
                     title="Delete topic?"
+                    description="Only allowed if it has no subtopics."
                     onConfirm={async () => {
                       try { await deleteTopic.mutateAsync(record.id); message.success("Deleted"); }
-                      catch { message.error("Delete failed"); }
+                      catch (e: unknown) {
+                        const err = e as { response?: { data?: { error?: string } } };
+                        message.error(err.response?.data?.error ?? "Delete failed");
+                      }
                     }}
                   >
                     <Button size="small" danger>Delete</Button>
@@ -260,6 +283,18 @@ function TopicsDrawer({
           </Form.Item>
           <Form.Item name="slug" label="Slug (optional)">
             <Input />
+          </Form.Item>
+          <Form.Item name="parentTopicId" label="Parent topic (makes this a subtopic)">
+            <Select
+              allowClear
+              placeholder="None — top-level topic"
+              options={topLevel
+                .filter((t) => t.id !== editingTopic?.id)
+                .map((t) => ({
+                  value: t.id,
+                  label: t.name.bn && t.name.en ? `${t.name.bn} — ${t.name.en}` : t.name.bn ?? t.name.en ?? t.slug,
+                }))}
+            />
           </Form.Item>
         </Form>
       </Modal>
