@@ -5,6 +5,7 @@ import {
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import type { AxiosError } from "axios";
+import { categoryLabel, useExamCategories } from "../api/categories";
 import { useExams } from "../api/exams";
 import {
   useModelTest, usePublishModelTest, useSaveModelTest, useUnpublishModelTest,
@@ -25,6 +26,7 @@ function serverError(e: unknown, fallback: string): string {
 type BundleDraft = {
   title: string;
   description: string;
+  categoryId: string | null;
   exams: ModelTestExamItem[]; // ordered
 };
 
@@ -32,11 +34,14 @@ export function ModelTestBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: modelTest, isLoading, isError } = useModelTest(id);
+  const categories = useExamCategories();
   const save = useSaveModelTest();
   const publish = usePublishModelTest();
   const unpublish = useUnpublishModelTest();
 
-  const [draft, setDraft] = useState<BundleDraft>({ title: "", description: "", exams: [] });
+  const [draft, setDraft] = useState<BundleDraft>({
+    title: "", description: "", categoryId: null, exams: [],
+  });
   const [dirty, setDirty] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const loadedForIdRef = useRef<string | null>(null);
@@ -46,6 +51,7 @@ export function ModelTestBuilderPage() {
       setDraft({
         title: modelTest.title,
         description: modelTest.description ?? "",
+        categoryId: modelTest.categoryId,
         exams: modelTest.exams,
       });
       setDirty(false);
@@ -105,6 +111,7 @@ export function ModelTestBuilderPage() {
         body: {
           title: draft.title,
           description: draft.description.trim() ? draft.description : null,
+          categoryId: draft.categoryId,
           examIds: draft.exams.map((e) => e.id),
         },
       });
@@ -179,6 +186,20 @@ export function ModelTestBuilderPage() {
             <Input.TextArea
               rows={2} value={draft.description} disabled={readOnly}
               onChange={(e) => mutate({ description: e.target.value })}
+            />
+          </div>
+          <div>
+            <Typography.Text strong>Category (optional)</Typography.Text>
+            <Select
+              allowClear
+              showSearch
+              placeholder="e.g. BCS"
+              style={{ width: "100%" }}
+              disabled={readOnly}
+              value={draft.categoryId ?? undefined}
+              options={(categories.data ?? []).map((c) => ({ value: c.id, label: categoryLabel(c) }))}
+              onChange={(v) => mutate({ categoryId: v ?? null })}
+              optionFilterProp="label"
             />
           </div>
 

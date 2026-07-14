@@ -174,6 +174,7 @@ export type ExamSectionDetail = {
 export type ExamResponse = {
   id: string;
   modelTestId: string | null;
+  categoryId: string | null;
   title: string;
   description: string | null;
   status: ExamStatus;
@@ -196,6 +197,7 @@ export type ExamSummary = {
   id: string;
   title: string;
   status: ExamStatus;
+  categoryId: string | null;
   modelTestId: string | null;
   modelTestTitle: string | null;
   questionCount: number;
@@ -226,6 +228,7 @@ export type ExamSectionInput = {
 export type SaveExamRequest = {
   title: string;
   description: string | null;
+  categoryId: string | null;
   sections: ExamSectionInput[];
   defaultMarks: number;
   negativeMarks: number;
@@ -269,6 +272,7 @@ export type ModelTestResponse = {
   id: string;
   title: string;
   description: string | null;
+  categoryId: string | null;
   status: ExamStatus;
   exams: ModelTestExamItem[];
   publishedAt: string | null;
@@ -295,6 +299,7 @@ export type ModelTestListResponse = {
 export type SaveModelTestRequest = {
   title: string;
   description: string | null;
+  categoryId: string | null;
   examIds: string[];
 };
 
@@ -314,6 +319,7 @@ export type CatalogItem = {
   id: string;
   title: string;
   description: string | null;
+  categoryId: string | null;
   orgName: string | null;
   examCount: number;
   questionCount: number;
@@ -371,6 +377,7 @@ export type StudentExam = {
   id: string;
   title: string;
   description: string | null;
+  categoryId: string | null;
   orgName: string | null;
   modelTestId: string | null;
   modelTestTitle: string | null;
