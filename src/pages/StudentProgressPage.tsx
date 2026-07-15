@@ -6,6 +6,7 @@ import { TrendChart } from "../features/analytics/TrendChart";
 import { PositionCard } from "../features/analytics/PositionCard";
 import { StrengthMap } from "../features/analytics/StrengthMap";
 import { TopicProgressCard } from "../features/analytics/TopicProgressCard";
+import { DifficultyCard, NegativeMarkingCard, StrengthsFocusCard } from "../features/analytics/StrategyCards";
 
 const WINDOW_PRESETS = [10, 20, 50] as const;
 
@@ -79,6 +80,13 @@ export function StudentProgressPage() {
           <PositionCard categoryId={filters.categoryId} />
           <StrengthMap filters={filters} />
           <TopicProgressCard filters={filters} />
+          <StrengthsFocusCard filters={filters} />
+          <Row gutter={[12, 12]}>
+            <Col xs={24} md={12}><DifficultyCard rows={overview.data.difficulty} /></Col>
+            <Col xs={24} md={12}>
+              {overview.data.strategy && <NegativeMarkingCard strategy={overview.data.strategy} />}
+            </Col>
+          </Row>
         </>
       ) : (
         <Card><Typography.Text>No revealed results yet — take an exam from the catalog and come back!</Typography.Text></Card>

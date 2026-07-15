@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Alert, Button, Card, Col, Collapse, Row, Spin, Statistic, Table, Tabs, Tag, Typography,
+  Alert, Button, Card, Col, Collapse, Row, Space, Spin, Statistic, Table, Tabs, Tag, Typography,
 } from "antd";
 import { CheckCircleFilled, CloseCircleFilled } from "@ant-design/icons";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -239,9 +239,10 @@ export function AttemptResultPage() {
         ]}
       />
 
-      <Typography.Paragraph style={{ marginTop: 16 }}>
+      <Space style={{ marginTop: 16 }} wrap>
         <Link to="/student/me">← My exams</Link>
-      </Typography.Paragraph>
+        <Button onClick={() => navigate("/student/progress")}>See your progress</Button>
+      </Space>
     </div>
   );
 }
