@@ -5,6 +5,7 @@ import type { ColumnsType } from "antd/es/table";
 import { useExam, useExamResults } from "../api/exams";
 import { formatClock, formatDateTime } from "../lib/format";
 import type { ExamResultRow } from "../api/types";
+import { AttemptBreakdownDrawer } from "../features/analytics/examiner/AttemptBreakdownDrawer";
 
 // Keeps recharts out of the main bundle — the tab's chunk loads on first open.
 const ExamAnalyticsTab = lazy(() =>
@@ -25,6 +26,7 @@ export function ExamResultsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"ranked" | "practice" | "analytics">("ranked");
   const [page, setPage] = useState(1);
+  const [drawerRow, setDrawerRow] = useState<ExamResultRow | null>(null);
 
   const { data: exam, isError: examError } = useExam(id);
   const { data, isLoading } = useExamResults(id, page, PAGE_SIZE, tab === "practice");
@@ -116,6 +118,10 @@ export function ExamResultsPage() {
           loading={isLoading}
           columns={columns}
           dataSource={data?.items ?? []}
+          onRow={(record) => ({
+            onClick: () => setDrawerRow(record),
+            style: { cursor: "pointer" },
+          })}
           pagination={{
             current: page,
             pageSize: PAGE_SIZE,
@@ -126,6 +132,12 @@ export function ExamResultsPage() {
           scroll={{ x: true }}
         />
       )}
+
+      <AttemptBreakdownDrawer
+        examId={id!}
+        row={drawerRow}
+        onClose={() => setDrawerRow(null)}
+      />
     </div>
   );
 }
