@@ -3,7 +3,16 @@ import type { ColumnsType } from "antd/es/table";
 import type { ExamTopicRow } from "../../../api/examinerAnalytics";
 import { nodeLabel } from "../StrengthMap";
 
-const columns: ColumnsType<ExamTopicRow> = [
+// antd renders an expand icon whenever the childrenColumnName key is present —
+// even for an empty array — so leaf rows must carry undefined, not [].
+type TreeRow = Omit<ExamTopicRow, "children"> & { children?: TreeRow[] };
+
+const toTreeRow = (r: ExamTopicRow): TreeRow => ({
+  ...r,
+  children: r.children.length > 0 ? r.children.map(toTreeRow) : undefined,
+});
+
+const columns: ColumnsType<TreeRow> = [
   {
     title: "Subject / topic",
     key: "node",
@@ -42,7 +51,7 @@ export function TopicTreeTable({ rows }: { rows: ExamTopicRow[] }) {
         size="small"
         rowKey={(r) => r.nodeId ?? "uncategorized"}
         columns={columns}
-        dataSource={rows}
+        dataSource={rows.map(toTreeRow)}
         childrenColumnName="children"
         expandable={{ defaultExpandAllRows: true }}
         pagination={false}
