@@ -5,6 +5,7 @@ import { useAnalyticsFilters } from "../features/analytics/filters";
 import { TrendChart } from "../features/analytics/TrendChart";
 import { PositionCard } from "../features/analytics/PositionCard";
 import { StrengthMap } from "../features/analytics/StrengthMap";
+import { TopicProgressCard } from "../features/analytics/TopicProgressCard";
 
 const WINDOW_PRESETS = [10, 20, 50] as const;
 
@@ -77,6 +78,7 @@ export function StudentProgressPage() {
           <TrendChart points={overview.data.trend} />
           <PositionCard categoryId={filters.categoryId} />
           <StrengthMap filters={filters} />
+          <TopicProgressCard filters={filters} />
         </>
       ) : (
         <Card><Typography.Text>No revealed results yet — take an exam from the catalog and come back!</Typography.Text></Card>
