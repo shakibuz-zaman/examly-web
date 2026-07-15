@@ -23,6 +23,7 @@ export type DraftSection = {
 export type ExamDraft = {
   title: string;
   description: string;
+  categoryId: string | null;
   durationMinutes: number;
   windowStartUtc: string | null;
   windowEndUtc: string | null;
@@ -43,6 +44,7 @@ export function emptyDraft(): ExamDraft {
   return {
     title: "",
     description: "",
+    categoryId: null,
     durationMinutes: 60,
     windowStartUtc: null,
     windowEndUtc: null,
@@ -58,6 +60,7 @@ export function fromResponse(exam: ExamResponse): ExamDraft {
   return {
     title: exam.title,
     description: exam.description ?? "",
+    categoryId: exam.categoryId,
     durationMinutes: exam.durationMinutes,
     windowStartUtc: exam.windowStartUtc,
     windowEndUtc: exam.windowEndUtc,
@@ -87,6 +90,7 @@ export function toSaveRequest(draft: ExamDraft): SaveExamRequest {
   return {
     title: draft.title,
     description: draft.description.trim() ? draft.description : null,
+    categoryId: draft.categoryId,
     sections: draft.sections.map((s) => ({
       id: s.id,
       title: s.title && s.title.trim() ? s.title : null,

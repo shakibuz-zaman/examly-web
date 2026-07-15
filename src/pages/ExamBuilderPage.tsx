@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Alert, Button, Card, Col, DatePicker, Input, InputNumber, Popconfirm, Row, Space, Spin,
+  Alert, Button, Card, Col, DatePicker, Input, InputNumber, Popconfirm, Row, Select, Space, Spin,
   Switch, Tag, Typography, message,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { AxiosError } from "axios";
+import { categoryLabel, useExamCategories } from "../api/categories";
 import { useExam, usePublishExam, useSaveExam, useUnpublishExam } from "../api/exams";
 import { ExamPreview } from "../features/exams/ExamPreview";
 import { QuestionPickerDrawer } from "../features/exams/QuestionPickerDrawer";
@@ -26,6 +27,7 @@ export function ExamBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: exam, isLoading, isError } = useExam(id);
+  const categories = useExamCategories();
   const save = useSaveExam();
   const publish = usePublishExam();
   const unpublish = useUnpublishExam();
@@ -206,6 +208,18 @@ export function ExamBuilderPage() {
             <InputNumber
               min={0} step={0.25} style={{ width: "100%" }} value={draft.negativeMarks}
               disabled={readOnly} onChange={(v) => mutate({ negativeMarks: v ?? 0 })}
+            />
+          </Col>
+          <Col xs={24} md={12}>
+            <Typography.Text strong>Category (optional)</Typography.Text>
+            <Select
+              allowClear
+              placeholder="e.g. BCS"
+              style={{ width: "100%" }}
+              disabled={readOnly}
+              value={draft.categoryId ?? undefined}
+              options={(categories.data ?? []).map((c) => ({ value: c.id, label: categoryLabel(c) }))}
+              onChange={(v) => mutate({ categoryId: v ?? null })}
             />
           </Col>
           <Col xs={24} md={12}>
