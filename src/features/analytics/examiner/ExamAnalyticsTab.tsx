@@ -2,6 +2,8 @@ import { Card, Col, Empty, Row, Skeleton, Statistic, Typography } from "antd";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useExamAnalytics } from "../../../api/examinerAnalytics";
 import { chartColors } from "../chartTheme";
+import { TopicTreeTable } from "./TopicTreeTable";
+import { HardestQuestionsTable } from "./HardestQuestionsTable";
 
 // Lazy-loaded from ExamResultsPage — this module (and Task 9's tables) is the only
 // path by which recharts enters examiner code, so it must stay out of the main chunk.
@@ -48,6 +50,9 @@ export function ExamAnalyticsTab({ examId }: { examId: string }) {
           Negative totals (negative marking) count in the 0–10 bucket.
         </Typography.Text>
       </Card>
+
+      <TopicTreeTable rows={data.topics} />
+      <HardestQuestionsTable rows={data.hardestQuestions} />
     </div>
   );
 }
