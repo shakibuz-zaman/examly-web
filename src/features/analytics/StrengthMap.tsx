@@ -1,13 +1,14 @@
 import { Card, Skeleton, Tag, Typography } from "antd";
 import { useState } from "react";
 import { useStrength, useSubjectStrength, type StrengthRow } from "../../api/analytics";
+import type { BilingualText } from "../../api/types";
 import type { AnalyticsFilters } from "./filters";
 import { chartColors } from "./chartTheme";
 
 // nodeLabel + StrengthBarRow are shared helpers reused by Tasks 17–18; exporting
 // them alongside components trips fast-refresh's component-only rule (cf. routes.tsx).
 // eslint-disable-next-line react-refresh/only-export-components
-export function nodeLabel(row: StrengthRow): string {
+export function nodeLabel(row: { name: BilingualText | null }): string {
   if (!row.name) return "Uncategorized";
   return row.name.bn && row.name.en ? `${row.name.en} · ${row.name.bn}` : row.name.en ?? row.name.bn ?? "?";
 }

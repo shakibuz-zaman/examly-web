@@ -4,7 +4,7 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   useArchiveQuestion, useCloneQuestion, useQuestions, useQuestionTags, useRestoreQuestion,
 } from "../api/questions";
@@ -25,7 +25,13 @@ function taxonomyLabel(item: SubjectResponse | TopicResponse): string {
 }
 
 export function QuestionsListPage() {
-  const [filters, setFilters] = useState<QuestionListFilters>({ page: 1, pageSize: 20 });
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<QuestionListFilters>(() => ({
+    page: 1,
+    pageSize: 20,
+    subjectId: searchParams.get("subjectId") ?? undefined,
+    topicId: searchParams.get("topicId") ?? undefined,
+  }));
   const navigate = useNavigate();
 
   const { data, isLoading } = useQuestions(filters);
