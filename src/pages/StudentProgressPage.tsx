@@ -1,7 +1,8 @@
-import { Card, InputNumber, Segmented, Select, Skeleton, Space, Typography } from "antd";
+import { Card, Col, InputNumber, Row, Segmented, Select, Skeleton, Space, Statistic, Typography } from "antd";
 import { useAnalyticsOverview } from "../api/analytics";
 import { categoryLabel, useExamCategories } from "../api/categories";
 import { useAnalyticsFilters } from "../features/analytics/filters";
+import { TrendChart } from "../features/analytics/TrendChart";
 
 const WINDOW_PRESETS = [10, 20, 50] as const;
 
@@ -52,12 +53,29 @@ export function StudentProgressPage() {
 
       {overview.isLoading ? (
         <Card><Skeleton active /></Card>
+      ) : overview.data && overview.data.examsTaken > 0 ? (
+        <>
+          <Row gutter={[12, 12]}>
+            <Col xs={12} md={6}>
+              <Card size="small"><Statistic title="Exams taken" value={overview.data.examsTaken}
+                suffix={overview.data.practiceRetakes > 0 ? ` (+${overview.data.practiceRetakes} practice)` : undefined} /></Card>
+            </Col>
+            <Col xs={12} md={6}>
+              <Card size="small"><Statistic title="Overall accuracy" value={overview.data.overallAccuracy} suffix="%" /></Card>
+            </Col>
+            <Col xs={12} md={6}>
+              <Card size="small"><Statistic title="Avg percentile" value={overview.data.avgPercentile ?? "—"}
+                suffix={overview.data.avgPercentile !== null ? "th" : undefined} /></Card>
+            </Col>
+            <Col xs={12} md={6}>
+              <Card size="small"><Statistic title="Focus area" value={overview.data.focusAreaLabel ?? "—"}
+                valueStyle={{ fontSize: 16 }} /></Card>
+            </Col>
+          </Row>
+          <TrendChart points={overview.data.trend} />
+        </>
       ) : (
-        <Card size="small">
-          <Typography.Text type="secondary">
-            {overview.data?.examsTaken ?? 0} exams in scope — sections arrive in Tasks 15–18.
-          </Typography.Text>
-        </Card>
+        <Card><Typography.Text>No revealed results yet — take an exam from the catalog and come back!</Typography.Text></Card>
       )}
     </div>
   );
