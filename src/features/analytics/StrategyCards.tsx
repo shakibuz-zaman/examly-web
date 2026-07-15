@@ -70,7 +70,8 @@ export function StrengthsFocusCard({ filters }: { filters: AnalyticsFilters }) {
   if (candidates.length === 0) return null;
   const byAccuracy = [...candidates].sort((a, b) => b.accuracy - a.accuracy);
   const strengths = byAccuracy.slice(0, 3);
-  const focus = byAccuracy.slice(-3).reverse();
+  const strengthKeys = new Set(strengths.map((r) => r.nodeId));
+  const focus = byAccuracy.filter((r) => !strengthKeys.has(r.nodeId)).slice(-3).reverse();
 
   const Item = ({ r, good }: { r: (typeof candidates)[number]; good: boolean }) => (
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0" }}>
