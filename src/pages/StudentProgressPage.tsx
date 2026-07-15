@@ -3,6 +3,8 @@ import { useAnalyticsOverview } from "../api/analytics";
 import { categoryLabel, useExamCategories } from "../api/categories";
 import { useAnalyticsFilters } from "../features/analytics/filters";
 import { TrendChart } from "../features/analytics/TrendChart";
+import { PositionCard } from "../features/analytics/PositionCard";
+import { StrengthMap } from "../features/analytics/StrengthMap";
 
 const WINDOW_PRESETS = [10, 20, 50] as const;
 
@@ -73,6 +75,8 @@ export function StudentProgressPage() {
             </Col>
           </Row>
           <TrendChart points={overview.data.trend} />
+          <PositionCard categoryId={filters.categoryId} />
+          <StrengthMap filters={filters} />
         </>
       ) : (
         <Card><Typography.Text>No revealed results yet — take an exam from the catalog and come back!</Typography.Text></Card>
