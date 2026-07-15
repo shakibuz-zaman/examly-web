@@ -72,7 +72,7 @@ export function StrengthMap({ filters }: { filters: AnalyticsFilters }) {
                 onClick={row.nodeId ? () =>
                   setOpenSubject(openSubject === row.nodeId ? null : row.nodeId) : undefined}
               />
-              {openSubject === row.nodeId && (
+              {row.nodeId !== null && openSubject === row.nodeId && (
                 <div style={{ borderLeft: "2px solid #f0f0f0", marginLeft: 8 }}>
                   {drill.isLoading && <Skeleton active paragraph={{ rows: 2 }} />}
                   {(drill.data ?? []).map((topic) => (
