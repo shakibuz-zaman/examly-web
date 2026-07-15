@@ -12,6 +12,8 @@ import { categoryLabel, useExamCategories } from "../../../api/categories";
 import { useModelTests } from "../../../api/modelTests";
 import type { AnalyticsMode } from "../filters";
 import { chartColors } from "../chartTheme";
+import { WeaknessHeatmap } from "./WeaknessHeatmap";
+import { WeakestTopicsList } from "./WeakestTopicsList";
 
 // Lazy-loaded from DashboardPage (recharts must stay out of the main bundle).
 export function OrgDashboard() {
@@ -134,6 +136,15 @@ export function OrgDashboard() {
               Blue = finalized attempts per week · gray = distinct students. Default window: last 12 weeks.
             </Typography.Text>
           </Card>
+
+          <Row gutter={[12, 12]}>
+            <Col xs={24} xl={14}>
+              <WeaknessHeatmap exams={org.data.heatmapExams} rows={org.data.heatmapRows} />
+            </Col>
+            <Col xs={24} xl={10}>
+              <WeakestTopicsList rows={org.data.weakestTopics} />
+            </Col>
+          </Row>
         </>
       )}
     </div>
