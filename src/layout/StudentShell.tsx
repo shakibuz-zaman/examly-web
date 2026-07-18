@@ -36,10 +36,12 @@ const centeredSpin = (
 export function StudentShell() {
   const location = useLocation();
   const onOnboarding = location.pathname.endsWith("/onboarding");
+  const onTakeRoute = /\/exams\/[^/]+\/take$/.test(location.pathname);
   const myTracks = useMyTracks();
 
-  // Onboarding renders bare (no chrome) so the flow owns the full viewport.
-  if (onOnboarding) return <Outlet />;
+  // Onboarding and the exam runner render bare (no chrome, no bottom tab bar) so
+  // those flows own the full viewport.
+  if (onOnboarding || onTakeRoute) return <Outlet />;
 
   // Wait for the subscription list before deciding — never redirect on a stale/empty load.
   if (myTracks.isLoading) return centeredSpin;

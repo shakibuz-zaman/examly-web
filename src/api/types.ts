@@ -550,7 +550,7 @@ export type HomeLiveItem = {
   title: string;
   orgName: string | null;
   windowStartUtc: string;
-  windowEndUtc: string;
+  windowEndUtc: string | null;
   state: "live" | "upcoming";
 };
 
