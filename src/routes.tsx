@@ -30,6 +30,8 @@ import { StudentRedirect } from "./auth/StudentRedirect";
 import { StudentShell } from "./layout/StudentShell";
 import { StudentOnboardingPage } from "./pages/StudentOnboardingPage";
 import { StudentProfilePage } from "./pages/StudentProfilePage";
+import { StudentQbankPage } from "./pages/StudentQbankPage";
+import { StudentQbankPaperPage } from "./pages/StudentQbankPaperPage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
 
 // routes.tsx is a route-config module (not fast-refreshed); the lazy wrapper lives here so the page keeps its own chunk.
@@ -58,7 +60,8 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="home" replace /> },
       { path: "onboarding", element: <StudentOnboardingPage /> },
       { path: "home", element: <StudentHomePage /> },
-      { path: "qbank", element: <ComingSoonPage title="প্রশ্নব্যাংক" /> },
+      { path: "qbank", element: <StudentQbankPage /> },
+      { path: "qbank/papers/:id", element: <StudentQbankPaperPage /> },
       { path: "tests", element: <StudentCatalogPage /> },
       { path: "notebook", element: <ComingSoonPage title="ভুলের খাতা" /> },
       { path: "profile", element: <StudentProfilePage /> },

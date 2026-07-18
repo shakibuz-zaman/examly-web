@@ -582,3 +582,50 @@ export type StudentHomeResponse = {
   streak: HomeStreak | null;
   practice: HomePractice | null;
 };
+
+// ---- Question bank (Plan 7b) ----
+
+export type QbankOption = { id: string; html: string; isCorrect: boolean };
+
+export type QbankPaperSummary = {
+  id: string;
+  title: string;
+  year: number;
+  categoryId: string;
+  questionCount: number;
+};
+
+export type QbankPapersResponse = {
+  items: QbankPaperSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type QbankQuestion = {
+  id: string;
+  paperId: string;
+  order: number;
+  sectionLabel: string | null;
+  stemHtml: string;
+  multipleCorrect: boolean;
+  options: QbankOption[];
+  explanationHtml: string | null;
+  takeawayText: string | null;
+  subjectId: string | null;
+  subjectName: BilingualText | null;
+  topicId: string | null;
+  topicName: BilingualText | null;
+  language: string;
+};
+
+export type QbankPaperDetail = { paper: QbankPaperSummary; questions: QbankQuestion[] };
+
+export type QbankSearchHit = { question: QbankQuestion; paperTitle: string; paperYear: number };
+
+export type QbankSearchResponse = {
+  items: QbankSearchHit[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
