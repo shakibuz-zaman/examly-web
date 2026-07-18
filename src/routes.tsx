@@ -28,6 +28,7 @@ import { MyAttemptsPage } from "./pages/MyAttemptsPage";
 import { StudentRedirect } from "./auth/StudentRedirect";
 import { StudentShell } from "./layout/StudentShell";
 import { StudentOnboardingPage } from "./pages/StudentOnboardingPage";
+import { ComingSoonPage } from "./pages/ComingSoonPage";
 
 // routes.tsx is a route-config module (not fast-refreshed); the lazy wrapper lives here so the page keeps its own chunk.
 // eslint-disable-next-line react-refresh/only-export-components
@@ -52,9 +53,28 @@ export const routes: RouteObject[] = [
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/student/catalog" replace /> },
+      { index: true, element: <Navigate to="home" replace /> },
       { path: "onboarding", element: <StudentOnboardingPage /> },
-      { path: "catalog", element: <StudentCatalogPage /> },
+      {
+        path: "home",
+        element: (
+          <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
+            <Spin />
+          </div>
+        ),
+      },
+      { path: "qbank", element: <ComingSoonPage title="প্রশ্নব্যাংক" /> },
+      { path: "tests", element: <StudentCatalogPage /> },
+      { path: "notebook", element: <ComingSoonPage title="ভুলের খাতা" /> },
+      {
+        path: "profile",
+        element: (
+          <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
+            <Spin />
+          </div>
+        ),
+      },
+      { path: "catalog", element: <Navigate to="/student/tests" replace /> },
       { path: "model-tests/:id", element: <StudentModelTestPage /> },
       { path: "exams/:id", element: <StudentExamLobbyPage /> },
       { path: "exams/:id/take", element: <ExamRunnerPage /> },
@@ -68,7 +88,7 @@ export const routes: RouteObject[] = [
           </Suspense>
         ),
       },
-      { path: "*", element: <Navigate to="/student/catalog" replace /> },
+      { path: "*", element: <Navigate to="/student/home" replace /> },
     ],
   },
   {
