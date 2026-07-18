@@ -4,6 +4,7 @@ import {
   buildCategoryTree, categoryLabel,
   useAdminExamCategories, useCreateExamCategory, useUpdateExamCategory,
   type CategoryKind, type CategoryNode, type ExamCategoryResponse,
+  type UpdateExamCategoryRequest,
 } from "../api/categories";
 import type { BilingualText } from "../api/types";
 import { CategoryTreeSelect } from "../features/categories/CategoryTreeSelect";
@@ -82,17 +83,22 @@ export function AdminCategoriesPage() {
   async function onSubmit(values: CategoryFormValues) {
     try {
       if (editing) {
-        await updateCat.mutateAsync({
-          id: editing.id,
-          body: {
-            name: toBilingual(values),
-            slug: values.slug?.trim() || undefined,
-            status: values.status,
-            sortOrder: values.sortOrder,
-            // "" clears to root; an id reparents (API sentinel contract, leaf-only)
-            parentCategoryId: values.parentCategoryId ?? "",
-          },
-        });
+        const body: UpdateExamCategoryRequest = {
+          name: toBilingual(values),
+          slug: values.slug?.trim() || undefined,
+          status: values.status,
+          sortOrder: values.sortOrder,
+        };
+        // API tri-state for parentCategoryId: absent = unchanged, "" = clear to
+        // root, id = reparent (leaf-only). Sending it on every edit makes the API
+        // enter its reparent branch and 400s any node with children — so include
+        // the key ONLY when the parent actually changed vs the record being edited.
+        const oldParent = editing.parentCategoryId ?? null;
+        const newParent = values.parentCategoryId ?? null;
+        if (newParent !== oldParent) {
+          body.parentCategoryId = newParent ?? ""; // cleared → "", else the new id
+        }
+        await updateCat.mutateAsync({ id: editing.id, body });
         message.success("Category updated");
       } else {
         await createCat.mutateAsync({
@@ -198,7 +204,7 @@ export function AdminCategoriesPage() {
             name="parentCategoryId"
             label="Parent (empty = root; reparent is leaf-only, enforced by the API)"
           >
-            <CategoryTreeSelect placeholder="None — root category" />
+            <CategoryTreeSelect placeholder="None — root category" sectionsSelectable />
           </Form.Item>
         </Form>
       </Modal>

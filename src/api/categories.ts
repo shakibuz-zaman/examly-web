@@ -29,6 +29,7 @@ export type UpdateExamCategoryRequest = {
   slug?: string;
   status?: string;
   sortOrder?: number;
+  // API tri-state: absent = unchanged, "" = clear to root, id = reparent.
   parentCategoryId?: string;
 };
 
