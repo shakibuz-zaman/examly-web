@@ -10,6 +10,7 @@ import type {
   SaveAnswersRequest,
   SaveAnswersResponse,
   StudentExam,
+  StudentHomeResponse,
   StudentModelTest,
 } from "./types";
 
@@ -19,6 +20,17 @@ export function useCatalog(page: number, pageSize: number) {
     queryFn: async () =>
       (await apiClient.get<CatalogResponse>(
         `/api/v1/student/catalog?page=${page}&pageSize=${pageSize}`)).data,
+  });
+}
+
+export function useStudentHome(trackId: string | null) {
+  return useQuery<StudentHomeResponse>({
+    queryKey: ["student", "home", trackId],
+    enabled: !!trackId,
+    refetchInterval: 60_000,
+    queryFn: async () =>
+      (await apiClient.get<StudentHomeResponse>(
+        `/api/v1/student/home?trackId=${trackId}`)).data,
   });
 }
 

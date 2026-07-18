@@ -19,6 +19,7 @@ import { AdminCategoriesPage } from "./pages/AdminCategoriesPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { AppShell } from "./layout/AppShell";
+import { StudentHomePage } from "./pages/StudentHomePage";
 import { StudentCatalogPage } from "./pages/StudentCatalogPage";
 import { StudentModelTestPage } from "./pages/StudentModelTestPage";
 import { StudentExamLobbyPage } from "./pages/StudentExamLobbyPage";
@@ -55,14 +56,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="home" replace /> },
       { path: "onboarding", element: <StudentOnboardingPage /> },
-      {
-        path: "home",
-        element: (
-          <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
-            <Spin />
-          </div>
-        ),
-      },
+      { path: "home", element: <StudentHomePage /> },
       { path: "qbank", element: <ComingSoonPage title="প্রশ্নব্যাংক" /> },
       { path: "tests", element: <StudentCatalogPage /> },
       { path: "notebook", element: <ComingSoonPage title="ভুলের খাতা" /> },

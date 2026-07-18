@@ -8,7 +8,7 @@ import {
   SunOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Avatar, Button, Dropdown, Grid, Layout, Select, Space, Spin, Typography } from "antd";
+import { Alert, Avatar, Button, Dropdown, Grid, Layout, Select, Space, Spin, Typography } from "antd";
 import type { ReactNode } from "react";
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
@@ -43,7 +43,26 @@ export function StudentShell() {
 
   // Wait for the subscription list before deciding — never redirect on a stale/empty load.
   if (myTracks.isLoading) return centeredSpin;
-  if ((myTracks.data?.trackIds.length ?? 0) === 0) {
+  // A failed load must NOT be read as "no tracks" (that would bounce a subscribed
+  // student to onboarding). Surface the error with a retry instead.
+  if (myTracks.isError) {
+    return (
+      <div style={{ maxWidth: 480, margin: "80px auto", padding: "0 16px" }}>
+        <Alert
+          type="error"
+          showIcon
+          message="ট্র্যাক লোড করা যায়নি"
+          action={
+            <Button size="small" onClick={() => myTracks.refetch()}>
+              আবার চেষ্টা করুন
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+  // Only redirect on a confirmed empty subscription (successful load, zero tracks).
+  if (myTracks.data && myTracks.data.trackIds.length === 0) {
     return <Navigate to="/student/onboarding" replace />;
   }
 

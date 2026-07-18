@@ -20,7 +20,7 @@ export function LoginPage() {
       const { data } = await apiClient.post<{ token: string }>("/api/v1/dev/issue-token", values);
       setToken(data.token);
       message.success("Logged in");
-      navigate(values.role === "student" ? "/student/catalog" : "/dashboard");
+      navigate(values.role === "student" ? "/student/home" : "/dashboard");
     } catch {
       message.error("Token issuance failed");
     }

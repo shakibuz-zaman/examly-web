@@ -541,3 +541,44 @@ export type ExamResultsResponse = {
   averageScore: number | null;
   topScore: number | null;
 };
+
+// ---- Student home (Plan 7a) ----
+
+export type HomeLiveItem = {
+  kind: "exam" | "model_test";
+  id: string;
+  title: string;
+  orgName: string | null;
+  windowStartUtc: string;
+  windowEndUtc: string;
+  state: "live" | "upcoming";
+};
+
+export type HomeContinue = {
+  type: "resume" | "next";
+  attemptId: string | null;
+  kind: "exam" | "model_test";
+  id: string;
+  title: string;
+};
+
+// 7a always sends null; the non-null shape drives the 7b streak UI.
+export type HomeStreak = {
+  current: number;
+  longest: number;
+  freezesBanked: number;
+  repairableUntilUtc: string | null;
+};
+
+// 7a always sends null; the non-null shape drives the 7b practice UI.
+export type HomePractice = {
+  todayDone: boolean;
+  dueNotebookCount: number;
+};
+
+export type StudentHomeResponse = {
+  liveRail: HomeLiveItem[];
+  continueCard: HomeContinue | null;
+  streak: HomeStreak | null;
+  practice: HomePractice | null;
+};
