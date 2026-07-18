@@ -74,12 +74,24 @@ export function StudentCatalogPage() {
   const activeCollection =
     collectionId && collections.some((c) => c.id === collectionId) ? collectionId : null;
 
+  // Selecting any chip (including "সব") resets pagination to page 1.
+  const selectCollection = (id: string | null) => {
+    setCollectionId(id);
+    setPage(1);
+  };
+
   const items = data?.items ?? [];
-  // Client-side filter only — the 7a catalog fetch is not track-scoped server-side
-  // (per plan); chips narrow what was already fetched for the current page.
+  // Phase-8 seam: client-side filter over the fetched page is plan-sanctioned for 7a;
+  // server-side category filtering arrives with the Phase 8 storefront (the pagination
+  // total intentionally reflects the unfiltered server total until then). The 7a catalog
+  // fetch is not track-scoped server-side, so chips only narrow the current fetched page.
   const filtered = activeCollection
     ? items.filter((item) => item.categoryId === activeCollection)
     : items;
+
+  // A chip other than "সব" is active and it filtered the fetched page down to nothing,
+  // even though the unfiltered page has results — distinct from a truly-empty track.
+  const isFilteredEmpty = activeCollection !== null && items.length > 0 && filtered.length === 0;
 
   return (
     <div>
@@ -100,14 +112,14 @@ export function StudentCatalogPage() {
           <Chip
             label="সব"
             selected={activeCollection === null}
-            onClick={() => setCollectionId(null)}
+            onClick={() => selectCollection(null)}
           />
           {collections.map((c) => (
             <Chip
               key={c.id}
               label={chipLabel(c)}
               selected={activeCollection === c.id}
-              onClick={() => setCollectionId(c.id)}
+              onClick={() => selectCollection(c.id)}
             />
           ))}
         </div>
@@ -117,7 +129,14 @@ export function StudentCatalogPage() {
         loading={isLoading}
         dataSource={filtered}
         locale={{
-          emptyText: (
+          emptyText: isFilteredEmpty ? (
+            <div style={{ padding: "32px 0", textAlign: "center" }}>
+              <Typography.Paragraph style={{ color: "var(--ex-ink-soft)" }}>
+                এই ফিল্টারে কিছু পাওয়া যায়নি।
+              </Typography.Paragraph>
+              <Typography.Link onClick={() => selectCollection(null)}>সব দেখুন</Typography.Link>
+            </div>
+          ) : (
             <div style={{ padding: "32px 0", textAlign: "center" }}>
               <Illustration name="empty" />
               <Typography.Paragraph style={{ marginTop: 12, color: "var(--ex-ink-soft)" }}>
