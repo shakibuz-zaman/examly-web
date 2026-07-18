@@ -4,6 +4,28 @@ import { apiClient } from "./client";
 import type { CreateOrgRequest, OrgResponse, UpdateOrgRequest } from "./types";
 
 const MY_ORG_KEY = ["me", "org"] as const;
+const MY_TRACKS_KEY = ["me", "tracks"] as const;
+
+export type MyTracksResponse = { trackIds: string[] };
+
+export function useMyTracks() {
+  return useQuery<MyTracksResponse>({
+    queryKey: MY_TRACKS_KEY,
+    queryFn: async () =>
+      (await apiClient.get<MyTracksResponse>("/api/v1/me/tracks")).data,
+  });
+}
+
+export function useSaveMyTracks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (trackIds: string[]) => {
+      const { data } = await apiClient.put<MyTracksResponse>("/api/v1/me/tracks", { trackIds });
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: MY_TRACKS_KEY }),
+  });
+}
 
 export function useMyOrg() {
   return useQuery<OrgResponse | null>({

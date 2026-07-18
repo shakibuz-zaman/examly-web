@@ -15,9 +15,11 @@ import { OnboardingPage } from "./pages/OnboardingPage";
 import { OrgProfilePage } from "./pages/OrgProfilePage";
 import { TaxonomyPage } from "./pages/TaxonomyPage";
 import { AdminTaxonomyPage } from "./pages/AdminTaxonomyPage";
+import { AdminCategoriesPage } from "./pages/AdminCategoriesPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { AppShell } from "./layout/AppShell";
+import { StudentHomePage } from "./pages/StudentHomePage";
 import { StudentCatalogPage } from "./pages/StudentCatalogPage";
 import { StudentModelTestPage } from "./pages/StudentModelTestPage";
 import { StudentExamLobbyPage } from "./pages/StudentExamLobbyPage";
@@ -26,6 +28,9 @@ import { AttemptResultPage } from "./pages/AttemptResultPage";
 import { MyAttemptsPage } from "./pages/MyAttemptsPage";
 import { StudentRedirect } from "./auth/StudentRedirect";
 import { StudentShell } from "./layout/StudentShell";
+import { StudentOnboardingPage } from "./pages/StudentOnboardingPage";
+import { StudentProfilePage } from "./pages/StudentProfilePage";
+import { ComingSoonPage } from "./pages/ComingSoonPage";
 
 // routes.tsx is a route-config module (not fast-refreshed); the lazy wrapper lives here so the page keeps its own chunk.
 // eslint-disable-next-line react-refresh/only-export-components
@@ -50,8 +55,14 @@ export const routes: RouteObject[] = [
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/student/catalog" replace /> },
-      { path: "catalog", element: <StudentCatalogPage /> },
+      { index: true, element: <Navigate to="home" replace /> },
+      { path: "onboarding", element: <StudentOnboardingPage /> },
+      { path: "home", element: <StudentHomePage /> },
+      { path: "qbank", element: <ComingSoonPage title="প্রশ্নব্যাংক" /> },
+      { path: "tests", element: <StudentCatalogPage /> },
+      { path: "notebook", element: <ComingSoonPage title="ভুলের খাতা" /> },
+      { path: "profile", element: <StudentProfilePage /> },
+      { path: "catalog", element: <Navigate to="/student/tests" replace /> },
       { path: "model-tests/:id", element: <StudentModelTestPage /> },
       { path: "exams/:id", element: <StudentExamLobbyPage /> },
       { path: "exams/:id/take", element: <ExamRunnerPage /> },
@@ -65,7 +76,7 @@ export const routes: RouteObject[] = [
           </Suspense>
         ),
       },
-      { path: "*", element: <Navigate to="/student/catalog" replace /> },
+      { path: "*", element: <Navigate to="/student/home" replace /> },
     ],
   },
   {
@@ -95,6 +106,7 @@ export const routes: RouteObject[] = [
       { path: "org/profile", element: <OrgProfilePage /> },
       { path: "taxonomy", element: <TaxonomyPage /> },
       { path: "admin/taxonomy", element: <AdminTaxonomyPage /> },
+      { path: "admin/categories", element: <AdminCategoriesPage /> },
       { path: "*", element: <Navigate to="/dashboard" replace /> },
     ],
   },

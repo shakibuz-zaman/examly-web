@@ -3,9 +3,10 @@ import { useState } from "react";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { usePosition } from "../../api/analytics";
 import type { AnalyticsMode } from "./filters";
-import { chartColors } from "./chartTheme";
+import { useChartColors } from "./chartTheme";
 
 export function PositionCard({ categoryId }: { categoryId: string | null }) {
+  const chartColors = useChartColors();
   const [mode, setMode] = useState<AnalyticsMode>("live"); // spec: position defaults to live
   const position = usePosition(categoryId, mode);
   const p = position.data;

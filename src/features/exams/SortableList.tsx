@@ -24,7 +24,7 @@ function SortableRow({ id, disabled, children }: SortableRowProps) {
         alignItems: "flex-start",
         gap: 8,
         opacity: isDragging ? 0.6 : 1,
-        background: "#fff",
+        background: "var(--ex-card)",
       }}
     >
       {!disabled && (

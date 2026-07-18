@@ -2,11 +2,12 @@ import { useState } from "react";
 import {
   Alert, Button, Card, Col, Collapse, Row, Space, Spin, Statistic, Table, Tabs, Tag, Typography,
 } from "antd";
-import { CheckCircleFilled, CloseCircleFilled } from "@ant-design/icons";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
 import { useAttemptReview, useAttemptStatus, useLeaderboard } from "../api/student";
 import { QuestionContentView } from "../features/questions/QuestionContentView";
+import { AttemptTopicStrip } from "../features/student/AttemptTopicStrip";
+import { OptionRow } from "../components/OptionRow";
 import { formatClock, formatDateTime } from "../lib/format";
 import type { LeaderboardRow, ReviewQuestion } from "../api/types";
 
@@ -28,39 +29,24 @@ function ReviewQuestionCard({ question, number }: { question: ReviewQuestion; nu
         <Typography.Text strong>{number}.</Typography.Text>
         <div style={{ flex: 1, minWidth: 0 }}>
           <QuestionContentView html={question.stemHtml} />
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
             {question.options.map((option, index) => (
-              <div
+              <OptionRow
                 key={option.id}
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "flex-start",
-                  padding: "4px 8px",
-                  borderRadius: 4,
-                  background: option.isCorrect
-                    ? "#f6ffed"
-                    : option.selected
-                      ? "#fff1f0"
-                      : undefined,
-                }}
+                optionKey={BN_LETTERS[index] ?? String(index + 1)}
+                state={option.isCorrect ? "correct" : option.selected ? "wrong" : "default"}
+                multiple={question.multipleCorrect}
+                disabled
               >
-                <Typography.Text>{BN_LETTERS[index] ?? index + 1}.</Typography.Text>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <QuestionContentView html={option.html} />
-                </div>
-                {option.selected && <Tag>your answer</Tag>}
-                {option.isCorrect && <CheckCircleFilled style={{ color: "#52c41a", marginTop: 4 }} />}
-                {option.selected && !option.isCorrect && (
-                  <CloseCircleFilled style={{ color: "#ff4d4f", marginTop: 4 }} />
-                )}
-              </div>
+                <QuestionContentView html={option.html} />
+              </OptionRow>
             ))}
           </div>
           {question.explanationHtml && (
             <Collapse
               ghost
               size="small"
+              style={{ marginTop: 8 }}
               items={[
                 {
                   key: "explanation",
@@ -157,34 +143,46 @@ export function AttemptResultPage() {
         {status.attemptNumber > 1 ? " · practice attempts don't rank" : ""}
       </Typography.Text>
 
-      <Card style={{ marginTop: 12 }}>
-        <Row gutter={[16, 16]}>
-          <Col xs={12} md={6}>
-            <Statistic title="Score" value={`${status.score} / ${status.maxScore}`} />
-          </Col>
-          <Col xs={12} md={6}>
-            <Statistic title="Correct · Wrong · Blank"
-              value={`${status.correct} · ${status.wrong} · ${status.unanswered}`} />
-          </Col>
-          <Col xs={12} md={6}>
-            <Statistic title="Rank" value={me ? `#${me.rank} of ${board?.participants}` : "—"} />
-          </Col>
-          <Col xs={12} md={6}>
-            <Statistic
-              title="Percentile"
-              value={me ? `${me.percentile}` : "—"}
-              suffix={me && board?.averageScore !== null ? `· avg ${board?.averageScore}` : undefined}
-            />
-          </Col>
-        </Row>
-      </Card>
-
       <Tabs
         style={{ marginTop: 12 }}
+        defaultActiveKey="analysis"
         items={[
           {
+            key: "analysis",
+            label: "অ্যানালাইসিস",
+            children: (
+              <div>
+                <Card>
+                  {me && status.attemptNumber === 1 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div
+                        className="tnum"
+                        style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.1 }}
+                      >
+                        পার্সেন্টাইল {me.percentile}
+                      </div>
+                      <Typography.Text type="secondary">
+                        র‍্যাঙ্ক {me.rank}/{board?.participants}
+                      </Typography.Text>
+                    </div>
+                  )}
+                  <Row gutter={[16, 16]}>
+                    <Col xs={12} md={6}>
+                      <Statistic title="Score" value={`${status.score} / ${status.maxScore}`} />
+                    </Col>
+                    <Col xs={12} md={6}>
+                      <Statistic title="Correct · Wrong · Blank"
+                        value={`${status.correct} · ${status.wrong} · ${status.unanswered}`} />
+                    </Col>
+                  </Row>
+                </Card>
+                <AttemptTopicStrip attemptId={status.id} enabled={unlocked} />
+              </div>
+            ),
+          },
+          {
             key: "review",
-            label: "Review",
+            label: "রিভিউ",
             children: reviewQuery.isLoading ? (
               <Spin />
             ) : review ? (

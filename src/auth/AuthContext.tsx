@@ -27,7 +27,10 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 function decodeJwt(token: string): DecodedClaims | null {
   try {
     const [, payload] = token.split(".");
-    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    // atob alone mangles multi-byte UTF-8 (Bangla names) — decode bytes explicitly.
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    const json = new TextDecoder("utf-8").decode(bytes);
     return JSON.parse(json) as DecodedClaims;
   } catch {
     return null;

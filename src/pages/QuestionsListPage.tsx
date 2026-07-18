@@ -10,12 +10,10 @@ import {
 } from "../api/questions";
 import { useSubjects, useTopics } from "../api/taxonomy";
 import type { QuestionListFilters, QuestionSummary, SubjectResponse, TopicResponse } from "../api/types";
+import { CONTENT_STATUS_COLORS } from "../theme/status";
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   easy: "green", medium: "gold", hard: "red",
-};
-const STATUS_COLORS: Record<string, string> = {
-  draft: "gold", active: "green", archived: "default",
 };
 
 function taxonomyLabel(item: SubjectResponse | TopicResponse): string {
@@ -77,7 +75,7 @@ export function QuestionsListPage() {
       title: "Status",
       dataIndex: "status",
       width: 100,
-      render: (s: string) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
+      render: (s: string) => <Tag color={CONTENT_STATUS_COLORS[s]}>{s}</Tag>,
     },
     {
       title: "Tags",

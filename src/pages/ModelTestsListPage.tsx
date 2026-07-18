@@ -7,12 +7,7 @@ import {
   useArchiveModelTest, useModelTests, useRestoreModelTest,
 } from "../api/modelTests";
 import type { ModelTestListFilters, ModelTestSummary } from "../api/types";
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: "gold",
-  published: "green",
-  archived: "default",
-};
+import { CONTENT_STATUS_COLORS } from "../theme/status";
 
 export function ModelTestsListPage() {
   const navigate = useNavigate();
@@ -28,7 +23,7 @@ export function ModelTestsListPage() {
     { title: "Title", dataIndex: "title" },
     {
       title: "Status", dataIndex: "status", width: 110,
-      render: (s: string) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
+      render: (s: string) => <Tag color={CONTENT_STATUS_COLORS[s]}>{s}</Tag>,
     },
     { title: "Exams", dataIndex: "examCount", width: 90 },
     {

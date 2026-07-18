@@ -12,6 +12,7 @@ const items: Item[] = [
   { key: "org", label: "Organization", path: "/org/profile", roles: ["examiner"] },
   { key: "taxonomy", label: "Taxonomy", path: "/taxonomy", roles: ["examiner"] },
   { key: "admin-taxonomy", label: "Global Taxonomy", path: "/admin/taxonomy", roles: ["platform_admin"] },
+  { key: "admin-categories", label: "Categories", path: "/admin/categories", roles: ["platform_admin"] },
 ];
 
 export function SidebarNav() {

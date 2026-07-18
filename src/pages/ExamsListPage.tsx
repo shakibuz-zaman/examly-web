@@ -10,12 +10,7 @@ import {
   useArchiveExam, useExams, usePublishExam, useRestoreExam, useUnpublishExam,
 } from "../api/exams";
 import type { ExamListFilters, ExamSummary } from "../api/types";
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: "gold",
-  published: "green",
-  archived: "default",
-};
+import { CONTENT_STATUS_COLORS } from "../theme/status";
 
 function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
@@ -58,7 +53,7 @@ export function ExamsListPage() {
     { title: "Title", dataIndex: "title" },
     {
       title: "Status", dataIndex: "status", width: 110,
-      render: (s: string) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
+      render: (s: string) => <Tag color={CONTENT_STATUS_COLORS[s]}>{s}</Tag>,
     },
     {
       title: "Bundle", width: 180,

@@ -1,6 +1,7 @@
 import { Alert, Button, Card, Descriptions, Space, Spin, Tag, Typography } from "antd";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useStudentExam } from "../api/student";
+import { Illustration } from "../components/Illustration";
 import { formatDateTime, formatDuration } from "../lib/format";
 
 export function StudentExamLobbyPage() {
@@ -14,6 +15,9 @@ export function StudentExamLobbyPage() {
   }
 
   const resumable = exam.myAttempts.some((a) => a.status === "in_progress");
+  // Single time read for the whole render (keeps one impure call, not two).
+  const notOpenedYet =
+    exam.windowStartUtc != null && new Date(exam.windowStartUtc).getTime() > Date.now();
 
   return (
     <div>
@@ -28,11 +32,17 @@ export function StudentExamLobbyPage() {
       )}
       {exam.description && <Typography.Paragraph>{exam.description}</Typography.Paragraph>}
 
+      {notOpenedYet && (
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <Illustration name="lobby" />
+        </div>
+      )}
+
       <Descriptions
         size="small"
         column={1}
         bordered
-        style={{ marginTop: 12, background: "white" }}
+        style={{ marginTop: 12 }}
         items={[
           { key: "q", label: "Questions", children: exam.questionCount },
           { key: "m", label: "Total marks", children: exam.totalMarks },
@@ -70,7 +80,7 @@ export function StudentExamLobbyPage() {
             showIcon
             message={exam.cannotStartReason}
             description={
-              exam.windowStartUtc && new Date(exam.windowStartUtc).getTime() > Date.now()
+              notOpenedYet && exam.windowStartUtc
                 ? `Opens ${formatDateTime(exam.windowStartUtc)}`
                 : undefined
             }

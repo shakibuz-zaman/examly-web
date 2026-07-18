@@ -5,19 +5,14 @@ import {
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import type { AxiosError } from "axios";
-import { categoryLabel, useExamCategories } from "../api/categories";
+import { CategoryTreeSelect } from "../features/categories/CategoryTreeSelect";
 import { useExams } from "../api/exams";
 import {
   useModelTest, usePublishModelTest, useSaveModelTest, useUnpublishModelTest,
 } from "../api/modelTests";
 import { SortableList } from "../features/exams/SortableList";
 import type { ModelTestExamItem } from "../api/types";
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: "gold",
-  published: "green",
-  archived: "red",
-};
+import { CONTENT_STATUS_COLORS } from "../theme/status";
 
 function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
@@ -34,7 +29,6 @@ export function ModelTestBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: modelTest, isLoading, isError } = useModelTest(id);
-  const categories = useExamCategories();
   const save = useSaveModelTest();
   const publish = usePublishModelTest();
   const unpublish = useUnpublishModelTest();
@@ -190,16 +184,10 @@ export function ModelTestBuilderPage() {
           </div>
           <div>
             <Typography.Text strong>Category (optional)</Typography.Text>
-            <Select
-              allowClear
-              showSearch
-              placeholder="e.g. BCS"
-              style={{ width: "100%" }}
+            <CategoryTreeSelect
+              value={draft.categoryId}
+              onChange={(v) => mutate({ categoryId: v })}
               disabled={readOnly}
-              value={draft.categoryId ?? undefined}
-              options={(categories.data ?? []).map((c) => ({ value: c.id, label: categoryLabel(c) }))}
-              onChange={(v) => mutate({ categoryId: v ?? null })}
-              optionFilterProp="label"
             />
           </div>
 
@@ -227,7 +215,7 @@ export function ModelTestBuilderPage() {
                   <Typography.Link onClick={() => navigate(`/exams/${e.id}`)} style={{ flex: 1 }}>
                     {e.title}
                   </Typography.Link>
-                  <Tag color={STATUS_COLORS[e.status]}>{e.status}</Tag>
+                  <Tag color={CONTENT_STATUS_COLORS[e.status]}>{e.status}</Tag>
                   {e.isArchived && <Tag color="red">archived — hidden from students</Tag>}
                   <Typography.Text type="secondary">
                     {e.questionCount} questions · {e.totalMarks} marks · {e.durationMinutes} min

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
+import type { StrengthRow } from "./analytics";
 import type {
   AttemptReview,
   AttemptStatusResponse,
@@ -10,6 +11,7 @@ import type {
   SaveAnswersRequest,
   SaveAnswersResponse,
   StudentExam,
+  StudentHomeResponse,
   StudentModelTest,
 } from "./types";
 
@@ -19,6 +21,17 @@ export function useCatalog(page: number, pageSize: number) {
     queryFn: async () =>
       (await apiClient.get<CatalogResponse>(
         `/api/v1/student/catalog?page=${page}&pageSize=${pageSize}`)).data,
+  });
+}
+
+export function useStudentHome(trackId: string | null) {
+  return useQuery<StudentHomeResponse>({
+    queryKey: ["student", "home", trackId],
+    enabled: !!trackId,
+    refetchInterval: 60_000,
+    queryFn: async () =>
+      (await apiClient.get<StudentHomeResponse>(
+        `/api/v1/student/home?trackId=${trackId}`)).data,
   });
 }
 
@@ -93,6 +106,17 @@ export function useAttemptReview(id: string | undefined, enabled: boolean) {
     retry: false,
     queryFn: async () =>
       (await apiClient.get<AttemptReview>(`/api/v1/student/attempts/${id}/review`)).data,
+  });
+}
+
+// retry: false — 409 (pre-reveal) / 404 (foreign) must not retry-spam the API.
+export function useAttemptTopics(id: string, enabled: boolean) {
+  return useQuery<StrengthRow[]>({
+    queryKey: ["student", "attempt-topics", id],
+    enabled: !!id && enabled,
+    retry: false,
+    queryFn: async () =>
+      (await apiClient.get<StrengthRow[]>(`/api/v1/student/attempts/${id}/topics`)).data,
   });
 }
 
