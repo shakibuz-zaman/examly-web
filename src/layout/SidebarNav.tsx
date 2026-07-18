@@ -13,6 +13,7 @@ const items: Item[] = [
   { key: "taxonomy", label: "Taxonomy", path: "/taxonomy", roles: ["examiner"] },
   { key: "admin-taxonomy", label: "Global Taxonomy", path: "/admin/taxonomy", roles: ["platform_admin"] },
   { key: "admin-categories", label: "Categories", path: "/admin/categories", roles: ["platform_admin"] },
+  { key: "admin-qbank", label: "Question Bank", path: "/admin/qbank", roles: ["platform_admin"] },
 ];
 
 export function SidebarNav() {

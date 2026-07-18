@@ -16,6 +16,8 @@ import { OrgProfilePage } from "./pages/OrgProfilePage";
 import { TaxonomyPage } from "./pages/TaxonomyPage";
 import { AdminTaxonomyPage } from "./pages/AdminTaxonomyPage";
 import { AdminCategoriesPage } from "./pages/AdminCategoriesPage";
+import { AdminQbankPage } from "./pages/AdminQbankPage";
+import { AdminQbankPaperPage } from "./pages/AdminQbankPaperPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { AppShell } from "./layout/AppShell";
@@ -112,6 +114,8 @@ export const routes: RouteObject[] = [
       { path: "taxonomy", element: <TaxonomyPage /> },
       { path: "admin/taxonomy", element: <AdminTaxonomyPage /> },
       { path: "admin/categories", element: <AdminCategoriesPage /> },
+      { path: "admin/qbank", element: <AdminQbankPage /> },
+      { path: "admin/qbank/:id", element: <AdminQbankPaperPage /> },
       { path: "*", element: <Navigate to="/dashboard" replace /> },
     ],
   },

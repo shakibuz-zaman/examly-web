@@ -622,6 +622,59 @@ export type QbankQuestion = {
 
 export type QbankPaperDetail = { paper: QbankPaperSummary; questions: QbankQuestion[] };
 
+// ---- Admin question bank (Plan 7b, platform_admin) ----
+
+export type AdminPaperStatus = "draft" | "active" | "archived";
+
+export type AdminPaper = {
+  id: string;
+  title: string;
+  year: number;
+  categoryId: string;
+  status: AdminPaperStatus;
+  questionCount: number;
+  updatedAt: string;
+};
+
+export type AdminPaperList = {
+  items: AdminPaper[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type AdminPaperFilters = {
+  status?: string;
+  year?: number;
+  categoryId?: string;
+  page: number;
+  pageSize: number;
+};
+
+export type CreatePaperRequest = { title: string; year: number; categoryId: string };
+export type UpdatePaperRequest = { title?: string; year?: number; categoryId?: string };
+
+export type SaveQbankOptionInput = { id?: string | null; html: string; isCorrect: boolean };
+
+export type SaveQbankQuestionRequest = {
+  order?: number;
+  sectionLabel?: string | null;
+  stemHtml: string;
+  multipleCorrect: boolean;
+  options: SaveQbankOptionInput[];
+  explanationHtml?: string | null;
+  takeawayText?: string | null;
+  subjectId?: string | null;
+  topicId?: string | null;
+  language: "bn" | "en";
+};
+
+export type ImportReport = {
+  accepted: number;
+  rejected: number;
+  errors: { index: number; error: string }[];
+};
+
 export type QbankSearchHit = { question: QbankQuestion; paperTitle: string; paperYear: number };
 
 export type QbankSearchResponse = {
