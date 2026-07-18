@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
+import type { StrengthRow } from "./analytics";
 import type {
   AttemptReview,
   AttemptStatusResponse,
@@ -105,6 +106,17 @@ export function useAttemptReview(id: string | undefined, enabled: boolean) {
     retry: false,
     queryFn: async () =>
       (await apiClient.get<AttemptReview>(`/api/v1/student/attempts/${id}/review`)).data,
+  });
+}
+
+// retry: false — 409 (pre-reveal) / 404 (foreign) must not retry-spam the API.
+export function useAttemptTopics(id: string, enabled: boolean) {
+  return useQuery<StrengthRow[]>({
+    queryKey: ["student", "attempt-topics", id],
+    enabled: !!id && enabled,
+    retry: false,
+    queryFn: async () =>
+      (await apiClient.get<StrengthRow[]>(`/api/v1/student/attempts/${id}/topics`)).data,
   });
 }
 
