@@ -4,7 +4,6 @@ import {
   Button,
   Drawer,
   Grid,
-  Popconfirm,
   Spin,
   Tag,
   Typography,
@@ -23,6 +22,7 @@ import { useAutosave } from "../features/student/useAutosave";
 import { useCountdown } from "../features/student/useCountdown";
 import { RunnerQuestionCard } from "../features/student/RunnerQuestionCard";
 import { RunnerPalette, type PaletteState } from "../features/student/RunnerPalette";
+import { PreSubmitSheet } from "../features/student/PreSubmitSheet";
 import { formatClock } from "../lib/format";
 import { bnNum } from "../lib/bn";
 import type { AttemptTake } from "../api/types";
@@ -217,7 +217,7 @@ function RunnerView({
   });
   const [timerHidden, setTimerHidden] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // Every navigation goes through here so the destination is marked visited (and
   // persisted) at event time — no state-sync effects.
@@ -287,7 +287,7 @@ function RunnerView({
         if (currentIndex < flatQuestions.length - 1) goTo(currentIndex + 1);
       } else if (e.key === "Enter") {
         if (currentIndex < flatQuestions.length - 1) goTo(currentIndex + 1);
-        else setConfirmOpen(true);
+        else setSheetOpen(true);
       } else if (e.key === "m" || e.key === "M") {
         toggleFlag();
       }
@@ -338,15 +338,6 @@ function RunnerView({
   // hides it, but the clock force-shows for the final two minutes.
   const showClock = !timerHidden || (remaining !== null && remaining <= 120);
 
-  const submitConfirmProps = {
-    title: "উত্তরপত্র জমা দেবেন?",
-    description:
-      unanswered > 0 ? `${bnNum(unanswered)}টি প্রশ্নের উত্তর বাকি` : undefined,
-    okText: "জমা দিন",
-    cancelText: "ফিরে যান",
-    onConfirm: onSubmit,
-  };
-
   return (
     <div
       style={{
@@ -390,11 +381,14 @@ function RunnerView({
           </Tag>
         )}
         <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-          {showClock && (
-            <Typography.Text strong className="tnum" style={{ fontSize: 18 }}>
-              {remaining === null ? "—" : formatClock(remaining)}
-            </Typography.Text>
-          )}
+          {/* Reserve the clock's width so hiding the timer never shifts the header. */}
+          <span style={{ minWidth: 52, textAlign: "right" }}>
+            {showClock && (
+              <Typography.Text strong className="tnum" style={{ fontSize: 18 }}>
+                {remaining === null ? "—" : formatClock(remaining)}
+              </Typography.Text>
+            )}
+          </span>
           <Button
             type="text"
             size="small"
@@ -410,9 +404,9 @@ function RunnerView({
             aria-label="প্রশ্ন তালিকা"
           />
         )}
-        <Popconfirm {...submitConfirmProps} placement="bottomRight">
-          <Button loading={submitting}>জমা দিন</Button>
-        </Popconfirm>
+        <Button loading={submitting} onClick={() => setSheetOpen(true)}>
+          জমা দিন
+        </Button>
       </header>
 
       <div
@@ -436,7 +430,7 @@ function RunnerView({
               message="Connection lost — your answers are kept locally and will retry automatically."
             />
           )}
-          {(currentSection.title || take.sections.length > 1) && (
+          {currentSection && (currentSection.title || take.sections.length > 1) && (
             <Typography.Text
               type="secondary"
               style={{
@@ -510,16 +504,15 @@ function RunnerView({
             পূর্ববর্তী
           </Button>
           {isLast ? (
-            <Popconfirm
-              {...submitConfirmProps}
-              placement="topRight"
-              open={confirmOpen}
-              onOpenChange={setConfirmOpen}
+            <Button
+              type="primary"
+              size="large"
+              style={{ flex: 1 }}
+              loading={submitting}
+              onClick={() => setSheetOpen(true)}
             >
-              <Button type="primary" size="large" style={{ flex: 1 }} loading={submitting}>
-                সেভ ও পরবর্তী
-              </Button>
-            </Popconfirm>
+              সেভ ও পরবর্তী
+            </Button>
           ) : (
             <Button
               type="primary"
@@ -536,7 +529,7 @@ function RunnerView({
       {!isDesktop && (
         <Drawer
           placement="bottom"
-          height="70%"
+          size="70%"
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
           title="প্রশ্ন তালিকা"
@@ -549,6 +542,17 @@ function RunnerView({
           />
         </Drawer>
       )}
+
+      <PreSubmitSheet
+        open={sheetOpen}
+        counts={{ unanswered, flagged: flagged.size, answered: answeredCount }}
+        sections={take.sections}
+        states={paletteStates}
+        onJump={goTo}
+        onConfirm={onSubmit}
+        onCancel={() => setSheetOpen(false)}
+        loading={submitting}
+      />
     </div>
   );
 }
