@@ -562,15 +562,16 @@ export type HomeContinue = {
   title: string;
 };
 
-// 7a always sends null; the non-null shape drives the 7b streak UI.
+// Server always sends this block in 7b; the type stays nullable for the frozen seam.
 export type HomeStreak = {
   current: number;
   longest: number;
   freezesBanked: number;
   repairableUntilUtc: string | null;
+  repairable: boolean;
 };
 
-// 7a always sends null; the non-null shape drives the 7b practice UI.
+// Server always sends this block in 7b; the type stays nullable for the frozen seam.
 export type HomePractice = {
   todayDone: boolean;
   dueNotebookCount: number;
