@@ -68,7 +68,15 @@ export function PreSubmitSheet({
 
   if (isDesktop) {
     return (
-      <Modal open={open} title={TITLE} onCancel={onCancel} footer={footer} destroyOnHidden>
+      <Modal
+        open={open}
+        title={TITLE}
+        onCancel={onCancel}
+        footer={footer}
+        centered
+        styles={{ body: { maxHeight: "60vh", overflowY: "auto" } }}
+        destroyOnHidden
+      >
         {body}
       </Modal>
     );
@@ -82,6 +90,8 @@ export function PreSubmitSheet({
       onClose={onCancel}
       title={TITLE}
       footer={footer}
+      styles={{ body: { overflowY: "auto" } }}
+      destroyOnHidden
     >
       {body}
     </Drawer>
