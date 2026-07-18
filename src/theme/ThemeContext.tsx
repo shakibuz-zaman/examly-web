@@ -10,6 +10,9 @@ function initialMode(): ThemeMode {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
+// Apply vars at module load so they exist before React's first paint (no dark FOUC).
+applyCssVars(initialMode());
+
 type Ctx = { mode: ThemeMode; setMode: (m: ThemeMode) => void; toggle: () => void };
 const ThemeModeContext = createContext<Ctx | null>(null);
 

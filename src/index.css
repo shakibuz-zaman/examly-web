@@ -4,7 +4,8 @@
 }
 
 html, body, #root { min-height: 100vh; margin: 0; }
-body { background: var(--ex-bg); color: var(--ex-ink); }
+html, body { font-family: var(--ex-font); background: var(--ex-bg); }
+body { color: var(--ex-ink); }
 
 .tnum {
   font-variant-numeric: tabular-nums;

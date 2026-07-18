@@ -1,4 +1,4 @@
-import { paletteFor, type ThemeMode } from "./tokens";
+import { FONT_STACK, paletteFor, type ThemeMode } from "./tokens";
 
 // Semantic vars for non-antd surfaces (runner, charts, illustrations).
 export function applyCssVars(mode: ThemeMode): void {
@@ -7,6 +7,7 @@ export function applyCssVars(mode: ThemeMode): void {
   root.dataset.theme = mode;
   root.style.colorScheme = mode;
   const map: Record<string, string> = {
+    "--ex-font": FONT_STACK,
     "--ex-teal": p.teal, "--ex-teal-hover": p.tealHover, "--ex-teal-active": p.tealActive,
     "--ex-teal-tint": p.tealTint, "--ex-teal-tint-2": p.tealTint2, "--ex-teal-ink": p.tealInk,
     "--ex-bg": p.bg, "--ex-stage": p.stage, "--ex-card": p.card, "--ex-card-2": p.card2,
