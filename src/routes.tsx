@@ -32,6 +32,7 @@ import { StudentOnboardingPage } from "./pages/StudentOnboardingPage";
 import { StudentProfilePage } from "./pages/StudentProfilePage";
 import { StudentQbankPage } from "./pages/StudentQbankPage";
 import { StudentQbankPaperPage } from "./pages/StudentQbankPaperPage";
+import { PracticeRunnerPage } from "./pages/PracticeRunnerPage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
 
 // routes.tsx is a route-config module (not fast-refreshed); the lazy wrapper lives here so the page keeps its own chunk.
@@ -62,6 +63,7 @@ export const routes: RouteObject[] = [
       { path: "home", element: <StudentHomePage /> },
       { path: "qbank", element: <StudentQbankPage /> },
       { path: "qbank/papers/:id", element: <StudentQbankPaperPage /> },
+      { path: "practice/:id", element: <PracticeRunnerPage /> },
       { path: "tests", element: <StudentCatalogPage /> },
       { path: "notebook", element: <ComingSoonPage title="ভুলের খাতা" /> },
       { path: "profile", element: <StudentProfilePage /> },

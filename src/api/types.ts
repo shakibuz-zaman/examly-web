@@ -629,3 +629,45 @@ export type QbankSearchResponse = {
   page: number;
   pageSize: number;
 };
+
+// ---- Practice sessions (Plan 7b) ----
+
+export type PracticeOption = { id: string; html: string; isCorrect: boolean | null };
+
+export type PracticeItem = {
+  itemId: string;
+  stemHtml: string;
+  multipleCorrect: boolean;
+  options: PracticeOption[];
+  selectedOptionIds: string[] | null;
+  isCorrect: boolean | null;
+  explanationHtml: string | null;
+  takeawayText: string | null;
+};
+
+export type PracticeSession = {
+  id: string;
+  source: string;
+  sourceId: string | null;
+  trackId: string;
+  items: PracticeItem[];
+  answeredCount: number;
+  correctCount: number;
+  completedAt: string | null;
+};
+
+export type StartPracticeRequest = {
+  source: "daily" | "paper" | "notebook" | "topic";
+  sourceId?: string;
+  trackId: string;
+  count?: number;
+};
+
+export type AnswerPracticeResponse = {
+  isCorrect: boolean;
+  correctOptionIds: string[];
+  explanationHtml: string | null;
+  takeawayText: string | null;
+};
+
+export type CompletePracticeResponse = { total: number; correct: number; streak: HomeStreak };

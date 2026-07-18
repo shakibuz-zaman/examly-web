@@ -36,7 +36,9 @@ const centeredSpin = (
 export function StudentShell() {
   const location = useLocation();
   const onOnboarding = location.pathname.endsWith("/onboarding");
-  const onTakeRoute = /\/exams\/[^/]+\/take$/.test(location.pathname);
+  const onTakeRoute =
+    /\/exams\/[^/]+\/take$/.test(location.pathname) ||
+    /^\/student\/practice\/[^/]+$/.test(location.pathname);
   const myTracks = useMyTracks();
 
   // Onboarding and the exam runner render bare (no chrome, no bottom tab bar) so

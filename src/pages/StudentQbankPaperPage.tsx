@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Alert, Button, Input, Skeleton, Space, Tag, Tooltip, Typography } from "antd";
-import { useParams } from "react-router-dom";
+import { Alert, Button, Input, Skeleton, Space, Tag, Typography, message } from "antd";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQbankPaper, useQbankSearch } from "../api/qbank";
+import { useStartPractice } from "../api/practice";
+import { useActiveTrack } from "../features/tracks/TrackContext";
 import { QuestionRevealCard } from "../features/qbank/QuestionRevealCard";
 import { bnNum } from "../lib/bn";
 import type { QbankQuestion } from "../api/types";
@@ -92,6 +94,9 @@ function QuestionList({ questions }: { questions: QbankQuestion[] }) {
 
 export function StudentQbankPaperPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { activeTrackId } = useActiveTrack();
+  const start = useStartPractice();
   const { data, isLoading, isError, refetch } = useQbankPaper(id);
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -202,11 +207,23 @@ export function StudentQbankPaperPage() {
           borderTop: "1px solid var(--ex-line)",
         }}
       >
-        <Tooltip title="শীঘ্রই">
-          <Button type="primary" block disabled>
-            এই সেট থেকে প্র্যাকটিস টেস্ট দাও
-          </Button>
-        </Tooltip>
+        <Button
+          type="primary"
+          block
+          loading={start.isPending}
+          disabled={!activeTrackId}
+          onClick={() =>
+            start.mutate(
+              { source: "paper", sourceId: paper.id, trackId: activeTrackId! },
+              {
+                onSuccess: (s) => navigate(`/student/practice/${s.id}`),
+                onError: () => message.error("প্র্যাকটিস শুরু করা যায়নি"),
+              },
+            )
+          }
+        >
+          এই সেট থেকে প্র্যাকটিস টেস্ট দাও
+        </Button>
       </div>
     </div>
   );
