@@ -5,7 +5,7 @@ import {
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import type { AxiosError } from "axios";
-import { categoryLabel, useExamCategories } from "../api/categories";
+import { CategoryTreeSelect } from "../features/categories/CategoryTreeSelect";
 import { useExams } from "../api/exams";
 import {
   useModelTest, usePublishModelTest, useSaveModelTest, useUnpublishModelTest,
@@ -29,7 +29,6 @@ export function ModelTestBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: modelTest, isLoading, isError } = useModelTest(id);
-  const categories = useExamCategories();
   const save = useSaveModelTest();
   const publish = usePublishModelTest();
   const unpublish = useUnpublishModelTest();
@@ -185,16 +184,10 @@ export function ModelTestBuilderPage() {
           </div>
           <div>
             <Typography.Text strong>Category (optional)</Typography.Text>
-            <Select
-              allowClear
-              showSearch
-              placeholder="e.g. BCS"
-              style={{ width: "100%" }}
+            <CategoryTreeSelect
+              value={draft.categoryId}
+              onChange={(v) => mutate({ categoryId: v })}
               disabled={readOnly}
-              value={draft.categoryId ?? undefined}
-              options={(categories.data ?? []).map((c) => ({ value: c.id, label: categoryLabel(c) }))}
-              onChange={(v) => mutate({ categoryId: v ?? null })}
-              optionFilterProp="label"
             />
           </div>
 

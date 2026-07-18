@@ -15,6 +15,7 @@ import { OnboardingPage } from "./pages/OnboardingPage";
 import { OrgProfilePage } from "./pages/OrgProfilePage";
 import { TaxonomyPage } from "./pages/TaxonomyPage";
 import { AdminTaxonomyPage } from "./pages/AdminTaxonomyPage";
+import { AdminCategoriesPage } from "./pages/AdminCategoriesPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { AppShell } from "./layout/AppShell";
@@ -95,6 +96,7 @@ export const routes: RouteObject[] = [
       { path: "org/profile", element: <OrgProfilePage /> },
       { path: "taxonomy", element: <TaxonomyPage /> },
       { path: "admin/taxonomy", element: <AdminTaxonomyPage /> },
+      { path: "admin/categories", element: <AdminCategoriesPage /> },
       { path: "*", element: <Navigate to="/dashboard" replace /> },
     ],
   },
