@@ -27,6 +27,7 @@ import { AttemptResultPage } from "./pages/AttemptResultPage";
 import { MyAttemptsPage } from "./pages/MyAttemptsPage";
 import { StudentRedirect } from "./auth/StudentRedirect";
 import { StudentShell } from "./layout/StudentShell";
+import { StudentOnboardingPage } from "./pages/StudentOnboardingPage";
 
 // routes.tsx is a route-config module (not fast-refreshed); the lazy wrapper lives here so the page keeps its own chunk.
 // eslint-disable-next-line react-refresh/only-export-components
@@ -52,6 +53,7 @@ export const routes: RouteObject[] = [
     ),
     children: [
       { index: true, element: <Navigate to="/student/catalog" replace /> },
+      { path: "onboarding", element: <StudentOnboardingPage /> },
       { path: "catalog", element: <StudentCatalogPage /> },
       { path: "model-tests/:id", element: <StudentModelTestPage /> },
       { path: "exams/:id", element: <StudentExamLobbyPage /> },
