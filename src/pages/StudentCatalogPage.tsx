@@ -2,36 +2,130 @@ import { useState } from "react";
 import { Card, List, Space, Tag, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useCatalog } from "../api/student";
+import { useActiveTrack } from "../features/tracks/TrackContext";
+import { Illustration } from "../components/Illustration";
 import { formatDateTime, formatDuration } from "../lib/format";
+import { radii } from "../theme/tokens";
 import type { CatalogItem } from "../api/types";
+import type { CategoryNode } from "../api/categories";
 
 const PAGE_SIZE = 20;
 
 function windowTag(item: CatalogItem) {
   if (!item.windowStartUtc || !item.windowEndUtc) {
-    return <Tag color="green">Take anytime</Tag>;
+    return <Tag color="green">যেকোনো সময়</Tag>;
   }
   const now = Date.now();
   if (now < new Date(item.windowStartUtc).getTime()) {
-    return <Tag color="blue">Starts {formatDateTime(item.windowStartUtc)}</Tag>;
+    return <Tag color="blue">শুরু {formatDateTime(item.windowStartUtc)}</Tag>;
   }
   if (now < new Date(item.windowEndUtc).getTime()) {
-    return <Tag color="gold">Live until {formatDateTime(item.windowEndUtc)}</Tag>;
+    return <Tag color="gold">চলছে · {formatDateTime(item.windowEndUtc)} পর্যন্ত</Tag>;
   }
-  return <Tag>Closed</Tag>;
+  return <Tag>শেষ</Tag>;
+}
+
+function chipLabel(c: CategoryNode): string {
+  return c.name.bn || c.name.en || c.slug;
+}
+
+function Chip({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      style={{
+        flex: "0 0 auto",
+        border: "1.5px solid",
+        borderRadius: 999,
+        padding: "5px 14px",
+        fontSize: 14,
+        cursor: "pointer",
+        background: selected ? "var(--ex-teal-tint)" : "var(--ex-card)",
+        borderColor: selected ? "var(--ex-teal)" : "var(--ex-line-strong)",
+        color: selected ? "var(--ex-teal-ink)" : "var(--ex-ink)",
+        fontWeight: selected ? 600 : 400,
+        transition: "background .15s, border-color .15s",
+      }}
+    >
+      {label}
+    </button>
+  );
 }
 
 export function StudentCatalogPage() {
   const [page, setPage] = useState(1);
+  const [collectionId, setCollectionId] = useState<string | null>(null);
   const { data, isLoading } = useCatalog(page, PAGE_SIZE);
+  const { collections } = useActiveTrack();
   const navigate = useNavigate();
+
+  // "সব" (all) is the default; a stale selection (after the active track changes)
+  // falls back to all rather than filtering everything away.
+  const activeCollection =
+    collectionId && collections.some((c) => c.id === collectionId) ? collectionId : null;
+
+  const items = data?.items ?? [];
+  // Client-side filter only — the 7a catalog fetch is not track-scoped server-side
+  // (per plan); chips narrow what was already fetched for the current page.
+  const filtered = activeCollection
+    ? items.filter((item) => item.categoryId === activeCollection)
+    : items;
 
   return (
     <div>
-      <Typography.Title level={3}>Catalog</Typography.Title>
+      <Typography.Title level={3} style={{ color: "var(--ex-ink)" }}>
+        মডেল টেস্ট
+      </Typography.Title>
+
+      {collections.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            overflowX: "auto",
+            paddingBottom: 8,
+            marginBottom: 8,
+          }}
+        >
+          <Chip
+            label="সব"
+            selected={activeCollection === null}
+            onClick={() => setCollectionId(null)}
+          />
+          {collections.map((c) => (
+            <Chip
+              key={c.id}
+              label={chipLabel(c)}
+              selected={activeCollection === c.id}
+              onClick={() => setCollectionId(c.id)}
+            />
+          ))}
+        </div>
+      )}
+
       <List
         loading={isLoading}
-        dataSource={data?.items ?? []}
+        dataSource={filtered}
+        locale={{
+          emptyText: (
+            <div style={{ padding: "32px 0", textAlign: "center" }}>
+              <Illustration name="empty" />
+              <Typography.Paragraph style={{ marginTop: 12, color: "var(--ex-ink-soft)" }}>
+                এই ট্র্যাকে এখনো কিছু নেই
+              </Typography.Paragraph>
+            </div>
+          ),
+        }}
         pagination={{
           current: page,
           pageSize: PAGE_SIZE,
@@ -43,7 +137,7 @@ export function StudentCatalogPage() {
           <List.Item style={{ padding: 0, marginBottom: 12, border: "none" }}>
             <Card
               hoverable
-              style={{ width: "100%" }}
+              style={{ width: "100%", borderRadius: radii.md }}
               onClick={() =>
                 navigate(
                   item.kind === "exam"
@@ -55,11 +149,13 @@ export function StudentCatalogPage() {
               <Space direction="vertical" size={4} style={{ width: "100%" }}>
                 <Space wrap>
                   <Typography.Text strong>{item.title}</Typography.Text>
-                  {item.kind === "model_test" && <Tag color="purple">Model test</Tag>}
+                  {item.kind === "model_test" && <Tag color="purple">মডেল টেস্ট</Tag>}
                   {windowTag(item)}
                 </Space>
                 {item.orgName && (
-                  <Typography.Text type="secondary">{item.orgName}</Typography.Text>
+                  <Typography.Text style={{ fontSize: 13, color: "var(--ex-ink-faint)" }}>
+                    {item.orgName}
+                  </Typography.Text>
                 )}
                 <Typography.Text type="secondary">
                   {item.kind === "model_test" ? `${item.examCount} exams · ` : ""}
