@@ -4,22 +4,25 @@ import {
   CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import type { TrendPoint } from "../../api/analytics";
-import { chartColors } from "./chartTheme";
+import { useChartColors } from "./chartTheme";
 
 type Metric = "score" | "percentile";
 
 // Hollow dot for practice retakes — visible but distinct from ranked attempts.
-function AttemptDot(props: { cx?: number; cy?: number; payload?: TrendPoint }) {
-  const { cx, cy, payload } = props;
+// `accent` is passed by TrendChart (recharts cloneElement preserves it) so this
+// helper stays hook-free and mode-aware.
+function AttemptDot(props: { cx?: number; cy?: number; payload?: TrendPoint; accent?: string }) {
+  const { cx, cy, payload, accent } = props;
   if (cx === undefined || cy === undefined || !payload) return null;
   return payload.isPractice ? (
-    <circle cx={cx} cy={cy} r={4.5} fill="#fff" stroke={chartColors.you} strokeWidth={2} />
+    <circle cx={cx} cy={cy} r={4.5} fill="var(--ex-card)" stroke={accent} strokeWidth={2} />
   ) : (
-    <circle cx={cx} cy={cy} r={4.5} fill={chartColors.you} stroke="#fff" strokeWidth={2} />
+    <circle cx={cx} cy={cy} r={4.5} fill={accent} stroke="var(--ex-card)" strokeWidth={2} />
   );
 }
 
 export function TrendChart({ points }: { points: TrendPoint[] }) {
+  const chartColors = useChartColors();
   const [metric, setMetric] = useState<Metric>("score");
   const [asTable, setAsTable] = useState(false);
 
@@ -76,7 +79,7 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
                 strokeWidth={2} dot={false} isAnimationActive={false} />
             )}
             <Line dataKey="value" name={metric === "score" ? "Your score" : "Your percentile"}
-              stroke={chartColors.you} strokeWidth={2} dot={<AttemptDot />} isAnimationActive={false} />
+              stroke={chartColors.you} strokeWidth={2} dot={<AttemptDot accent={chartColors.you} />} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       )}

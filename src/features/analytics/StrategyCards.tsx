@@ -5,9 +5,10 @@ import type { DifficultyRow, StrategyCard, StrengthRow } from "../../api/analyti
 import { useStrength } from "../../api/analytics";
 import { analyticsQueryString, type AnalyticsFilters } from "./filters";
 import { nodeLabel } from "./StrengthMap";
-import { chartColors } from "./chartTheme";
+import { useChartColors } from "./chartTheme";
 
 export function DifficultyCard({ rows }: { rows: DifficultyRow[] }) {
+  const chartColors = useChartColors();
   const order = ["easy", "medium", "hard"];
   const sorted = [...rows].sort((a, b) => order.indexOf(a.difficulty) - order.indexOf(b.difficulty));
   return (

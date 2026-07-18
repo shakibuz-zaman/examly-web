@@ -3,14 +3,9 @@ import { Card, List, Space, Tag, Typography } from "antd";
 import { Link } from "react-router-dom";
 import { useMyAttempts } from "../api/student";
 import { formatDateTime } from "../lib/format";
+import { ATTEMPT_STATUS_COLORS } from "../theme/status";
 
 const PAGE_SIZE = 20;
-
-const STATUS_COLORS: Record<string, string> = {
-  in_progress: "processing",
-  submitted: "green",
-  expired: "orange",
-};
 
 export function MyAttemptsPage() {
   const [page, setPage] = useState(1);
@@ -35,7 +30,7 @@ export function MyAttemptsPage() {
               <Space direction="vertical" size={2} style={{ width: "100%" }}>
                 <Space wrap>
                   <Typography.Text strong>{item.examTitle}</Typography.Text>
-                  <Tag color={STATUS_COLORS[item.status] ?? "default"}>
+                  <Tag color={ATTEMPT_STATUS_COLORS[item.status] ?? "default"}>
                     {item.status.replace("_", " ")}
                   </Tag>
                   {item.attemptNumber > 1 && <Tag>practice #{item.attemptNumber}</Tag>}

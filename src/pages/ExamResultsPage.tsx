@@ -6,6 +6,7 @@ import { useExam, useExamResults } from "../api/exams";
 import { formatClock, formatDateTime } from "../lib/format";
 import type { ExamResultRow } from "../api/types";
 import { AttemptBreakdownDrawer } from "../features/analytics/examiner/AttemptBreakdownDrawer";
+import { ATTEMPT_STATUS_COLORS } from "../theme/status";
 
 // Keeps recharts out of the main bundle — the tab's chunk loads on first open.
 const ExamAnalyticsTab = lazy(() =>
@@ -14,12 +15,6 @@ const ExamAnalyticsTab = lazy(() =>
   })));
 
 const PAGE_SIZE = 20;
-
-const STATUS_COLORS: Record<string, string> = {
-  in_progress: "processing",
-  submitted: "green",
-  expired: "orange",
-};
 
 export function ExamResultsPage() {
   const { id } = useParams();
@@ -40,7 +35,7 @@ export function ExamResultsPage() {
       title: "Status",
       dataIndex: "status",
       width: 110,
-      render: (s: string) => <Tag color={STATUS_COLORS[s] ?? "default"}>{s.replace("_", " ")}</Tag>,
+      render: (s: string) => <Tag color={ATTEMPT_STATUS_COLORS[s] ?? "default"}>{s.replace("_", " ")}</Tag>,
     },
     {
       title: "Score",

@@ -32,7 +32,7 @@ export function StudentExamLobbyPage() {
         size="small"
         column={1}
         bordered
-        style={{ marginTop: 12, background: "white" }}
+        style={{ marginTop: 12 }}
         items={[
           { key: "q", label: "Questions", children: exam.questionCount },
           { key: "m", label: "Total marks", children: exam.totalMarks },

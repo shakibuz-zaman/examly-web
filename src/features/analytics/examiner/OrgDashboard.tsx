@@ -11,12 +11,13 @@ import { useOrgAnalytics } from "../../../api/examinerAnalytics";
 import { categoryLabel, useExamCategories } from "../../../api/categories";
 import { useModelTests } from "../../../api/modelTests";
 import type { AnalyticsMode } from "../filters";
-import { chartColors } from "../chartTheme";
+import { useChartColors } from "../chartTheme";
 import { WeaknessHeatmap } from "./WeaknessHeatmap";
 import { WeakestTopicsList } from "./WeakestTopicsList";
 
 // Lazy-loaded from DashboardPage (recharts must stay out of the main bundle).
 export function OrgDashboard() {
+  const chartColors = useChartColors();
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [modelTestId, setModelTestId] = useState<string | null>(null);
   const [mode, setMode] = useState<AnalyticsMode>("all");

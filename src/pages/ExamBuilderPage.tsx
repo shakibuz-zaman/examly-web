@@ -305,7 +305,7 @@ export function ExamBuilderPage() {
       <div
         style={{
           position: "fixed", bottom: 0, left: 220, right: 0, zIndex: 10,
-          background: "#fff", borderTop: "1px solid #f0f0f0",
+          background: "var(--ex-card)", borderTop: "1px solid var(--ex-line)",
           padding: "12px 24px", display: "flex", alignItems: "center", gap: 16,
         }}
       >

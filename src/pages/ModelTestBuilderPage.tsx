@@ -12,12 +12,7 @@ import {
 } from "../api/modelTests";
 import { SortableList } from "../features/exams/SortableList";
 import type { ModelTestExamItem } from "../api/types";
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: "gold",
-  published: "green",
-  archived: "red",
-};
+import { CONTENT_STATUS_COLORS } from "../theme/status";
 
 function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
@@ -227,7 +222,7 @@ export function ModelTestBuilderPage() {
                   <Typography.Link onClick={() => navigate(`/exams/${e.id}`)} style={{ flex: 1 }}>
                     {e.title}
                   </Typography.Link>
-                  <Tag color={STATUS_COLORS[e.status]}>{e.status}</Tag>
+                  <Tag color={CONTENT_STATUS_COLORS[e.status]}>{e.status}</Tag>
                   {e.isArchived && <Tag color="red">archived — hidden from students</Tag>}
                   <Typography.Text type="secondary">
                     {e.questionCount} questions · {e.totalMarks} marks · {e.durationMinutes} min

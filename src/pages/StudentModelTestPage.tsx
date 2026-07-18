@@ -3,12 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useStudentModelTest } from "../api/student";
 import { formatDateTime, formatDuration } from "../lib/format";
 import type { StudentBundleExam } from "../api/types";
+import { ATTEMPT_STATUS_COLORS } from "../theme/status";
 
-const STATUS_TAGS: Record<StudentBundleExam["myStatus"], { color: string; label: string }> = {
-  not_started: { color: "default", label: "Not started" },
-  in_progress: { color: "processing", label: "In progress" },
-  submitted: { color: "green", label: "Submitted" },
-  expired: { color: "orange", label: "Time expired" },
+const STATUS_LABELS: Record<StudentBundleExam["myStatus"], string> = {
+  not_started: "Not started",
+  in_progress: "In progress",
+  submitted: "Submitted",
+  expired: "Time expired",
 };
 
 export function StudentModelTestPage() {
@@ -33,14 +34,15 @@ export function StudentModelTestPage() {
 
       <div style={{ marginTop: 16 }}>
         {bundle.exams.map((exam) => {
-          const status = STATUS_TAGS[exam.myStatus];
           const finalized = exam.myStatus === "submitted" || exam.myStatus === "expired";
           return (
             <Card key={exam.id} size="small" style={{ marginBottom: 12 }}>
               <Space direction="vertical" size={4} style={{ width: "100%" }}>
                 <Space wrap>
                   <Typography.Text strong>{exam.title}</Typography.Text>
-                  <Tag color={status.color}>{status.label}</Tag>
+                  <Tag color={ATTEMPT_STATUS_COLORS[exam.myStatus] ?? "default"}>
+                    {STATUS_LABELS[exam.myStatus]}
+                  </Tag>
                 </Space>
                 <Typography.Text type="secondary">
                   {exam.questionCount} questions · {formatDuration(exam.durationMinutes)} ·{" "}

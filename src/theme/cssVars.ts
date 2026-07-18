@@ -6,6 +6,9 @@ export function applyCssVars(mode: ThemeMode): void {
   const root = document.documentElement;
   root.dataset.theme = mode;
   root.style.colorScheme = mode;
+  // index.html sets an inline html background that outranks the stylesheet after a
+  // live toggle — keep the html backdrop in sync so toggling has no stale flash.
+  root.style.background = p.bg;
   const map: Record<string, string> = {
     "--ex-font": FONT_STACK,
     "--ex-teal": p.teal, "--ex-teal-hover": p.tealHover, "--ex-teal-active": p.tealActive,

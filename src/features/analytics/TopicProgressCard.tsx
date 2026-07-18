@@ -7,21 +7,23 @@ import {
   useStrength, useSubjectStrength, useTopicTrend, type TopicTrendPoint, type TrendNode,
 } from "../../api/analytics";
 import type { AnalyticsFilters } from "./filters";
-import { chartColors } from "./chartTheme";
+import { useChartColors } from "./chartTheme";
 import { nodeLabel } from "./StrengthMap";
 
 // Hollow dot when the exam had <5 questions for the node (honest small samples).
-function SampleDot(props: { cx?: number; cy?: number; payload?: TopicTrendPoint }) {
-  const { cx, cy, payload } = props;
+// `accent` is passed by TopicProgressCard (recharts cloneElement preserves it).
+function SampleDot(props: { cx?: number; cy?: number; payload?: TopicTrendPoint; accent?: string }) {
+  const { cx, cy, payload, accent } = props;
   if (cx === undefined || cy === undefined || !payload) return null;
   return payload.lowSample ? (
-    <circle cx={cx} cy={cy} r={4} fill="#fff" stroke={chartColors.you} strokeWidth={2} />
+    <circle cx={cx} cy={cy} r={4} fill="var(--ex-card)" stroke={accent} strokeWidth={2} />
   ) : (
-    <circle cx={cx} cy={cy} r={4.5} fill={chartColors.you} stroke="#fff" strokeWidth={2} />
+    <circle cx={cx} cy={cy} r={4.5} fill={accent} stroke="var(--ex-card)" strokeWidth={2} />
   );
 }
 
 export function TopicProgressCard({ filters }: { filters: AnalyticsFilters }) {
+  const chartColors = useChartColors();
   const subjects = useStrength(filters);
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const topics = useSubjectStrength(filters, subjectId);
@@ -100,7 +102,7 @@ export function TopicProgressCard({ filters }: { filters: AnalyticsFilters }) {
               <Line dataKey="peerAccuracy" name="Peer average" stroke={chartColors.peer}
                 strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
               <Line dataKey="accuracy" name="You" stroke={chartColors.you}
-                strokeWidth={2} dot={<SampleDot />} isAnimationActive={false} />
+                strokeWidth={2} dot={<SampleDot accent={chartColors.you} />} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>

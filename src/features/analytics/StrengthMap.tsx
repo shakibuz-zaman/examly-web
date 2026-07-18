@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useStrength, useSubjectStrength, type StrengthRow } from "../../api/analytics";
 import type { BilingualText } from "../../api/types";
 import type { AnalyticsFilters } from "./filters";
-import { chartColors } from "./chartTheme";
+import { useChartColors } from "./chartTheme";
 
 // nodeLabel + StrengthBarRow are shared helpers reused by Tasks 17–18; exporting
 // them alongside components trips fast-refresh's component-only rule (cf. routes.tsx).
@@ -17,6 +17,7 @@ export function nodeLabel(row: { name: BilingualText | null }): string {
 export function StrengthBarRow({
   row, indent = 0, onClick,
 }: { row: StrengthRow; indent?: number; onClick?: () => void }) {
+  const chartColors = useChartColors();
   return (
     <div
       onClick={onClick}
