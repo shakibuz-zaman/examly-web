@@ -33,7 +33,7 @@ import { StudentProfilePage } from "./pages/StudentProfilePage";
 import { StudentQbankPage } from "./pages/StudentQbankPage";
 import { StudentQbankPaperPage } from "./pages/StudentQbankPaperPage";
 import { PracticeRunnerPage } from "./pages/PracticeRunnerPage";
-import { ComingSoonPage } from "./pages/ComingSoonPage";
+import { StudentNotebookPage } from "./pages/StudentNotebookPage";
 
 // routes.tsx is a route-config module (not fast-refreshed); the lazy wrapper lives here so the page keeps its own chunk.
 // eslint-disable-next-line react-refresh/only-export-components
@@ -65,7 +65,7 @@ export const routes: RouteObject[] = [
       { path: "qbank/papers/:id", element: <StudentQbankPaperPage /> },
       { path: "practice/:id", element: <PracticeRunnerPage /> },
       { path: "tests", element: <StudentCatalogPage /> },
-      { path: "notebook", element: <ComingSoonPage title="ভুলের খাতা" /> },
+      { path: "notebook", element: <StudentNotebookPage /> },
       { path: "profile", element: <StudentProfilePage /> },
       { path: "catalog", element: <Navigate to="/student/tests" replace /> },
       { path: "model-tests/:id", element: <StudentModelTestPage /> },

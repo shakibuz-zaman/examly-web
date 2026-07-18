@@ -671,3 +671,32 @@ export type AnswerPracticeResponse = {
 };
 
 export type CompletePracticeResponse = { total: number; correct: number; streak: HomeStreak };
+
+// ---- Mistake notebook / ভুলের খাতা (Plan 7b) ----
+
+export type NotebookEntry = {
+  id: string;
+  stemHtml: string;
+  multipleCorrect: boolean;
+  options: QbankOption[];
+  explanationHtml: string | null;
+  takeawayText: string | null;
+  subjectId: string | null;
+  subjectName: BilingualText | null;
+  topicId: string | null;
+  topicName: BilingualText | null;
+  wrongCount: number;
+  lastWrongAt: string;
+  nextDueAt: string;
+  due: boolean;
+  status: "active" | "resolved";
+};
+
+export type NotebookResponse = {
+  entries: NotebookEntry[];
+  activeCount: number;
+  dueCount: number;
+  total: number;
+  page: number;
+  pageSize: number;
+};
