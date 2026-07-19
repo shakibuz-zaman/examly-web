@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, List, Space, Tag, Typography } from "antd";
+import { Button, Card, List, Space, Tag, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useCatalog } from "../api/student";
 import { useActiveTrack } from "../features/tracks/TrackContext";
@@ -134,7 +134,9 @@ export function StudentCatalogPage() {
               <Typography.Paragraph style={{ color: "var(--ex-ink-soft)" }}>
                 এই ফিল্টারে কিছু পাওয়া যায়নি।
               </Typography.Paragraph>
-              <Typography.Link onClick={() => selectCollection(null)}>সব দেখুন</Typography.Link>
+              <Button type="link" onClick={() => selectCollection(null)}>
+                সব দেখুন
+              </Button>
             </div>
           ) : (
             <div style={{ padding: "32px 0", textAlign: "center" }}>
@@ -165,7 +167,7 @@ export function StudentCatalogPage() {
                 )
               }
             >
-              <Space direction="vertical" size={4} style={{ width: "100%" }}>
+              <Space orientation="vertical" size={4} style={{ width: "100%" }}>
                 <Space wrap>
                   <Typography.Text strong>{item.title}</Typography.Text>
                   {item.kind === "model_test" && <Tag color="purple">মডেল টেস্ট</Tag>}

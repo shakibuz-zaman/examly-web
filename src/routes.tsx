@@ -16,6 +16,8 @@ import { OrgProfilePage } from "./pages/OrgProfilePage";
 import { TaxonomyPage } from "./pages/TaxonomyPage";
 import { AdminTaxonomyPage } from "./pages/AdminTaxonomyPage";
 import { AdminCategoriesPage } from "./pages/AdminCategoriesPage";
+import { AdminQbankPage } from "./pages/AdminQbankPage";
+import { AdminQbankPaperPage } from "./pages/AdminQbankPaperPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { AppShell } from "./layout/AppShell";
@@ -30,7 +32,10 @@ import { StudentRedirect } from "./auth/StudentRedirect";
 import { StudentShell } from "./layout/StudentShell";
 import { StudentOnboardingPage } from "./pages/StudentOnboardingPage";
 import { StudentProfilePage } from "./pages/StudentProfilePage";
-import { ComingSoonPage } from "./pages/ComingSoonPage";
+import { StudentQbankPage } from "./pages/StudentQbankPage";
+import { StudentQbankPaperPage } from "./pages/StudentQbankPaperPage";
+import { PracticeRunnerPage } from "./pages/PracticeRunnerPage";
+import { StudentNotebookPage } from "./pages/StudentNotebookPage";
 
 // routes.tsx is a route-config module (not fast-refreshed); the lazy wrapper lives here so the page keeps its own chunk.
 // eslint-disable-next-line react-refresh/only-export-components
@@ -58,9 +63,11 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="home" replace /> },
       { path: "onboarding", element: <StudentOnboardingPage /> },
       { path: "home", element: <StudentHomePage /> },
-      { path: "qbank", element: <ComingSoonPage title="প্রশ্নব্যাংক" /> },
+      { path: "qbank", element: <StudentQbankPage /> },
+      { path: "qbank/papers/:id", element: <StudentQbankPaperPage /> },
+      { path: "practice/:id", element: <PracticeRunnerPage /> },
       { path: "tests", element: <StudentCatalogPage /> },
-      { path: "notebook", element: <ComingSoonPage title="ভুলের খাতা" /> },
+      { path: "notebook", element: <StudentNotebookPage /> },
       { path: "profile", element: <StudentProfilePage /> },
       { path: "catalog", element: <Navigate to="/student/tests" replace /> },
       { path: "model-tests/:id", element: <StudentModelTestPage /> },
@@ -107,6 +114,8 @@ export const routes: RouteObject[] = [
       { path: "taxonomy", element: <TaxonomyPage /> },
       { path: "admin/taxonomy", element: <AdminTaxonomyPage /> },
       { path: "admin/categories", element: <AdminCategoriesPage /> },
+      { path: "admin/qbank", element: <AdminQbankPage /> },
+      { path: "admin/qbank/:id", element: <AdminQbankPaperPage /> },
       { path: "*", element: <Navigate to="/dashboard" replace /> },
     ],
   },

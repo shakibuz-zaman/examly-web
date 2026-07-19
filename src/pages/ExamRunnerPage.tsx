@@ -427,7 +427,7 @@ function RunnerView({
               style={{ marginBottom: 12 }}
               type="warning"
               showIcon
-              message="Connection lost — your answers are kept locally and will retry automatically."
+              title="Connection lost — your answers are kept locally and will retry automatically."
             />
           )}
           {currentSection && (currentSection.title || take.sections.length > 1) && (
@@ -511,7 +511,7 @@ function RunnerView({
               loading={submitting}
               onClick={() => setSheetOpen(true)}
             >
-              সেভ ও পরবর্তী
+              রিভিউ ও জমা
             </Button>
           ) : (
             <Button

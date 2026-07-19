@@ -153,20 +153,20 @@ export function ModelTestBuilderPage() {
       {readOnly && modelTest && (
         <Alert
           type="info" showIcon style={{ marginBottom: 16 }}
-          message="This model test is published and frozen. Unpublish it to edit (only possible while no exam in it has attempts)."
+          title="This model test is published and frozen. Unpublish it to edit (only possible while no exam in it has attempts)."
         />
       )}
       {publishError && (
         <Alert
           type="error" showIcon closable style={{ marginBottom: 16 }}
           onClose={() => setPublishError(null)}
-          message="Cannot publish — every exam must pass validation (nothing was published)"
+          title="Cannot publish — every exam must pass validation (nothing was published)"
           description={<div style={{ whiteSpace: "pre-line" }}>{publishError}</div>}
         />
       )}
 
       <Card title={modelTest ? (readOnly ? "Model test" : "Edit model test") : "New model test"}>
-        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+        <Space orientation="vertical" style={{ width: "100%" }} size="middle">
           <div>
             <Typography.Text strong>Title</Typography.Text>
             <Input

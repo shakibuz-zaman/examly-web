@@ -362,7 +362,7 @@ export function QuestionEditorPage() {
               validateStatus={errors.options ? "error" : undefined}
               help={errors.options?.message ?? errors.options?.root?.message}
             >
-              <Space direction="vertical" style={{ width: "100%" }}>
+              <Space orientation="vertical" style={{ width: "100%" }}>
                 {fields.map((field, index) => (
                   <Space key={field.key} align="start" style={{ width: "100%" }}>
                     {multipleCorrect ? (
@@ -434,7 +434,7 @@ export function QuestionEditorPage() {
             <Card size="small" title="Student preview">
               <QuestionContentView html={watched.stemHtml} />
               <Divider style={{ margin: "12px 0" }} />
-              <Space direction="vertical" style={{ width: "100%" }}>
+              <Space orientation="vertical" style={{ width: "100%" }}>
                 {previewOptions.map((option, index) => (
                   <Space key={index} align="start">
                     {multipleCorrect ? <Checkbox disabled /> : <Radio disabled />}

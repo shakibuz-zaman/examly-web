@@ -73,7 +73,7 @@ export function StudentProgressPage() {
             </Col>
             <Col xs={12} md={6}>
               <Card size="small"><Statistic title="Focus area" value={overview.data.focusAreaLabel ?? "—"}
-                valueStyle={{ fontSize: 16 }} /></Card>
+                styles={{ content: { fontSize: 16 } }} /></Card>
             </Col>
           </Row>
           <TrendChart points={overview.data.trend} />

@@ -27,7 +27,7 @@ export function MyAttemptsPage() {
         renderItem={(item) => (
           <List.Item style={{ padding: 0, marginBottom: 8, border: "none" }}>
             <Card size="small" style={{ width: "100%" }}>
-              <Space direction="vertical" size={2} style={{ width: "100%" }}>
+              <Space orientation="vertical" size={2} style={{ width: "100%" }}>
                 <Space wrap>
                   <Typography.Text strong>{item.examTitle}</Typography.Text>
                   <Tag color={ATTEMPT_STATUS_COLORS[item.status] ?? "default"}>

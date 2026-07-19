@@ -78,7 +78,7 @@ export function StudentExamLobbyPage() {
             style={{ marginTop: 8 }}
             type="info"
             showIcon
-            message={exam.cannotStartReason}
+            title={exam.cannotStartReason}
             description={
               notOpenedYet && exam.windowStartUtc
                 ? `Opens ${formatDateTime(exam.windowStartUtc)}`

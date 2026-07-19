@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 
 export type OptionRowProps = {
   optionKey: string; // "ক" | "খ" | ...
@@ -6,6 +6,8 @@ export type OptionRowProps = {
   state: "default" | "selected" | "correct" | "wrong";
   multiple?: boolean; // checkbox vs radio semantics (aria only)
   disabled?: boolean;
+  checked?: boolean; // aria-checked override; falls back to state === "selected"
+  trailing?: ReactNode; // right-edge adornment (e.g. "your answer" tag in review)
   onSelect?: () => void;
 };
 
@@ -16,12 +18,21 @@ const STATE_STYLES: Record<OptionRowProps["state"], CSSProperties> = {
   wrong: { background: "var(--ex-red-tint)", borderColor: "var(--ex-red)" },
 };
 
-export function OptionRow({ optionKey, children, state, multiple, disabled, onSelect }: OptionRowProps) {
-  const [focused, setFocused] = useState(false);
+export function OptionRow({
+  optionKey,
+  children,
+  state,
+  multiple,
+  disabled,
+  checked,
+  trailing,
+  onSelect,
+}: OptionRowProps) {
   return (
     <div
+      className="ex-option-row"
       role={multiple ? "checkbox" : "radio"}
-      aria-checked={state === "selected"}
+      aria-checked={checked ?? state === "selected"}
       aria-disabled={disabled || undefined}
       tabIndex={disabled ? -1 : 0}
       onClick={disabled ? undefined : onSelect}
@@ -32,8 +43,6 @@ export function OptionRow({ optionKey, children, state, multiple, disabled, onSe
           onSelect();
         }
       }}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
       style={{
         display: "flex",
         alignItems: "center",
@@ -47,8 +56,6 @@ export function OptionRow({ optionKey, children, state, multiple, disabled, onSe
         lineHeight: 1.7,
         textAlign: "start",
         transition: "background .15s, border-color .15s",
-        outline: focused ? "2px solid var(--ex-teal)" : "none",
-        outlineOffset: 2,
         ...STATE_STYLES[state],
       }}
     >
@@ -68,7 +75,8 @@ export function OptionRow({ optionKey, children, state, multiple, disabled, onSe
       >
         {optionKey}
       </span>
-      <div style={{ flex: 1 }}>{children}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      {trailing && <div style={{ flexShrink: 0 }}>{trailing}</div>}
     </div>
   );
 }

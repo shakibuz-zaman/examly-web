@@ -562,15 +562,16 @@ export type HomeContinue = {
   title: string;
 };
 
-// 7a always sends null; the non-null shape drives the 7b streak UI.
+// Server always sends this block in 7b; the type stays nullable for the frozen seam.
 export type HomeStreak = {
   current: number;
   longest: number;
   freezesBanked: number;
   repairableUntilUtc: string | null;
+  repairable: boolean;
 };
 
-// 7a always sends null; the non-null shape drives the 7b practice UI.
+// Server always sends this block in 7b; the type stays nullable for the frozen seam.
 export type HomePractice = {
   todayDone: boolean;
   dueNotebookCount: number;
@@ -581,4 +582,175 @@ export type StudentHomeResponse = {
   continueCard: HomeContinue | null;
   streak: HomeStreak | null;
   practice: HomePractice | null;
+};
+
+// ---- Question bank (Plan 7b) ----
+
+export type QbankOption = { id: string; html: string; isCorrect: boolean };
+
+export type QbankPaperSummary = {
+  id: string;
+  title: string;
+  year: number;
+  categoryId: string;
+  questionCount: number;
+};
+
+export type QbankPapersResponse = {
+  items: QbankPaperSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type QbankQuestion = {
+  id: string;
+  paperId: string;
+  order: number;
+  sectionLabel: string | null;
+  stemHtml: string;
+  multipleCorrect: boolean;
+  options: QbankOption[];
+  explanationHtml: string | null;
+  takeawayText: string | null;
+  subjectId: string | null;
+  subjectName: BilingualText | null;
+  topicId: string | null;
+  topicName: BilingualText | null;
+  language: string;
+};
+
+export type QbankPaperDetail = { paper: QbankPaperSummary; questions: QbankQuestion[] };
+
+// ---- Admin question bank (Plan 7b, platform_admin) ----
+
+export type AdminPaperStatus = "draft" | "active" | "archived";
+
+export type AdminPaper = {
+  id: string;
+  title: string;
+  year: number;
+  categoryId: string;
+  status: AdminPaperStatus;
+  questionCount: number;
+  updatedAt: string;
+};
+
+export type AdminPaperList = {
+  items: AdminPaper[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type AdminPaperFilters = {
+  status?: string;
+  year?: number;
+  categoryId?: string;
+  page: number;
+  pageSize: number;
+};
+
+export type CreatePaperRequest = { title: string; year: number; categoryId: string };
+export type UpdatePaperRequest = { title?: string; year?: number; categoryId?: string };
+
+export type SaveQbankOptionInput = { id?: string | null; html: string; isCorrect: boolean };
+
+export type SaveQbankQuestionRequest = {
+  order?: number;
+  sectionLabel?: string | null;
+  stemHtml: string;
+  multipleCorrect: boolean;
+  options: SaveQbankOptionInput[];
+  explanationHtml?: string | null;
+  takeawayText?: string | null;
+  subjectId?: string | null;
+  topicId?: string | null;
+  language: "bn" | "en";
+};
+
+export type ImportReport = {
+  accepted: number;
+  rejected: number;
+  errors: { index: number; error: string }[];
+};
+
+export type QbankSearchHit = { question: QbankQuestion; paperTitle: string; paperYear: number };
+
+export type QbankSearchResponse = {
+  items: QbankSearchHit[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+// ---- Practice sessions (Plan 7b) ----
+
+export type PracticeOption = { id: string; html: string; isCorrect: boolean | null };
+
+export type PracticeItem = {
+  itemId: string;
+  stemHtml: string;
+  multipleCorrect: boolean;
+  options: PracticeOption[];
+  selectedOptionIds: string[] | null;
+  isCorrect: boolean | null;
+  explanationHtml: string | null;
+  takeawayText: string | null;
+};
+
+export type PracticeSession = {
+  id: string;
+  source: string;
+  sourceId: string | null;
+  trackId: string;
+  items: PracticeItem[];
+  answeredCount: number;
+  correctCount: number;
+  completedAt: string | null;
+};
+
+export type StartPracticeRequest = {
+  source: "daily" | "paper" | "notebook" | "topic";
+  sourceId?: string;
+  trackId: string;
+  count?: number;
+};
+
+export type AnswerPracticeResponse = {
+  isCorrect: boolean;
+  correctOptionIds: string[];
+  explanationHtml: string | null;
+  takeawayText: string | null;
+};
+
+export type CompletePracticeResponse = { total: number; correct: number; streak: HomeStreak };
+
+// ---- Mistake notebook / ভুলের খাতা (Plan 7b) ----
+
+export type NotebookEntry = {
+  id: string;
+  stemHtml: string;
+  multipleCorrect: boolean;
+  options: QbankOption[];
+  explanationHtml: string | null;
+  takeawayText: string | null;
+  subjectId: string | null;
+  subjectName: BilingualText | null;
+  topicId: string | null;
+  topicName: BilingualText | null;
+  wrongCount: number;
+  lastWrongAt: string;
+  nextDueAt: string;
+  due: boolean;
+  status: "active" | "resolved";
+};
+
+export type NotebookResponse = {
+  entries: NotebookEntry[];
+  activeCount: number;
+  dueCount: number;
+  total: number;
+  page: number;
+  pageSize: number;
 };

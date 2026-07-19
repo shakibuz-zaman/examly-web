@@ -218,7 +218,7 @@ export function QuestionPickerDrawer({
   return (
     <Drawer
       title="Add questions"
-      width={720}
+      size={720}
       open={open}
       onClose={onClose}
       destroyOnHidden

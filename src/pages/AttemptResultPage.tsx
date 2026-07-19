@@ -36,6 +36,8 @@ function ReviewQuestionCard({ question, number }: { question: ReviewQuestion; nu
                 optionKey={BN_LETTERS[index] ?? String(index + 1)}
                 state={option.isCorrect ? "correct" : option.selected ? "wrong" : "default"}
                 multiple={question.multipleCorrect}
+                checked={option.selected}
+                trailing={option.selected ? <Tag color="blue">আপনার উত্তর</Tag> : undefined}
                 disabled
               >
                 <QuestionContentView html={option.html} />
@@ -101,7 +103,7 @@ export function AttemptResultPage() {
         <Alert
           type="info"
           showIcon
-          message="Submitted"
+          title="Submitted"
           description={`Score, correct answers, and the leaderboard unlock at ${formatDateTime(status.revealAtUtc)}.`}
         />
       </Card>
@@ -170,6 +172,11 @@ export function AttemptResultPage() {
                     <Col xs={12} md={6}>
                       <Statistic title="Score" value={`${status.score} / ${status.maxScore}`} />
                     </Col>
+                    {board && (
+                      <Col xs={12} md={6}>
+                        <Statistic title="গড় স্কোর" value={board.averageScore ?? "—"} />
+                      </Col>
+                    )}
                     <Col xs={12} md={6}>
                       <Statistic title="Correct · Wrong · Blank"
                         value={`${status.correct} · ${status.wrong} · ${status.unanswered}`} />
@@ -215,7 +222,7 @@ export function AttemptResultPage() {
           },
           {
             key: "leaderboard",
-            label: "Leaderboard",
+            label: "লিডারবোর্ড",
             children: (
               <Table
                 size="small"
