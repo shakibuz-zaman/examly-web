@@ -116,7 +116,7 @@ export function StudentQbankPage() {
         <Alert
           type="error"
           showIcon
-          message="প্রশ্নব্যাংক লোড করা যায়নি"
+          title="প্রশ্নব্যাংক লোড করা যায়নি"
           action={
             <Button size="small" onClick={() => refetch()}>
               আবার চেষ্টা করুন
@@ -156,7 +156,7 @@ export function StudentQbankPage() {
                     style={{ width: "100%", borderRadius: radii.md }}
                     onClick={() => navigate(`/student/qbank/papers/${paper.id}`)}
                   >
-                    <Space direction="vertical" size={4} style={{ width: "100%" }}>
+                    <Space orientation="vertical" size={4} style={{ width: "100%" }}>
                       <Typography.Text strong>{paper.title}</Typography.Text>
                       <Typography.Text type="secondary">
                         {bnNum(paper.questionCount)}টি প্রশ্ন

@@ -82,7 +82,7 @@ export function StudentProfilePage() {
 
       <Divider />
 
-      <Space direction="vertical" style={{ width: "100%" }}>
+      <Space orientation="vertical" style={{ width: "100%" }}>
         <Button danger block onClick={onLogout}>
           লগআউট
         </Button>

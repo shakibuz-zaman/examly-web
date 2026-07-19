@@ -55,7 +55,7 @@ export function StudentShell() {
         <Alert
           type="error"
           showIcon
-          message="ট্র্যাক লোড করা যায়নি"
+          title="ট্র্যাক লোড করা যায়নি"
           action={
             <Button size="small" onClick={() => myTracks.refetch()}>
               আবার চেষ্টা করুন

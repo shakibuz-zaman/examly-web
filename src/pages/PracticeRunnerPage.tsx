@@ -105,7 +105,7 @@ export function PracticeRunnerPage() {
         <Alert
           type="error"
           showIcon
-          message="প্র্যাকটিস লোড করা যায়নি"
+          title="প্র্যাকটিস লোড করা যায়নি"
           action={
             <Button size="small" onClick={() => session.refetch()}>
               আবার চেষ্টা করুন
@@ -134,7 +134,7 @@ export function PracticeRunnerPage() {
         <Alert
           type="error"
           showIcon
-          message="প্র্যাকটিস লোড করা যায়নি"
+          title="প্র্যাকটিস লোড করা যায়নি"
           action={
             <Button size="small" onClick={() => navigate("/student/home")}>
               হোমে ফিরুন
@@ -168,7 +168,7 @@ export function PracticeRunnerPage() {
             <Alert
               type="error"
               showIcon
-              message="প্র্যাকটিস শেষ করা যায়নি"
+              title="প্র্যাকটিস শেষ করা যায়নি"
               action={
                 <Button size="small" onClick={fireAutoComplete}>
                   আবার চেষ্টা করুন

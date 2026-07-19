@@ -15,9 +15,11 @@ const stripStyle: React.CSSProperties = {
 export function StreakStrip({
   streak,
   onRepair,
+  repairing,
 }: {
   streak: HomeStreak | null;
   onRepair: () => void;
+  repairing?: boolean;
 }) {
   // The API always sends the block in 7b; the null guard is only for the frozen seam.
   if (!streak) return null;
@@ -43,6 +45,8 @@ export function StreakStrip({
             size="small"
             type="link"
             style={{ marginLeft: "auto", padding: 0 }}
+            loading={repairing}
+            disabled={repairing}
             onClick={onRepair}
           >
             স্ট্রিক ফিরিয়ে আনুন

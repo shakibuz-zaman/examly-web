@@ -112,7 +112,7 @@ export function StudentQbankPaperPage() {
       <Alert
         type="error"
         showIcon
-        message="প্রশ্নব্যাংক লোড করা যায়নি"
+        title="প্রশ্নব্যাংক লোড করা যায়নি"
         action={
           <Button size="small" onClick={() => refetch()}>
             আবার চেষ্টা করুন
@@ -183,7 +183,7 @@ export function StudentQbankPaperPage() {
           <Alert
             type="error"
             showIcon
-            message="খোঁজা যায়নি"
+            title="খোঁজা যায়নি"
             action={
               <Button size="small" onClick={() => search.refetch()}>
                 আবার চেষ্টা করুন

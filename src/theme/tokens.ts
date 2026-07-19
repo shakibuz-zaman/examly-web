@@ -11,6 +11,7 @@ export const palette = {
   amber: "#B7791F", amberTint: "#F7EBD3",
   green: "#2F8F5B", greenTint: "#E4F1E8",
   red: "#C0432E", redTint: "#F7E1DC",
+  onSolid: "#FFFFFF", // text/glyphs sitting on saturated solid fills (same both modes)
 } as const;
 
 export type Palette = Record<keyof typeof palette, string>;
@@ -26,6 +27,7 @@ export const paletteDark: Palette = {
   amber: "#D89A3D", amberTint: "#3A2F19",
   green: "#4CAF7D", greenTint: "#1D3327",
   red: "#D96A55", redTint: "#3B211C",
+  onSolid: "#FFFFFF",
 };
 
 export const FONT_STACK =

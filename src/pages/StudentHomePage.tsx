@@ -78,7 +78,7 @@ export function StudentHomePage() {
         <Alert
           type="error"
           showIcon
-          message="হোম লোড করা যায়নি"
+          title="হোম লোড করা যায়নি"
           action={
             <Button size="small" onClick={() => home.refetch()}>
               আবার চেষ্টা করুন
@@ -87,7 +87,11 @@ export function StudentHomePage() {
         />
       ) : (
         <>
-          <StreakStrip streak={home.data?.streak ?? null} onRepair={startRepairPractice} />
+          <StreakStrip
+            streak={home.data?.streak ?? null}
+            onRepair={startRepairPractice}
+            repairing={start.isPending}
+          />
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <Typography.Title level={5} style={{ margin: 0, color: "var(--ex-ink)" }}>

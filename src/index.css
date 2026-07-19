@@ -13,6 +13,12 @@ body { color: var(--ex-ink); }
   letter-spacing: 0.01em;
 }
 
+/* Keyboard-only focus ring for option rows (mouse clicks don't trigger it). */
+.ex-option-row:focus-visible {
+  outline: 2px solid var(--ex-teal);
+  outline-offset: 1px;
+}
+
 /* preserved from the old file — TipTap/question rendering */
 .rich-text-content .ProseMirror {
   outline: none;

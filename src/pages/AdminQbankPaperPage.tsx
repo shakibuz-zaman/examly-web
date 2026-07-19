@@ -335,7 +335,7 @@ function QuestionEditorDrawer({
           validateStatus={errors.options ? "error" : undefined}
           help={errors.options?.message ?? errors.options?.root?.message}
         >
-          <Space direction="vertical" style={{ width: "100%" }}>
+          <Space orientation="vertical" style={{ width: "100%" }}>
             {fields.map((field, index) => (
               <Space key={field.key} align="start" style={{ width: "100%" }}>
                 {multipleCorrect ? (
@@ -512,7 +512,7 @@ function ImportCard({ paperId }: { paperId: string }) {
 
   return (
     <Card title="Import questions (JSON)">
-      <Space direction="vertical" style={{ width: "100%" }}>
+      <Space orientation="vertical" style={{ width: "100%" }}>
         <Input.TextArea
           rows={10}
           value={text}
@@ -525,7 +525,7 @@ function ImportCard({ paperId }: { paperId: string }) {
         </Button>
 
         {report && (
-          <Space direction="vertical" style={{ width: "100%" }}>
+          <Space orientation="vertical" style={{ width: "100%" }}>
             <Space>
               <Typography.Text type="success" strong>
                 Accepted: <span className="tnum">{report.accepted}</span>
@@ -543,7 +543,7 @@ function ImportCard({ paperId }: { paperId: string }) {
                 columns={[
                   {
                     title: "Row", dataIndex: "index", width: 80,
-                    render: (i: number) => <span className="tnum">{i}</span>,
+                    render: (i: number) => <span className="tnum">{i + 1}</span>,
                   },
                   { title: "Error", dataIndex: "error" },
                 ]}
@@ -639,7 +639,7 @@ export function AdminQbankPaperPage() {
   );
 
   return (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+    <Space orientation="vertical" size="large" style={{ width: "100%" }}>
       <Card
         title={
           <Space>

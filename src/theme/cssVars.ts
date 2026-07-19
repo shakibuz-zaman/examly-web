@@ -21,6 +21,7 @@ export function applyCssVars(mode: ThemeMode): void {
     "--ex-amber": p.amber, "--ex-amber-tint": p.amberTint,
     "--ex-green": p.green, "--ex-green-tint": p.greenTint,
     "--ex-red": p.red, "--ex-red-tint": p.redTint,
+    "--ex-on-solid": p.onSolid,
   };
   for (const [k, v] of Object.entries(map)) root.style.setProperty(k, v);
 }

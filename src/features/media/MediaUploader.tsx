@@ -13,7 +13,7 @@ export function MediaUploader({ value, onChange }: MediaUploaderProps) {
   const [uploading, setUploading] = useState(false);
 
   return (
-    <Space direction="vertical">
+    <Space orientation="vertical">
       {value && (
         <img
           src={mediaUrl(value)}

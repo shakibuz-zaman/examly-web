@@ -15,7 +15,7 @@ export function AttemptBreakdownDrawer({
     <Drawer
       open={row !== null}
       onClose={onClose}
-      width={480}
+      size={480}
       title={row ? `${row.studentName}${row.attemptNumber > 1 ? " · practice" : ""}` : ""}
     >
       {row && (

@@ -21,12 +21,12 @@ const STATE_STYLES: Record<PaletteCellProps["state"], CSSProperties> = {
   },
   answered: {
     background: "var(--ex-green)",
-    color: "#fff",
+    color: "var(--ex-on-solid)",
     border: "1px solid var(--ex-green)",
   },
   marked: {
     background: "var(--ex-purple)",
-    color: "#fff",
+    color: "var(--ex-on-solid)",
     border: "1px solid var(--ex-purple)",
   },
 };

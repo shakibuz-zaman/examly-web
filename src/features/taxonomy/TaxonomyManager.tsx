@@ -212,7 +212,7 @@ function TopicsDrawer({
       open={!!subject}
       onClose={onClose}
       title={`Topics — ${subject.name.en ?? subject.name.bn ?? subject.slug}`}
-      width={640}
+      size={640}
       extra={subjectIsEditable && (
         <Button type="primary" onClick={() => {
           setEditingTopic(null); form.resetFields(); setModalOpen(true);

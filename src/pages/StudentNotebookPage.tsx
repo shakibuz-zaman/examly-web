@@ -184,7 +184,7 @@ export function StudentNotebookPage() {
         <Alert
           type="error"
           showIcon
-          message="ভুলের খাতা লোড করা যায়নি"
+          title="ভুলের খাতা লোড করা যায়নি"
           action={
             <Button size="small" onClick={() => refetch()}>
               আবার চেষ্টা করুন

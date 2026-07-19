@@ -135,7 +135,7 @@ export function ExamBuilderPage() {
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
-          message={
+          title={
             exam.status === "published"
               ? "This exam is published and frozen. Unpublish it to edit (only possible while it has no attempts)."
               : "This exam is archived."
@@ -150,7 +150,7 @@ export function ExamBuilderPage() {
           closable
           onClose={() => setPublishError(null)}
           style={{ marginBottom: 16 }}
-          message="Cannot publish"
+          title="Cannot publish"
           description={<div style={{ whiteSpace: "pre-line" }}>{publishError}</div>}
         />
       )}
@@ -162,7 +162,7 @@ export function ExamBuilderPage() {
               type="warning"
               showIcon
               style={{ marginBottom: 16 }}
-              message="Preview shows the last saved version — save the draft to refresh it."
+              title="Preview shows the last saved version — save the draft to refresh it."
             />
           )}
           <ExamPreview exam={exam} />

@@ -37,7 +37,7 @@ export function StudentModelTestPage() {
           const finalized = exam.myStatus === "submitted" || exam.myStatus === "expired";
           return (
             <Card key={exam.id} size="small" style={{ marginBottom: 12 }}>
-              <Space direction="vertical" size={4} style={{ width: "100%" }}>
+              <Space orientation="vertical" size={4} style={{ width: "100%" }}>
                 <Space wrap>
                   <Typography.Text strong>{exam.title}</Typography.Text>
                   <Tag color={ATTEMPT_STATUS_COLORS[exam.myStatus] ?? "default"}>
