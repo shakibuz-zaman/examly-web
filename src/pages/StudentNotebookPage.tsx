@@ -176,13 +176,23 @@ export function StudentNotebookPage() {
             marginBottom: 8,
           }}
         >
-          <Chip label="সব" selected={activeSubject === null} onClick={() => setSubjectId(null)} />
+          <Chip
+            label="সব"
+            selected={activeSubject === null}
+            onClick={() => {
+              setSubjectId(null);
+              setPage(1); // new subject filter → back to the first page
+            }}
+          />
           {subjects.map((s) => (
             <Chip
               key={s.id}
               label={s.label}
               selected={activeSubject === s.id}
-              onClick={() => setSubjectId(s.id)}
+              onClick={() => {
+                setSubjectId(s.id);
+                setPage(1); // new subject filter → back to the first page
+              }}
             />
           ))}
         </div>

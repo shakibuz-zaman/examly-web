@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Typography } from "antd";
+import { Button, Tag, Typography } from "antd";
 import { OptionRow } from "../../components/OptionRow";
 import { QuestionContentView } from "../questions/QuestionContentView";
 import type { QbankOption } from "../../api/types";
@@ -28,10 +28,11 @@ export function QuestionRevealCard({ stemHtml, multipleCorrect, options, explana
             {options.map((o, i) => (
               <OptionRow key={o.id} optionKey={BN_LETTERS[i] ?? String(i + 1)}
                 state={o.isCorrect ? "correct" : "default"}
-                // No per-student selection on this browse/reveal card — the revealed
-                // answer is the correct option, so it carries aria-checked (was always
-                // false because the "correct" state never maps to selected).
-                checked={o.isCorrect}
+                // Browse/reveal card has no per-student selection, so aria-checked stays
+                // false for every row (honest: nothing was picked). Correctness is conveyed
+                // by the trailing tag below, not by aria-checked — that also gives a text
+                // (non-color-only) correctness cue (WCAG 1.4.1).
+                trailing={o.isCorrect ? <Tag color="green">সঠিক উত্তর</Tag> : undefined}
                 multiple={multipleCorrect} disabled>
                 <QuestionContentView html={o.html} />
               </OptionRow>
