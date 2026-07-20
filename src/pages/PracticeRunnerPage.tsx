@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Spin, Typography } from "antd";
+import { Alert, Button, Spin, Typography, message } from "antd";
 import { AxiosError } from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { OptionRow } from "../components/OptionRow";
@@ -38,8 +38,15 @@ function serverReveal(item: PracticeItem): Reveal | null {
   };
 }
 
+// Remount on session-id change so all per-session runner state resets — React Router
+// reuses the element on a param-only change, which would otherwise strand session A's
+// selections/reveals under session B's URL. Mirrors the exam-runner keyed remount.
 export function PracticeRunnerPage() {
   const { id } = useParams();
+  return <PracticeRunner key={id} id={id} />;
+}
+
+function PracticeRunner({ id }: { id: string | undefined }) {
   const navigate = useNavigate();
   const session = usePracticeSession(id);
   const answer = useAnswerPractice(id ?? "");
@@ -252,7 +259,16 @@ export function PracticeRunnerPage() {
         onError: (err) => {
           // 409 double-answer: the item is already answered server-side. Refetch
           // and let serverReveal drive the answered view — no error toast.
-          if (err instanceof AxiosError && err.response?.status === 409) session.refetch();
+          if (err instanceof AxiosError && err.response?.status === 409) {
+            session.refetch();
+            return;
+          }
+          // Any other failure previously reset the button silently, leaving the
+          // student stuck with no feedback — surface it.
+          message.error(
+            (err instanceof AxiosError ? err.response?.data?.error : undefined) ??
+              "সংযোগ সমস্যা — আবার চেষ্টা করুন",
+          );
         },
       },
     );
@@ -262,21 +278,32 @@ export function PracticeRunnerPage() {
     if (isLast) {
       complete.mutate(undefined, {
         onSuccess: (res) => setCompleted(res),
-        onError: () => {
+        onError: (err) => {
           // 409: already completed OR unanswered remain — reconcile from server.
-          session.refetch().then((r) => {
-            const next = r.data;
-            if (next && next.completedAt == null) {
-              const idx = next.items.findIndex((it) => it.selectedOptionIds == null);
-              if (idx >= 0) setCurrentIndex(idx);
-            }
-          });
+          if (err instanceof AxiosError && err.response?.status === 409) {
+            session.refetch().then((r) => {
+              const next = r.data;
+              if (next && next.completedAt == null) {
+                const idx = next.items.findIndex((it) => it.selectedOptionIds == null);
+                if (idx >= 0) setCurrentIndex(idx);
+              }
+            });
+            return;
+          }
+          // Any other failure leaves complete.isError set; the inline retry Alert
+          // below surfaces it instead of the tap silently doing nothing.
         },
       });
     } else {
       setCurrentIndex(index + 1);
     }
   }
+
+  // Manual "শেষ করুন" failure (non-409): surface an inline retry, mirroring the
+  // auto-complete path's Alert. 409s reconcile silently in onNext above.
+  const manualCompleteError =
+    complete.isError &&
+    !(complete.error instanceof AxiosError && complete.error.response?.status === 409);
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--ex-bg)" }}>
@@ -357,7 +384,16 @@ export function PracticeRunnerPage() {
                     ? "wrong"
                     : "default";
                 return (
-                  <OptionRow key={o.id} optionKey={key} state={state} multiple={item.multipleCorrect} disabled>
+                  <OptionRow
+                    key={o.id}
+                    optionKey={key}
+                    state={state}
+                    // Reveal states never use the "selected" style, so aria-checked would
+                    // otherwise read false for the student's own picks — thread it explicitly.
+                    checked={reveal.selectedOptionIds.includes(o.id)}
+                    multiple={item.multipleCorrect}
+                    disabled
+                  >
                     <QuestionContentView html={o.html} />
                   </OptionRow>
                 );
@@ -427,6 +463,20 @@ export function PracticeRunnerPage() {
             </Button>
           )}
         </div>
+
+        {reveal && isLast && manualCompleteError && (
+          <Alert
+            style={{ marginTop: 12 }}
+            type="error"
+            showIcon
+            title="প্র্যাকটিস শেষ করা যায়নি"
+            action={
+              <Button size="small" onClick={onNext}>
+                আবার চেষ্টা করুন
+              </Button>
+            }
+          />
+        )}
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Alert, Button, Card, Skeleton, Space, Typography } from "antd";
+import { Alert, Button, Card, Pagination, Skeleton, Space, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
-import { useQbankPapers } from "../api/qbank";
+import { QBANK_PAPERS_PAGE_SIZE, useQbankPapers } from "../api/qbank";
 import { useActiveTrack } from "../features/tracks/TrackContext";
+import { Chip } from "../components/Chip";
 import { Illustration } from "../components/Illustration";
 import { bnNum } from "../lib/bn";
 import { radii } from "../theme/tokens";
@@ -11,39 +12,6 @@ import type { QbankPaperSummary } from "../api/types";
 
 function chipLabel(c: CategoryNode): string {
   return c.name.bn || c.name.en || c.slug;
-}
-
-function Chip({
-  label,
-  selected,
-  onClick,
-}: {
-  label: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onClick}
-      style={{
-        flex: "0 0 auto",
-        border: "1.5px solid",
-        borderRadius: 999,
-        padding: "5px 14px",
-        fontSize: 14,
-        cursor: "pointer",
-        background: selected ? "var(--ex-teal-tint)" : "var(--ex-card)",
-        borderColor: selected ? "var(--ex-teal)" : "var(--ex-line-strong)",
-        color: selected ? "var(--ex-teal-ink)" : "var(--ex-ink)",
-        fontWeight: selected ? 600 : 400,
-        transition: "background .15s, border-color .15s",
-      }}
-    >
-      {label}
-    </button>
-  );
 }
 
 // Papers grouped by year, newest first, so the list reads like a shelf of past papers.
@@ -60,6 +28,7 @@ function groupByYear(papers: QbankPaperSummary[]): [number, QbankPaperSummary[]]
 export function StudentQbankPage() {
   const { activeTrackId, collections } = useActiveTrack();
   const [collectionId, setCollectionId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const navigate = useNavigate();
 
   // "সব" is the default; a stale selection (after the active track changes) falls
@@ -67,12 +36,18 @@ export function StudentQbankPage() {
   const activeCollection =
     collectionId && collections.some((c) => c.id === collectionId) ? collectionId : null;
 
-  const { data, isLoading, isError, refetch } = useQbankPapers(activeTrackId, activeCollection, null);
+  const { data, isLoading, isError, refetch } = useQbankPapers(
+    activeTrackId,
+    activeCollection,
+    null,
+    page,
+  );
 
   // activeTrackId null = tracks still resolving; the query is disabled, so show a skeleton.
   const loading = activeTrackId == null || isLoading;
 
   const papers = data?.items ?? [];
+  const total = data?.total ?? 0;
   const groups = groupByYear(papers);
   // A collection chip is active and narrowed the list to nothing — distinct from a
   // truly-empty track.
@@ -97,14 +72,20 @@ export function StudentQbankPage() {
           <Chip
             label="সব"
             selected={activeCollection === null}
-            onClick={() => setCollectionId(null)}
+            onClick={() => {
+              setCollectionId(null);
+              setPage(1); // new filter → first page
+            }}
           />
           {collections.map((c) => (
             <Chip
               key={c.id}
               label={chipLabel(c)}
               selected={activeCollection === c.id}
-              onClick={() => setCollectionId(c.id)}
+              onClick={() => {
+                setCollectionId(c.id);
+                setPage(1); // new filter → first page
+              }}
             />
           ))}
         </div>
@@ -168,6 +149,18 @@ export function StudentQbankPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {!loading && !isError && total > QBANK_PAPERS_PAGE_SIZE && (
+        <Pagination
+          style={{ marginTop: 20 }}
+          align="center"
+          current={page}
+          pageSize={QBANK_PAPERS_PAGE_SIZE}
+          total={total}
+          showSizeChanger={false}
+          onChange={(p) => setPage(p)}
+        />
       )}
     </div>
   );

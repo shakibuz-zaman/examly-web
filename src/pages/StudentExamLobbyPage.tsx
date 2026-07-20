@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Alert, Button, Card, Descriptions, Space, Spin, Tag, Typography } from "antd";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useStudentExam } from "../api/student";
+import { CheckoutSheet } from "../components/CheckoutSheet";
 import { Illustration } from "../components/Illustration";
 import { formatDateTime, formatDuration } from "../lib/format";
 
@@ -8,12 +10,15 @@ export function StudentExamLobbyPage() {
   const { id } = useParams();
   const { data: exam, isLoading, isError } = useStudentExam(id);
   const navigate = useNavigate();
+  const [buyOpen, setBuyOpen] = useState(false);
 
   if (isLoading) return <Spin style={{ display: "block", marginTop: 80 }} />;
   if (isError || !exam) {
     return <Typography.Text type="danger">This exam is not available.</Typography.Text>;
   }
 
+  const listing = exam.listing;
+  const ownedPaid = listing.owned && listing.priceBdt > 0;
   const resumable = exam.myAttempts.some((a) => a.status === "in_progress");
   // Single time read for the whole render (keeps one impure call, not two).
   const notOpenedYet =
@@ -21,10 +26,17 @@ export function StudentExamLobbyPage() {
 
   return (
     <div>
-      <Typography.Title level={3} style={{ marginBottom: 0 }}>
-        {exam.title}
-      </Typography.Title>
-      {exam.orgName && <Typography.Text type="secondary">{exam.orgName}</Typography.Text>}
+      <Space wrap align="center">
+        <Typography.Title level={3} style={{ marginBottom: 0 }}>
+          {exam.title}
+        </Typography.Title>
+        {ownedPaid && <Tag color="cyan">কেনা আছে</Tag>}
+      </Space>
+      {exam.orgName && (
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          {exam.orgName}
+        </Typography.Paragraph>
+      )}
       {exam.modelTestId && exam.modelTestTitle && (
         <Typography.Paragraph style={{ marginTop: 4 }}>
           Part of <Link to={`/student/model-tests/${exam.modelTestId}`}>{exam.modelTestTitle}</Link>
@@ -64,16 +76,22 @@ export function StudentExamLobbyPage() {
       />
 
       <div style={{ marginTop: 16 }}>
-        <Button
-          type="primary"
-          size="large"
-          block
-          disabled={!exam.canStart}
-          onClick={() => navigate(`/student/exams/${exam.id}/take`)}
-        >
-          {resumable ? "Resume exam" : "Start exam"}
-        </Button>
-        {!exam.canStart && exam.cannotStartReason && (
+        {listing.canBuy ? (
+          <Button type="primary" size="large" block onClick={() => setBuyOpen(true)}>
+            ৳{listing.priceBdt} — কিনুন
+          </Button>
+        ) : (
+          <Button
+            type="primary"
+            size="large"
+            block
+            disabled={!exam.canStart}
+            onClick={() => navigate(`/student/exams/${exam.id}/take`)}
+          >
+            {resumable ? "Resume exam" : "Start exam"}
+          </Button>
+        )}
+        {!listing.canBuy && !exam.canStart && exam.cannotStartReason && (
           <Alert
             style={{ marginTop: 8 }}
             type="info"
@@ -87,6 +105,18 @@ export function StudentExamLobbyPage() {
           />
         )}
       </div>
+
+      <CheckoutSheet
+        open={buyOpen}
+        onClose={() => setBuyOpen(false)}
+        listingId={listing.listingId}
+        title={exam.title}
+        priceBdt={listing.priceBdt}
+        onPurchased={() => {
+          // Ownership invalidations run inside useStubPay, so the lobby refetches on its own
+          // (canStart flips true). The sheet shows its success screen then auto-closes itself.
+        }}
+      />
 
       {exam.myAttempts.length > 0 && (
         <div style={{ marginTop: 24 }}>

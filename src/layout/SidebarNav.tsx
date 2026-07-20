@@ -9,11 +9,15 @@ const items: Item[] = [
   { key: "questions", label: "Questions", path: "/questions", roles: ["examiner"] },
   { key: "exams", label: "Exams", path: "/exams", roles: ["examiner"] },
   { key: "model-tests", label: "Model Tests", path: "/model-tests", roles: ["examiner"] },
+  { key: "wallet", label: "Wallet", path: "/wallet", roles: ["examiner"] },
   { key: "org", label: "Organization", path: "/org/profile", roles: ["examiner"] },
   { key: "taxonomy", label: "Taxonomy", path: "/taxonomy", roles: ["examiner"] },
   { key: "admin-taxonomy", label: "Global Taxonomy", path: "/admin/taxonomy", roles: ["platform_admin"] },
   { key: "admin-categories", label: "Categories", path: "/admin/categories", roles: ["platform_admin"] },
   { key: "admin-qbank", label: "Question Bank", path: "/admin/qbank", roles: ["platform_admin"] },
+  { key: "admin-platform-config", label: "Platform Config", path: "/admin/platform-config", roles: ["platform_admin"] },
+  { key: "admin-withdrawals", label: "Withdrawals", path: "/admin/withdrawals", roles: ["platform_admin"] },
+  { key: "admin-orders", label: "Orders", path: "/admin/orders", roles: ["platform_admin"] },
 ];
 
 export function SidebarNav() {

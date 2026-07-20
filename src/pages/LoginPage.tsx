@@ -1,5 +1,5 @@
 import { Button, Card, Form, Input, Select, Typography, message } from "antd";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../auth/useAuth";
 
@@ -7,6 +7,7 @@ type FormValues = {
   sub: string;
   email: string;
   name?: string;
+  phone?: string;
   role: "platform_admin" | "examiner" | "student";
   orgId?: string;
 };
@@ -42,6 +43,9 @@ export function LoginPage() {
         <Form.Item name="name" label="Display name">
           <Input placeholder="Rahim Uddin" />
         </Form.Item>
+        <Form.Item name="phone" label="Phone (dev)">
+          <Input placeholder="01700000000" />
+        </Form.Item>
         <Form.Item name="role" label="Role" rules={[{ required: true }]}>
           <Select
             options={[
@@ -58,6 +62,9 @@ export function LoginPage() {
           Issue token and continue
         </Button>
       </Form>
+      <Typography.Paragraph style={{ textAlign: "center", marginTop: 16, marginBottom: 0 }}>
+        <Link to="/pricing">মূল্য তালিকা</Link>
+      </Typography.Paragraph>
     </Card>
   );
 }

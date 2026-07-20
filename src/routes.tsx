@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { Spin } from "antd";
 import { LoginPage } from "./pages/LoginPage";
+import { PricingPage } from "./pages/PricingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QuestionsListPage } from "./pages/QuestionsListPage";
 import { QuestionEditorPage } from "./pages/QuestionEditorPage";
@@ -18,8 +19,14 @@ import { AdminTaxonomyPage } from "./pages/AdminTaxonomyPage";
 import { AdminCategoriesPage } from "./pages/AdminCategoriesPage";
 import { AdminQbankPage } from "./pages/AdminQbankPage";
 import { AdminQbankPaperPage } from "./pages/AdminQbankPaperPage";
+import { PlatformConfigPage } from "./pages/PlatformConfigPage";
+import { WithdrawalsPage } from "./pages/WithdrawalsPage";
+import { OrdersPage } from "./pages/OrdersPage";
+import { RosterPage } from "./pages/RosterPage";
+import { WalletPage } from "./pages/WalletPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
+import { RequireRole } from "./auth/RequireRole";
 import { AppShell } from "./layout/AppShell";
 import { StudentHomePage } from "./pages/StudentHomePage";
 import { StudentCatalogPage } from "./pages/StudentCatalogPage";
@@ -44,6 +51,7 @@ const StudentProgressPage = lazy(() =>
 
 export const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
+  { path: "/pricing", element: <PricingPage /> },
   {
     path: "/onboarding",
     element: (
@@ -110,12 +118,66 @@ export const routes: RouteObject[] = [
       { path: "model-tests", element: <ModelTestsListPage /> },
       { path: "model-tests/new", element: <ModelTestBuilderPage /> },
       { path: "model-tests/:id", element: <ModelTestBuilderPage /> },
+      { path: "selling/roster/:slotPurchaseId", element: <RosterPage /> },
+      { path: "wallet", element: <WalletPage /> },
       { path: "org/profile", element: <OrgProfilePage /> },
       { path: "taxonomy", element: <TaxonomyPage /> },
-      { path: "admin/taxonomy", element: <AdminTaxonomyPage /> },
-      { path: "admin/categories", element: <AdminCategoriesPage /> },
-      { path: "admin/qbank", element: <AdminQbankPage /> },
-      { path: "admin/qbank/:id", element: <AdminQbankPaperPage /> },
+      {
+        path: "admin/taxonomy",
+        element: (
+          <RequireRole role="platform_admin">
+            <AdminTaxonomyPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "admin/categories",
+        element: (
+          <RequireRole role="platform_admin">
+            <AdminCategoriesPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "admin/qbank",
+        element: (
+          <RequireRole role="platform_admin">
+            <AdminQbankPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "admin/qbank/:id",
+        element: (
+          <RequireRole role="platform_admin">
+            <AdminQbankPaperPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "admin/platform-config",
+        element: (
+          <RequireRole role="platform_admin">
+            <PlatformConfigPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "admin/withdrawals",
+        element: (
+          <RequireRole role="platform_admin">
+            <WithdrawalsPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "admin/orders",
+        element: (
+          <RequireRole role="platform_admin">
+            <OrdersPage />
+          </RequireRole>
+        ),
+      },
       { path: "*", element: <Navigate to="/dashboard" replace /> },
     ],
   },

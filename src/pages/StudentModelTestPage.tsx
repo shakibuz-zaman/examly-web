@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Button, Card, Space, Spin, Tag, Typography } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import { useStudentModelTest } from "../api/student";
+import { CheckoutSheet } from "../components/CheckoutSheet";
 import { formatDateTime, formatDuration } from "../lib/format";
 import type { StudentBundleExam } from "../api/types";
 import { ATTEMPT_STATUS_COLORS } from "../theme/status";
@@ -16,21 +18,54 @@ export function StudentModelTestPage() {
   const { id } = useParams();
   const { data: bundle, isLoading, isError } = useStudentModelTest(id);
   const navigate = useNavigate();
+  const [buyOpen, setBuyOpen] = useState(false);
 
   if (isLoading) return <Spin style={{ display: "block", marginTop: 80 }} />;
   if (isError || !bundle) {
     return <Typography.Text type="danger">This model test is not available.</Typography.Text>;
   }
 
+  const listing = bundle.listing;
+  const ownedPaid = listing.owned && listing.priceBdt > 0;
+
   return (
     <div>
-      <Typography.Title level={3} style={{ marginBottom: 0 }}>
-        {bundle.title}
-      </Typography.Title>
-      {bundle.orgName && <Typography.Text type="secondary">{bundle.orgName}</Typography.Text>}
+      <Space wrap align="center">
+        <Typography.Title level={3} style={{ marginBottom: 0 }}>
+          {bundle.title}
+        </Typography.Title>
+        {ownedPaid && <Tag color="cyan">কেনা আছে</Tag>}
+      </Space>
+      {bundle.orgName && (
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          {bundle.orgName}
+        </Typography.Paragraph>
+      )}
       {bundle.description && (
         <Typography.Paragraph style={{ marginTop: 8 }}>{bundle.description}</Typography.Paragraph>
       )}
+      {listing.canBuy && (
+        <Button
+          type="primary"
+          size="large"
+          style={{ marginTop: 8 }}
+          onClick={() => setBuyOpen(true)}
+        >
+          ৳{listing.priceBdt} — কিনুন
+        </Button>
+      )}
+
+      <CheckoutSheet
+        open={buyOpen}
+        onClose={() => setBuyOpen(false)}
+        listingId={listing.listingId}
+        title={bundle.title}
+        priceBdt={listing.priceBdt}
+        onPurchased={() => {
+          // Ownership invalidations run inside useStubPay; the bundle page refetches on its own.
+          // The sheet shows its success screen then auto-closes itself.
+        }}
+      />
 
       <div style={{ marginTop: 16 }}>
         {bundle.exams.map((exam) => {

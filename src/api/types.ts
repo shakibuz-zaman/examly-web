@@ -328,6 +328,23 @@ export type CatalogItem = {
   windowStartUtc: string | null;
   windowEndUtc: string | null;
   publishedAt: string | null;
+  // Phase 8 storefront: listing + entitlement facts (Task 7 DTO delta).
+  listingId: string;
+  priceBdt: number; // 0 = free
+  mode: string; // open | live | archive
+  owned: boolean; // this student holds a live entitlement
+  registeredCount: number; // live entitlements across all students
+};
+
+// Commercial block attached to a lobby / bundle detail (spec §2). canBuy drives the
+// storefront's Buy button; owned drives Start/Resume access.
+export type ListingInfo = {
+  listingId: string;
+  priceBdt: number;
+  mode: string;
+  status: string;
+  owned: boolean;
+  canBuy: boolean;
 };
 
 export type CatalogResponse = {
@@ -359,6 +376,7 @@ export type StudentModelTest = {
   description: string | null;
   orgName: string | null;
   exams: StudentBundleExam[];
+  listing: ListingInfo;
 };
 
 export type MyAttemptSummary = {
@@ -393,6 +411,7 @@ export type StudentExam = {
   myAttempts: MyAttemptSummary[];
   canStart: boolean;
   cannotStartReason: string | null;
+  listing: ListingInfo;
 };
 
 export type TakeOption = { id: string; html: string };
@@ -515,6 +534,31 @@ export type MyAttemptsResponse = {
   pageSize: number;
 };
 
+// ---- My exams (GET /student/my-exams, Plan 8) — the student's owned library ----
+// One row per live entitlement (newest grant first). latestAttempt* is populated only for
+// single-exam products; bundle rows leave it null.
+export type MyExamItem = {
+  listingId: string;
+  productType: string;
+  productId: string;
+  title: string;
+  orgName: string | null;
+  priceBdt: number;
+  mode: string;
+  examCount: number;
+  source: string;
+  grantedAt: string;
+  latestAttemptId: string | null;
+  latestAttemptStatus: string | null;
+};
+
+export type MyExamsResponse = {
+  items: MyExamItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 export type ExamResultRow = {
   rank: number | null;
   attemptId: string;
@@ -552,6 +596,10 @@ export type HomeLiveItem = {
   windowStartUtc: string;
   windowEndUtc: string | null;
   state: "live" | "upcoming";
+  registeredCount: number; // live entitlements across all students
+  registered: boolean; // this student holds a live entitlement
+  listingId: string | null; // null when the product has no listing (public-default item)
+  priceBdt: number | null; // null when unlisted; 0 = free (register), else price (buy)
 };
 
 export type HomeContinue = {
