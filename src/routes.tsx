@@ -19,6 +19,8 @@ import { AdminTaxonomyPage } from "./pages/AdminTaxonomyPage";
 import { AdminCategoriesPage } from "./pages/AdminCategoriesPage";
 import { AdminQbankPage } from "./pages/AdminQbankPage";
 import { AdminQbankPaperPage } from "./pages/AdminQbankPaperPage";
+import { RosterPage } from "./pages/RosterPage";
+import { WalletPage } from "./pages/WalletPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { AppShell } from "./layout/AppShell";
@@ -112,6 +114,8 @@ export const routes: RouteObject[] = [
       { path: "model-tests", element: <ModelTestsListPage /> },
       { path: "model-tests/new", element: <ModelTestBuilderPage /> },
       { path: "model-tests/:id", element: <ModelTestBuilderPage /> },
+      { path: "selling/roster/:slotPurchaseId", element: <RosterPage /> },
+      { path: "wallet", element: <WalletPage /> },
       { path: "org/profile", element: <OrgProfilePage /> },
       { path: "taxonomy", element: <TaxonomyPage /> },
       { path: "admin/taxonomy", element: <AdminTaxonomyPage /> },

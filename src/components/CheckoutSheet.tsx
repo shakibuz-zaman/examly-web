@@ -8,6 +8,7 @@ import { Alert, Button, Drawer, Grid, Modal, Typography } from "antd";
 import { CheckCircleFilled } from "@ant-design/icons";
 import { AxiosError } from "axios";
 import { useCheckout, useStubPay } from "../api/commerce";
+import type { CheckoutResponse } from "../api/commerce";
 
 type CheckoutSheetProps = {
   open: boolean;
@@ -16,6 +17,10 @@ type CheckoutSheetProps = {
   title: string;
   priceBdt: number;
   onPurchased: () => void;
+  // B2B seam (Task 17): when provided, the order is created by this callback instead of the
+  // B2C student checkout — the stub-pay panel below is identical, so the examiner seat-slot buy/
+  // upgrade flows reuse this same sheet. Defaults to the student checkout for existing callers.
+  createOrder?: () => Promise<CheckoutResponse>;
 };
 
 type Phase = "idle" | "ordering" | "paying" | "done" | "failed";
@@ -34,6 +39,7 @@ export function CheckoutSheet({
   title,
   priceBdt,
   onPurchased,
+  createOrder,
 }: CheckoutSheetProps) {
   const isDesktop = Grid.useBreakpoint().md;
   const checkout = useCheckout();
@@ -59,7 +65,7 @@ export function CheckoutSheet({
     setError(null);
     setPhase("ordering");
     try {
-      const res = await checkout.mutateAsync(listingId);
+      const res = createOrder ? await createOrder() : await checkout.mutateAsync(listingId);
       setToken(res.checkoutToken);
       setPhase("paying");
     } catch (err) {

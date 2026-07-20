@@ -11,6 +11,7 @@ import {
   useModelTest, usePublishModelTest, useSaveModelTest, useUnpublishModelTest,
 } from "../api/modelTests";
 import { SellingCard } from "../features/exams/SellingCard";
+import { SeatsPanel } from "../features/commerce/SeatsPanel";
 import { SortableList } from "../features/exams/SortableList";
 import type { ModelTestExamItem } from "../api/types";
 import { CONTENT_STATUS_COLORS } from "../theme/status";
@@ -273,11 +274,18 @@ export function ModelTestBuilderPage() {
       </Card>
 
       {modelTest ? (
-        <SellingCard
-          productType="model_test"
-          productId={modelTest.id}
-          hasWindowedContent
-        />
+        <>
+          <SellingCard
+            productType="model_test"
+            productId={modelTest.id}
+            hasWindowedContent
+          />
+          <SeatsPanel
+            productType="model_test"
+            productId={modelTest.id}
+            memberCount={draft.exams.length}
+          />
+        </>
       ) : (
         <Card title="Selling" style={{ marginTop: 16 }}>
           <Typography.Text type="secondary">

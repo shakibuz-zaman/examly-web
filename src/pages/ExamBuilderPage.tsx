@@ -13,6 +13,7 @@ import { ExamPreview } from "../features/exams/ExamPreview";
 import { QuestionPickerDrawer } from "../features/exams/QuestionPickerDrawer";
 import { SectionCard } from "../features/exams/SectionCard";
 import { SellingCard } from "../features/exams/SellingCard";
+import { SeatsPanel } from "../features/commerce/SeatsPanel";
 import { SortableList } from "../features/exams/SortableList";
 import {
   allQuestionIds, draftQuestionCount, draftTotalMarks, emptyDraft, fromResponse,
@@ -298,11 +299,14 @@ export function ExamBuilderPage() {
 
       {exam ? (
         exam.modelTestId == null ? (
-          <SellingCard
-            productType="exam"
-            productId={exam.id}
-            hasWindowedContent={!!draft.windowStartUtc}
-          />
+          <>
+            <SellingCard
+              productType="exam"
+              productId={exam.id}
+              hasWindowedContent={!!draft.windowStartUtc}
+            />
+            <SeatsPanel productType="exam" productId={exam.id} memberCount={1} />
+          </>
         ) : (
           <Card title="Selling" style={{ marginTop: 16 }}>
             <Typography.Text type="secondary">
