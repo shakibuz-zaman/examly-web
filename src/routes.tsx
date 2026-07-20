@@ -19,6 +19,9 @@ import { AdminTaxonomyPage } from "./pages/AdminTaxonomyPage";
 import { AdminCategoriesPage } from "./pages/AdminCategoriesPage";
 import { AdminQbankPage } from "./pages/AdminQbankPage";
 import { AdminQbankPaperPage } from "./pages/AdminQbankPaperPage";
+import { PlatformConfigPage } from "./pages/PlatformConfigPage";
+import { WithdrawalsPage } from "./pages/WithdrawalsPage";
+import { OrdersPage } from "./pages/OrdersPage";
 import { RosterPage } from "./pages/RosterPage";
 import { WalletPage } from "./pages/WalletPage";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -122,6 +125,9 @@ export const routes: RouteObject[] = [
       { path: "admin/categories", element: <AdminCategoriesPage /> },
       { path: "admin/qbank", element: <AdminQbankPage /> },
       { path: "admin/qbank/:id", element: <AdminQbankPaperPage /> },
+      { path: "admin/platform-config", element: <PlatformConfigPage /> },
+      { path: "admin/withdrawals", element: <WithdrawalsPage /> },
+      { path: "admin/orders", element: <OrdersPage /> },
       { path: "*", element: <Navigate to="/dashboard" replace /> },
     ],
   },

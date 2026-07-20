@@ -80,11 +80,34 @@ export type WalletResponse = {
 
 export type Withdrawal = {
   id: string;
+  orgId: string;
   amountBdt: number;
   destination: string;
   status: string;
   requestedAt: string;
   rejectReason: string | null;
+};
+
+// GET /api/v1/admin/orders/{id} (platform_admin) — the order-void lookup. Carries both the B2C
+// (studentId + commission/share) and B2B (orgId + seat/exam slots) fields; the UI shows whichever
+// apply. productTitle is "(deleted)" when the listing or its product is gone.
+export type AdminOrder = {
+  id: string;
+  kind: string;
+  studentId: string | null;
+  orgId: string | null;
+  listingId: string;
+  productTitle: string;
+  amountBdt: number;
+  seatSlot: number | null;
+  examSlot: number | null;
+  status: string;
+  createdAt: string;
+  paidAt: string | null;
+  voidedAt: string | null;
+  voidedBy: string | null;
+  commissionBdt: number | null;
+  authorShareBdt: number | null;
 };
 
 // GET/PUT /api/v1/listings/{productType}/{productId} response (examiner sell settings).
@@ -407,6 +430,18 @@ export function useRejectWithdrawal() {
       (await apiClient.post<Withdrawal>(`/api/v1/admin/withdrawals/${id}/reject`, { reason }))
         .data,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["commerce", "admin-withdrawals"] }),
+  });
+}
+
+// Look up one order by id for the void escape hatch. Enabled only on a non-empty id; retry:false
+// so an unknown/malformed id (404) surfaces its error immediately instead of retry-spamming.
+export function useAdminOrder(id: string) {
+  return useQuery<AdminOrder>({
+    queryKey: ["commerce", "admin-order", id],
+    enabled: !!id,
+    retry: false,
+    queryFn: async () =>
+      (await apiClient.get<AdminOrder>(`/api/v1/admin/orders/${id}`)).data,
   });
 }
 
