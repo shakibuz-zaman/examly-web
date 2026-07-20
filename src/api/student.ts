@@ -15,14 +15,40 @@ import type {
   StudentModelTest,
 } from "./types";
 
-export function useCatalog(page: number, pageSize: number) {
+// Phase 8 storefront: the catalog is server-scoped to a track (required) with optional
+// collection / type / price / live filters. trackId absent → query disabled (the server 400s
+// on an empty trackId).
+export type CatalogParams = {
+  trackId: string;
+  collectionId?: string | null;
+  type?: string | null;
+  price?: string | null;
+  live?: boolean;
+  page: number;
+  pageSize: number;
+};
+
+export function useCatalog(params: CatalogParams) {
   return useQuery<CatalogResponse>({
-    queryKey: ["student", "catalog", page, pageSize],
-    queryFn: async () =>
-      (await apiClient.get<CatalogResponse>(
-        `/api/v1/student/catalog?page=${page}&pageSize=${pageSize}`)).data,
+    queryKey: ["student", "catalog", params],
+    enabled: !!params.trackId,
+    queryFn: async () => {
+      const q = new URLSearchParams();
+      q.set("trackId", params.trackId);
+      if (params.collectionId) q.set("collectionId", params.collectionId);
+      if (params.type) q.set("type", params.type);
+      if (params.price) q.set("price", params.price);
+      if (params.live) q.set("live", "true");
+      q.set("page", String(params.page));
+      q.set("pageSize", String(params.pageSize));
+      return (await apiClient.get<CatalogResponse>(`/api/v1/student/catalog?${q}`)).data;
+    },
   });
 }
+
+// The student's owned library. Lives in commerce.ts (shares the ownership invalidation seam);
+// re-exported here so student pages import it alongside the other student hooks.
+export { useMyExams as useMyExamsList } from "./commerce";
 
 export function useStudentHome(trackId: string | null) {
   return useQuery<StudentHomeResponse>({

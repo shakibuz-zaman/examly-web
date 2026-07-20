@@ -65,8 +65,15 @@ function Chip({
 export function StudentCatalogPage() {
   const [page, setPage] = useState(1);
   const [collectionId, setCollectionId] = useState<string | null>(null);
-  const { data, isLoading } = useCatalog(page, PAGE_SIZE);
-  const { collections } = useActiveTrack();
+  const { collections, activeTrackId } = useActiveTrack();
+  // Phase 8: the catalog is now track-scoped server-side. Task 14 replaces this page with the
+  // full storefront; for now pass the active track and keep the existing client-side collection
+  // chips (they narrow the fetched page as in 7a). The query is disabled until a track resolves.
+  const { data, isLoading } = useCatalog({
+    trackId: activeTrackId ?? "",
+    page,
+    pageSize: PAGE_SIZE,
+  });
   const navigate = useNavigate();
 
   // "সব" (all) is the default; a stale selection (after the active track changes)
@@ -126,7 +133,7 @@ export function StudentCatalogPage() {
       )}
 
       <List
-        loading={isLoading}
+        loading={isLoading || activeTrackId == null}
         dataSource={filtered}
         locale={{
           emptyText: isFilteredEmpty ? (
