@@ -27,7 +27,12 @@ export function QuestionRevealCard({ stemHtml, multipleCorrect, options, explana
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
             {options.map((o, i) => (
               <OptionRow key={o.id} optionKey={BN_LETTERS[i] ?? String(i + 1)}
-                state={o.isCorrect ? "correct" : "default"} multiple={multipleCorrect} disabled>
+                state={o.isCorrect ? "correct" : "default"}
+                // No per-student selection on this browse/reveal card — the revealed
+                // answer is the correct option, so it carries aria-checked (was always
+                // false because the "correct" state never maps to selected).
+                checked={o.isCorrect}
+                multiple={multipleCorrect} disabled>
                 <QuestionContentView html={o.html} />
               </OptionRow>
             ))}

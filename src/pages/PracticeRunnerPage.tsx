@@ -384,7 +384,16 @@ function PracticeRunner({ id }: { id: string | undefined }) {
                     ? "wrong"
                     : "default";
                 return (
-                  <OptionRow key={o.id} optionKey={key} state={state} multiple={item.multipleCorrect} disabled>
+                  <OptionRow
+                    key={o.id}
+                    optionKey={key}
+                    state={state}
+                    // Reveal states never use the "selected" style, so aria-checked would
+                    // otherwise read false for the student's own picks — thread it explicitly.
+                    checked={reveal.selectedOptionIds.includes(o.id)}
+                    multiple={item.multipleCorrect}
+                    disabled
+                  >
                     <QuestionContentView html={o.html} />
                   </OptionRow>
                 );
