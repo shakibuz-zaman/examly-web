@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  Button, Card, Input, InputNumber, Modal, Space, Statistic, Table, Tag, Tooltip, Typography,
-  message,
+  Alert, Button, Card, Input, InputNumber, Modal, Space, Statistic, Table, Tag, Tooltip,
+  Typography, message,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { AxiosError } from "axios";
@@ -24,11 +24,11 @@ const KIND: Record<string, { color: string; label: string }> = {
   withdrawal_reject_reversal: { color: "gold", label: "Reversal" },
 };
 
-const WITHDRAWAL_STATUS: Record<string, string> = {
-  pending: "gold",
-  processing: "blue",
-  paid: "green",
-  rejected: "red",
+// API statuses are exactly requested / paid / rejected (WalletEndpoints / Withdrawal domain).
+const WITHDRAWAL_STATUS: Record<string, { color: string; label: string }> = {
+  requested: { color: "gold", label: "Requested" },
+  paid: { color: "green", label: "Paid" },
+  rejected: { color: "red", label: "Rejected" },
 };
 
 function SignedAmount({ amount }: { amount: number }) {
@@ -42,8 +42,12 @@ function SignedAmount({ amount }: { amount: number }) {
 
 export function WalletPage() {
   const [page, setPage] = useState(1);
-  const { data: wallet, isLoading } = useWallet(page);
-  const { data: withdrawals } = useMyWithdrawals();
+  const {
+    data: wallet, isLoading, isError: walletError, error: walletErr, refetch: refetchWallet,
+  } = useWallet(page);
+  const {
+    data: withdrawals, isError: withdrawalsError, refetch: refetchWithdrawals,
+  } = useMyWithdrawals();
   const { data: pricing } = usePricing();
   const request = useRequestWithdrawal();
 
@@ -132,7 +136,10 @@ export function WalletPage() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (s: string) => <Tag color={WITHDRAWAL_STATUS[s]}>{s}</Tag>,
+      render: (s: string) => {
+        const st = WITHDRAWAL_STATUS[s];
+        return <Tag color={st?.color}>{st?.label ?? s}</Tag>;
+      },
     },
     {
       title: "Reason",
@@ -144,58 +151,88 @@ export function WalletPage() {
 
   return (
     <div>
-      <Card style={{ marginBottom: 16 }}>
-        <Space
-          style={{ width: "100%", justifyContent: "space-between", alignItems: "center" }}
-          wrap
-        >
-          <Statistic
-            title="Available balance"
-            value={balance}
-            prefix="৳"
-            valueStyle={{ fontSize: 32, color: "var(--ex-teal-ink)" }}
-          />
-          <Tooltip title={canWithdraw ? "" : `Minimum ৳${minWithdrawal}`}>
-            <Button
-              type="primary"
-              size="large"
-              disabled={!canWithdraw}
-              onClick={() => {
-                setAmount(minWithdrawal);
-                setOpen(true);
-              }}
-            >
-              Request withdrawal
+      {walletError ? (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title={serverError(walletErr, "Couldn't load your wallet.")}
+          description="Your balance and ledger are unavailable right now."
+          action={
+            <Button size="small" onClick={() => void refetchWallet()}>
+              Retry
             </Button>
-          </Tooltip>
-        </Space>
-      </Card>
-
-      <Card title="Ledger" style={{ marginBottom: 16 }}>
-        <Table
-          rowKey="id"
-          loading={isLoading}
-          columns={ledgerColumns}
-          dataSource={wallet?.entries ?? []}
-          pagination={{
-            current: page,
-            pageSize: wallet?.pageSize ?? 20,
-            total: wallet?.total ?? 0,
-            onChange: setPage,
-            showSizeChanger: false,
-          }}
-          locale={{ emptyText: "No wallet activity yet." }}
+          }
         />
-      </Card>
+      ) : (
+        <>
+          <Card style={{ marginBottom: 16 }}>
+            <Space
+              style={{ width: "100%", justifyContent: "space-between", alignItems: "center" }}
+              wrap
+            >
+              <Statistic
+                title="Available balance"
+                value={balance}
+                prefix="৳"
+                valueStyle={{ fontSize: 32, color: "var(--ex-teal-ink)" }}
+              />
+              <Tooltip title={canWithdraw ? "" : `Minimum ৳${minWithdrawal}`}>
+                <Button
+                  type="primary"
+                  size="large"
+                  disabled={!canWithdraw}
+                  onClick={() => {
+                    setAmount(minWithdrawal);
+                    setOpen(true);
+                  }}
+                >
+                  Request withdrawal
+                </Button>
+              </Tooltip>
+            </Space>
+          </Card>
+
+          <Card title="Ledger" style={{ marginBottom: 16 }}>
+            <Table
+              rowKey="id"
+              loading={isLoading}
+              columns={ledgerColumns}
+              dataSource={wallet?.entries ?? []}
+              pagination={{
+                current: page,
+                pageSize: wallet?.pageSize ?? 20,
+                total: wallet?.total ?? 0,
+                onChange: setPage,
+                showSizeChanger: false,
+              }}
+              locale={{ emptyText: "No wallet activity yet." }}
+            />
+          </Card>
+        </>
+      )}
 
       <Card title="Withdrawals">
-        <Table
-          rowKey="id"
-          columns={withdrawalColumns}
-          dataSource={withdrawals ?? []}
-          pagination={false}
-          locale={{ emptyText: "No withdrawal requests yet." }}
-        />
+        {withdrawalsError ? (
+          <Alert
+            type="error"
+            showIcon
+            title="Couldn't load your withdrawal requests."
+            action={
+              <Button size="small" onClick={() => void refetchWithdrawals()}>
+                Retry
+              </Button>
+            }
+          />
+        ) : (
+          <Table
+            rowKey="id"
+            columns={withdrawalColumns}
+            dataSource={withdrawals ?? []}
+            pagination={false}
+            locale={{ emptyText: "No withdrawal requests yet." }}
+          />
+        )}
       </Card>
 
       <Modal
