@@ -3,6 +3,7 @@ import { Alert, Button, Card, Skeleton, Space, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useQbankPapers } from "../api/qbank";
 import { useActiveTrack } from "../features/tracks/TrackContext";
+import { Chip } from "../components/Chip";
 import { Illustration } from "../components/Illustration";
 import { bnNum } from "../lib/bn";
 import { radii } from "../theme/tokens";
@@ -11,39 +12,6 @@ import type { QbankPaperSummary } from "../api/types";
 
 function chipLabel(c: CategoryNode): string {
   return c.name.bn || c.name.en || c.slug;
-}
-
-function Chip({
-  label,
-  selected,
-  onClick,
-}: {
-  label: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onClick}
-      style={{
-        flex: "0 0 auto",
-        border: "1.5px solid",
-        borderRadius: 999,
-        padding: "5px 14px",
-        fontSize: 14,
-        cursor: "pointer",
-        background: selected ? "var(--ex-teal-tint)" : "var(--ex-card)",
-        borderColor: selected ? "var(--ex-teal)" : "var(--ex-line-strong)",
-        color: selected ? "var(--ex-teal-ink)" : "var(--ex-ink)",
-        fontWeight: selected ? 600 : 400,
-        transition: "background .15s, border-color .15s",
-      }}
-    >
-      {label}
-    </button>
-  );
 }
 
 // Papers grouped by year, newest first, so the list reads like a shelf of past papers.

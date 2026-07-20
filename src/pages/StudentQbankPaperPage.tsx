@@ -5,6 +5,7 @@ import { useQbankPaper, useQbankSearch } from "../api/qbank";
 import { useStartPractice } from "../api/practice";
 import { useActiveTrack } from "../features/tracks/TrackContext";
 import { QuestionRevealCard } from "../features/qbank/QuestionRevealCard";
+import { Chip } from "../components/Chip";
 import { bnNum } from "../lib/bn";
 import type { QbankQuestion } from "../api/types";
 
@@ -21,39 +22,6 @@ function distinctSubjects(questions: QbankQuestion[]): SubjectChip[] {
     }
   }
   return [...seen.values()];
-}
-
-function Chip({
-  label,
-  selected,
-  onClick,
-}: {
-  label: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onClick}
-      style={{
-        flex: "0 0 auto",
-        border: "1.5px solid",
-        borderRadius: 999,
-        padding: "5px 14px",
-        fontSize: 14,
-        cursor: "pointer",
-        background: selected ? "var(--ex-teal-tint)" : "var(--ex-card)",
-        borderColor: selected ? "var(--ex-teal)" : "var(--ex-line-strong)",
-        color: selected ? "var(--ex-teal-ink)" : "var(--ex-ink)",
-        fontWeight: selected ? 600 : 400,
-        transition: "background .15s, border-color .15s",
-      }}
-    >
-      {label}
-    </button>
-  );
 }
 
 function QuestionHeader({ order, sectionLabel }: { order: number; sectionLabel: string | null }) {
