@@ -7,6 +7,7 @@ type FormValues = {
   sub: string;
   email: string;
   name?: string;
+  phone?: string;
   role: "platform_admin" | "examiner" | "student";
   orgId?: string;
 };
@@ -41,6 +42,9 @@ export function LoginPage() {
         </Form.Item>
         <Form.Item name="name" label="Display name">
           <Input placeholder="Rahim Uddin" />
+        </Form.Item>
+        <Form.Item name="phone" label="Phone (dev)">
+          <Input placeholder="01700000000" />
         </Form.Item>
         <Form.Item name="role" label="Role" rules={[{ required: true }]}>
           <Select

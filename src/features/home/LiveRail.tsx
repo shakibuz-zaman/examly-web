@@ -1,7 +1,9 @@
-import { Tag, Typography } from "antd";
+import { Button, Tag, Typography, message } from "antd";
 import dayjs from "dayjs";
+import { AxiosError } from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { Illustration } from "../../components/Illustration";
+import { useRegister } from "../../api/commerce";
 import type { HomeLiveItem } from "../../api/types";
 
 function lobbyPath(item: HomeLiveItem): string {
@@ -12,11 +14,37 @@ function lobbyPath(item: HomeLiveItem): string {
 
 function LiveCard({ item }: { item: HomeLiveItem }) {
   const navigate = useNavigate();
+  const register = useRegister();
   const isLive = item.state === "live";
+  const goToLobby = () => navigate(lobbyPath(item));
+
+  // One-tap register only where the listing (and price) is known. A null listing/price is a
+  // public-default rail item — it carries no commercial affordance.
+  const isFree = item.priceBdt === 0;
+  const isPaid = item.priceBdt != null && item.priceBdt > 0;
+
+  function onRegister(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!item.listingId) return;
+    register.mutate(item.listingId, {
+      onError: (err) => {
+        const msg = err instanceof AxiosError ? err.response?.data?.error : undefined;
+        message.error(msg ?? "রেজিস্টার করা যায়নি");
+      },
+    });
+  }
+
   return (
-    <button
-      type="button"
-      onClick={() => navigate(lobbyPath(item))}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={goToLobby}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goToLobby();
+        }
+      }}
       style={{
         flex: "0 0 auto",
         width: 240,
@@ -31,8 +59,9 @@ function LiveCard({ item }: { item: HomeLiveItem }) {
         background: "var(--ex-card)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {isLive ? <Tag color="red">LIVE চলছে</Tag> : <Tag>আসছে</Tag>}
+        {item.registered && <Tag color="cyan">রেজিস্টার্ড</Tag>}
         <span className="tnum" style={{ fontSize: 12, color: "var(--ex-ink-soft)" }}>
           {dayjs(item.windowStartUtc).format("D MMM, h:mm A")}
         </span>
@@ -45,7 +74,29 @@ function LiveCard({ item }: { item: HomeLiveItem }) {
           {item.orgName}
         </Typography.Text>
       )}
-    </button>
+      {item.registeredCount > 0 && (
+        <Typography.Text style={{ fontSize: 12, color: "var(--ex-ink-soft)" }}>
+          {item.registeredCount} জন রেজিস্টার করেছে
+        </Typography.Text>
+      )}
+      {!item.registered && item.listingId && isFree && (
+        <Button size="small" ghost loading={register.isPending} onClick={onRegister}>
+          রেজিস্টার
+        </Button>
+      )}
+      {!item.registered && item.listingId && isPaid && (
+        <Button
+          size="small"
+          type="primary"
+          onClick={(e) => {
+            e.stopPropagation();
+            goToLobby();
+          }}
+        >
+          ৳{item.priceBdt}
+        </Button>
+      )}
+    </div>
   );
 }
 

@@ -1,12 +1,66 @@
 import { useState } from "react";
-import { Button, Descriptions, Divider, Segmented, Space, Typography, message } from "antd";
+import {
+  Button,
+  Collapse,
+  Descriptions,
+  Divider,
+  Empty,
+  List,
+  Segmented,
+  Space,
+  Spin,
+  Tag,
+  Typography,
+  message,
+} from "antd";
 import { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { useMyTracks, useSaveMyTracks } from "../api/me";
+import { useMyOrders } from "../api/commerce";
 import { useThemeMode } from "../theme/ThemeContext";
 import { TrackPicker } from "../features/tracks/TrackPicker";
+import { formatDateTime } from "../lib/format";
 import type { ThemeMode } from "../theme/tokens";
+
+// Order status → { antd Tag color, Bangla label } (business plan order lifecycle).
+const ORDER_STATUS: Record<string, { color: string; label: string }> = {
+  paid: { color: "green", label: "সম্পন্ন" },
+  pending: { color: "gold", label: "চলমান" },
+  failed: { color: "red", label: "ব্যর্থ" },
+  voided: { color: "default", label: "বাতিল" },
+};
+
+function OrdersHistory() {
+  const orders = useMyOrders();
+  if (orders.isLoading) return <Spin />;
+  const items = orders.data?.items ?? [];
+  if (items.length === 0) {
+    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="কোনো অর্ডার নেই" />;
+  }
+  return (
+    <List
+      dataSource={items}
+      renderItem={(o) => {
+        const s = ORDER_STATUS[o.status] ?? { color: "default", label: o.status };
+        return (
+          <List.Item>
+            <Space orientation="vertical" size={2} style={{ width: "100%" }}>
+              <Space wrap style={{ justifyContent: "space-between", width: "100%" }}>
+                <Typography.Text strong>{o.productTitle}</Typography.Text>
+                <Tag color={s.color}>{s.label}</Tag>
+              </Space>
+              <Space wrap>
+                <Typography.Text>৳{o.amountBdt}</Typography.Text>
+                <Typography.Text type="secondary">{formatDateTime(o.createdAt)}</Typography.Text>
+              </Space>
+            </Space>
+          </List.Item>
+        );
+      }}
+    />
+  );
+}
 
 export function StudentProfilePage() {
   const navigate = useNavigate();
@@ -79,6 +133,23 @@ export function StudentProfilePage() {
       >
         সংরক্ষণ করুন
       </Button>
+
+      <Divider />
+
+      <Collapse
+        ghost
+        items={[
+          {
+            key: "orders",
+            label: (
+              <Typography.Text strong style={{ color: "var(--ex-ink)" }}>
+                অর্ডার হিস্টরি
+              </Typography.Text>
+            ),
+            children: <OrdersHistory />,
+          },
+        ]}
+      />
 
       <Divider />
 

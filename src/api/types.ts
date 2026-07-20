@@ -598,6 +598,8 @@ export type HomeLiveItem = {
   state: "live" | "upcoming";
   registeredCount: number; // live entitlements across all students
   registered: boolean; // this student holds a live entitlement
+  listingId: string | null; // null when the product has no listing (public-default item)
+  priceBdt: number | null; // null when unlisted; 0 = free (register), else price (buy)
 };
 
 export type HomeContinue = {
