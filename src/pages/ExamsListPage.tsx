@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Button, Card, Input, Modal, Popconfirm, Select, Space, Table, Tag, message,
+  Button, Card, DatePicker, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { AxiosError } from "axios";
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import {
   useArchiveExam, useExams, usePublishExam, useRestoreExam, useUnpublishExam,
 } from "../api/exams";
+import { useReschedule } from "../api/commerce";
 import type { ExamListFilters, ExamSummary } from "../api/types";
 import { CONTENT_STATUS_COLORS } from "../theme/status";
 
@@ -24,9 +27,43 @@ export function ExamsListPage() {
   const unpublish = useUnpublishExam();
   const archive = useArchiveExam();
   const restore = useRestoreExam();
+  const reschedule = useReschedule();
+
+  // Reschedule modal state: the target row + its editable window (start/end).
+  const [rescheduleRow, setRescheduleRow] = useState<ExamSummary | null>(null);
+  const [rescheduleWindow, setRescheduleWindow] = useState<[Dayjs | null, Dayjs | null]>([
+    null, null,
+  ]);
 
   const set = (patch: Partial<ExamListFilters>) =>
     setFilters((f) => ({ ...f, ...patch, page: 1 }));
+
+  const openReschedule = (row: ExamSummary) => {
+    setRescheduleRow(row);
+    setRescheduleWindow([
+      row.windowStartUtc ? dayjs(row.windowStartUtc) : null,
+      row.windowEndUtc ? dayjs(row.windowEndUtc) : null,
+    ]);
+  };
+
+  const submitReschedule = async () => {
+    if (!rescheduleRow) return;
+    const [start, end] = rescheduleWindow;
+    if (!start || !end) {
+      message.error("Pick both a start and an end time.");
+      return;
+    }
+    try {
+      await reschedule.mutateAsync({
+        examId: rescheduleRow.id,
+        body: { windowStartUtc: start.toISOString(), windowEndUtc: end.toISOString() },
+      });
+      message.success("Window rescheduled");
+      setRescheduleRow(null);
+    } catch (e) {
+      message.error(serverError(e, "Reschedule failed"));
+    }
+  };
 
   const onPublish = async (id: string) => {
     try {
@@ -91,6 +128,11 @@ export function ExamsListPage() {
             <Button size="small" type="primary" ghost loading={publish.isPending}
               onClick={() => void onPublish(r.id)}>
               Publish
+            </Button>
+          )}
+          {r.status === "published" && r.windowStartUtc && r.windowEndUtc && (
+            <Button size="small" onClick={() => openReschedule(r)}>
+              Reschedule
             </Button>
           )}
           {r.status === "published" && !r.modelTestId && (
@@ -167,6 +209,42 @@ export function ExamsListPage() {
           onChange: (page, pageSize) => setFilters((f) => ({ ...f, page, pageSize })),
         }}
       />
+
+      <Modal
+        title="Reschedule window"
+        open={rescheduleRow !== null}
+        onCancel={() => setRescheduleRow(null)}
+        onOk={() => void submitReschedule()}
+        okText="Reschedule"
+        confirmLoading={reschedule.isPending}
+      >
+        <Typography.Paragraph type="secondary">
+          Move the scheduled window before it opens. The window cannot be changed once it has
+          started.
+        </Typography.Paragraph>
+        <Space orientation="vertical" style={{ width: "100%" }} size="middle">
+          <div>
+            <Typography.Text strong>Start</Typography.Text>
+            <br />
+            <DatePicker
+              showTime
+              style={{ width: "100%" }}
+              value={rescheduleWindow[0]}
+              onChange={(v) => setRescheduleWindow(([, end]) => [v, end])}
+            />
+          </div>
+          <div>
+            <Typography.Text strong>End</Typography.Text>
+            <br />
+            <DatePicker
+              showTime
+              style={{ width: "100%" }}
+              value={rescheduleWindow[1]}
+              onChange={(v) => setRescheduleWindow(([start]) => [start, v])}
+            />
+          </div>
+        </Space>
+      </Modal>
     </Card>
   );
 }

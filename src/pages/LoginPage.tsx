@@ -1,5 +1,5 @@
 import { Button, Card, Form, Input, Select, Typography, message } from "antd";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../auth/useAuth";
 
@@ -62,6 +62,9 @@ export function LoginPage() {
           Issue token and continue
         </Button>
       </Form>
+      <Typography.Paragraph style={{ textAlign: "center", marginTop: 16, marginBottom: 0 }}>
+        <Link to="/pricing">মূল্য তালিকা</Link>
+      </Typography.Paragraph>
     </Card>
   );
 }

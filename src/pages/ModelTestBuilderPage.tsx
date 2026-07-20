@@ -10,6 +10,7 @@ import { useExams } from "../api/exams";
 import {
   useModelTest, usePublishModelTest, useSaveModelTest, useUnpublishModelTest,
 } from "../api/modelTests";
+import { SellingCard } from "../features/exams/SellingCard";
 import { SortableList } from "../features/exams/SortableList";
 import type { ModelTestExamItem } from "../api/types";
 import { CONTENT_STATUS_COLORS } from "../theme/status";
@@ -270,6 +271,20 @@ export function ModelTestBuilderPage() {
           </Space>
         </Space>
       </Card>
+
+      {modelTest ? (
+        <SellingCard
+          productType="model_test"
+          productId={modelTest.id}
+          hasWindowedContent
+        />
+      ) : (
+        <Card title="Selling" style={{ marginTop: 16 }}>
+          <Typography.Text type="secondary">
+            Save the draft first to configure selling.
+          </Typography.Text>
+        </Card>
+      )}
     </div>
   );
 }

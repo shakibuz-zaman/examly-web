@@ -12,6 +12,7 @@ import { useExam, usePublishExam, useSaveExam, useUnpublishExam } from "../api/e
 import { ExamPreview } from "../features/exams/ExamPreview";
 import { QuestionPickerDrawer } from "../features/exams/QuestionPickerDrawer";
 import { SectionCard } from "../features/exams/SectionCard";
+import { SellingCard } from "../features/exams/SellingCard";
 import { SortableList } from "../features/exams/SortableList";
 import {
   allQuestionIds, draftQuestionCount, draftTotalMarks, emptyDraft, fromResponse,
@@ -293,6 +294,28 @@ export function ExamBuilderPage() {
         >
           Add section
         </Button>
+      )}
+
+      {exam ? (
+        exam.modelTestId == null ? (
+          <SellingCard
+            productType="exam"
+            productId={exam.id}
+            hasWindowedContent={!!draft.windowStartUtc}
+          />
+        ) : (
+          <Card title="Selling" style={{ marginTop: 16 }}>
+            <Typography.Text type="secondary">
+              This exam is sold through its model test. Configure selling on the model test.
+            </Typography.Text>
+          </Card>
+        )
+      ) : (
+        <Card title="Selling" style={{ marginTop: 16 }}>
+          <Typography.Text type="secondary">
+            Save the draft first to configure selling.
+          </Typography.Text>
+        </Card>
       )}
         </>
       )}

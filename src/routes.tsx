@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { Spin } from "antd";
 import { LoginPage } from "./pages/LoginPage";
+import { PricingPage } from "./pages/PricingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QuestionsListPage } from "./pages/QuestionsListPage";
 import { QuestionEditorPage } from "./pages/QuestionEditorPage";
@@ -44,6 +45,7 @@ const StudentProgressPage = lazy(() =>
 
 export const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
+  { path: "/pricing", element: <PricingPage /> },
   {
     path: "/onboarding",
     element: (
