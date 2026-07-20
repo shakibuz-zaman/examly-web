@@ -226,33 +226,46 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
     cell.examSlot >= purchase.examSlot &&
     (cell.seatSlot > purchase.seatSlot || cell.examSlot > purchase.examSlot);
 
+  // Upgrade branches on the SERVER's discriminator, never the client's delta (the cached matrix
+  // price can be stale in either direction). Always mint the upgrade first: if the server applied
+  // it free → confirm and stop; otherwise hand the ALREADY-CREATED order to the checkout sheet.
+  // The `+৳delta` on the cells is only a caption hint (see MatrixGrid `caption` below).
   const onUpgrade = async () => {
     if (!upgradeSelected) return;
     const cell = upgradeSelected;
-    const delta = Math.max(cell.priceBdt - purchase.totalPaidBdt, 0);
-    if (delta === 0) {
-      try {
-        await upgrade.mutateAsync({
-          id: purchase.id, body: { seatSlot: cell.seatSlot, examSlot: cell.examSlot },
-        });
-        message.success("Slots upgraded");
+    const body = { seatSlot: cell.seatSlot, examSlot: cell.examSlot };
+    try {
+      const res = await upgrade.mutateAsync({ id: purchase.id, body });
+      if ("appliedFree" in res) {
+        message.success("Slots upgraded — no payment needed");
         setUpgradeSelected(null);
-      } catch (e) {
-        message.error(serverError(e, "Upgrade failed"));
+        return;
       }
-      return;
+      // Paid upgrade. The pending order already exists, so the sheet must NOT re-mint on its
+      // first checkout — it consumes this held response. A retry after a failed payment falls
+      // through to a fresh mutateAsync; the server reuses/re-mints the pending order correctly.
+      let held: CheckoutResponse | null = res;
+      setSheet({
+        title: `Upgrade — ${cell.seatSlot} seats × ${cell.examSlot} exam${cell.examSlot > 1 ? "s" : ""}`,
+        priceBdt: res.amountBdt,
+        createOrder: async () => {
+          if (held) {
+            const first = held;
+            held = null;
+            return first;
+          }
+          const retry = await upgrade.mutateAsync({ id: purchase.id, body });
+          if ("appliedFree" in retry) {
+            // The upgrade became free between attempts (e.g. server state shifted). No payment
+            // to collect — bounce the examiner back to a clean slate via the failed-state retry.
+            throw new Error("This upgrade is now free — close and reopen the panel.");
+          }
+          return retry;
+        },
+      });
+    } catch (e) {
+      message.error(serverError(e, "Upgrade failed"));
     }
-    setSheet({
-      title: `Upgrade — ${cell.seatSlot} seats × ${cell.examSlot} exam${cell.examSlot > 1 ? "s" : ""}`,
-      priceBdt: delta,
-      createOrder: async () => {
-        const res = await upgrade.mutateAsync({
-          id: purchase.id, body: { seatSlot: cell.seatSlot, examSlot: cell.examSlot },
-        });
-        if ("appliedFree" in res) throw new Error("This upgrade is free — no payment needed.");
-        return res;
-      },
-    });
   };
 
   return (

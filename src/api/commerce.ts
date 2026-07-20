@@ -304,6 +304,7 @@ export function useRoster(id: string | undefined) {
   return useQuery<RosterResponse>({
     queryKey: ["commerce", "roster", id],
     enabled: !!id,
+    retry: false, // 404 = foreign/unknown slot purchase; don't retry-spam before the error Alert.
     queryFn: async () =>
       (await apiClient.get<RosterResponse>(`/api/v1/slot-purchases/${id}/roster`)).data,
   });

@@ -31,7 +31,7 @@ export function RosterPage() {
   const { slotPurchaseId } = useParams<{ slotPurchaseId: string }>();
   const navigate = useNavigate();
   const { data: roster, isLoading, isError, error } = useRoster(slotPurchaseId);
-  const { data: purchases } = useSlotPurchases();
+  const { data: purchases, isError: purchasesError } = useSlotPurchases();
   const addAllowlist = useAddAllowlist(slotPurchaseId ?? "");
   const revoke = useRevokeMember(slotPurchaseId ?? "");
   const rotate = useRotateCode(slotPurchaseId ?? "");
@@ -140,7 +140,7 @@ export function RosterPage() {
             </Typography.Text>
             <Progress percent={Math.round(usedPct)} showInfo={false} />
           </div>
-          {purchase && (
+          {purchase ? (
             <Space wrap>
               <Typography.Text strong>Invite code</Typography.Text>
               <Typography.Text copyable={{ text: purchase.inviteCode }} code style={{ fontSize: 15 }}>
@@ -157,7 +157,11 @@ export function RosterPage() {
                 </Button>
               </Popconfirm>
             </Space>
-          )}
+          ) : purchasesError ? (
+            <Typography.Text type="danger" style={{ fontSize: 12 }}>
+              Couldn't load the invite code — refresh to try again.
+            </Typography.Text>
+          ) : null}
         </Space>
       </Card>
 

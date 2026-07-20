@@ -6,7 +6,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { AxiosError } from "axios";
 import {
-  useMyWithdrawals, useRequestWithdrawal, useWallet,
+  useMyWithdrawals, usePricing, useRequestWithdrawal, useWallet,
 } from "../api/commerce";
 import type { WalletEntry, Withdrawal } from "../api/commerce";
 
@@ -14,7 +14,8 @@ function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
 }
 
-const MIN_WITHDRAWAL = 500;
+// Fallback while pricing loads; the platform-configured floor drives the real threshold.
+const MIN_WITHDRAWAL_FALLBACK = 500;
 
 const KIND: Record<string, { color: string; label: string }> = {
   sale_credit: { color: "green", label: "Sale" },
@@ -43,18 +44,21 @@ export function WalletPage() {
   const [page, setPage] = useState(1);
   const { data: wallet, isLoading } = useWallet(page);
   const { data: withdrawals } = useMyWithdrawals();
+  const { data: pricing } = usePricing();
   const request = useRequestWithdrawal();
 
+  const minWithdrawal = pricing?.withdrawalMinBdt ?? MIN_WITHDRAWAL_FALLBACK;
+
   const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState<number | null>(MIN_WITHDRAWAL);
+  const [amount, setAmount] = useState<number | null>(null);
   const [destination, setDestination] = useState("");
 
   const balance = wallet?.balance ?? 0;
-  const canWithdraw = balance >= MIN_WITHDRAWAL;
+  const canWithdraw = balance >= minWithdrawal;
 
   const submit = async () => {
-    if (!amount || amount < MIN_WITHDRAWAL) {
-      message.error(`Minimum ৳${MIN_WITHDRAWAL}`);
+    if (!amount || amount < minWithdrawal) {
+      message.error(`Minimum ৳${minWithdrawal}`);
       return;
     }
     if (!destination.trim()) {
@@ -66,7 +70,7 @@ export function WalletPage() {
       message.success("Withdrawal requested");
       setOpen(false);
       setDestination("");
-      setAmount(MIN_WITHDRAWAL);
+      setAmount(minWithdrawal);
     } catch (e) {
       message.error(serverError(e, "Withdrawal request failed"));
     }
@@ -151,12 +155,15 @@ export function WalletPage() {
             prefix="৳"
             valueStyle={{ fontSize: 32, color: "var(--ex-teal-ink)" }}
           />
-          <Tooltip title={canWithdraw ? "" : `Minimum ৳${MIN_WITHDRAWAL}`}>
+          <Tooltip title={canWithdraw ? "" : `Minimum ৳${minWithdrawal}`}>
             <Button
               type="primary"
               size="large"
               disabled={!canWithdraw}
-              onClick={() => setOpen(true)}
+              onClick={() => {
+                setAmount(minWithdrawal);
+                setOpen(true);
+              }}
             >
               Request withdrawal
             </Button>
@@ -206,13 +213,13 @@ export function WalletPage() {
             <InputNumber
               style={{ width: "100%" }}
               prefix="৳"
-              min={MIN_WITHDRAWAL}
+              min={minWithdrawal}
               max={balance}
               value={amount}
               onChange={setAmount}
             />
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Minimum ৳{MIN_WITHDRAWAL} · available ৳{balance}
+              Minimum ৳{minWithdrawal} · available ৳{balance}
             </Typography.Text>
           </div>
           <div>
