@@ -2,12 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "./client";
 import type { QbankPaperDetail, QbankPapersResponse, QbankSearchResponse } from "./types";
 
-export function useQbankPapers(trackId: string | null, categoryId: string | null, year: number | null) {
+export const QBANK_PAPERS_PAGE_SIZE = 20;
+
+export function useQbankPapers(
+  trackId: string | null,
+  categoryId: string | null,
+  year: number | null,
+  page: number,
+) {
   return useQuery<QbankPapersResponse>({
-    queryKey: ["qbank", "papers", trackId, categoryId, year],
+    queryKey: ["qbank", "papers", trackId, categoryId, year, page],
     enabled: !!trackId,
     queryFn: async () => {
-      const params = new URLSearchParams({ trackId: trackId!, pageSize: "100" });
+      const params = new URLSearchParams({
+        trackId: trackId!,
+        page: String(page),
+        pageSize: String(QBANK_PAPERS_PAGE_SIZE),
+      });
       if (categoryId) params.set("categoryId", categoryId);
       if (year != null) params.set("year", String(year));
       return (await apiClient.get<QbankPapersResponse>(`/api/v1/qbank/papers?${params}`)).data;

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Alert, Button, Segmented, Skeleton, Space, Tag, Typography, message } from "antd";
+import { Alert, Button, Pagination, Segmented, Skeleton, Space, Tag, Typography, message } from "antd";
 import { useNavigate } from "react-router-dom";
-import { useNotebook } from "../api/notebook";
+import { NOTEBOOK_PAGE_SIZE, useNotebook } from "../api/notebook";
 import { useStartPractice } from "../api/practice";
 import { useActiveTrack } from "../features/tracks/TrackContext";
 import { QuestionRevealCard } from "../features/qbank/QuestionRevealCard";
@@ -90,16 +90,23 @@ export function StudentNotebookPage() {
   const start = useStartPractice();
   const [status, setStatus] = useState<"active" | "resolved">("active");
   const [subjectId, setSubjectId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
-  // Load the whole status bucket (subjectId not sent to the server); subject narrowing
-  // is client-side so the chip row can list every subject in the bucket.
-  const { data, isLoading, isError, refetch } = useNotebook({ status, subjectId: null, trackId: activeTrackId });
+  // Server now paginates (20/page); subject narrowing stays client-side (subjectId not
+  // sent to the server) but only sees the current page's entries — see the grouping note.
+  const { data, isLoading, isError, refetch } = useNotebook({
+    status,
+    subjectId: null,
+    trackId: activeTrackId,
+    page,
+  });
 
   // activeTrackId null = tracks still resolving; the query is disabled, so show a skeleton.
   const loading = activeTrackId == null || isLoading;
 
   const activeCount = data?.activeCount ?? 0;
   const dueCount = data?.dueCount ?? 0;
+  const total = data?.total ?? 0;
   const entries = data?.entries ?? [];
   const subjects = distinctSubjects(entries);
 
@@ -149,7 +156,10 @@ export function StudentNotebookPage() {
       <Segmented
         style={{ margin: "12px 0" }}
         value={status}
-        onChange={(v) => setStatus(v as "active" | "resolved")}
+        onChange={(v) => {
+          setStatus(v as "active" | "resolved");
+          setPage(1); // new bucket → back to the first page
+        }}
         options={[
           { label: "সক্রিয়", value: "active" },
           { label: "সমাধান হয়েছে", value: "resolved" },
@@ -221,6 +231,18 @@ export function StudentNotebookPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {!loading && !isError && total > NOTEBOOK_PAGE_SIZE && (
+        <Pagination
+          style={{ marginTop: 20, textAlign: "center" }}
+          align="center"
+          current={page}
+          pageSize={NOTEBOOK_PAGE_SIZE}
+          total={total}
+          showSizeChanger={false}
+          onChange={(p) => setPage(p)}
+        />
       )}
     </div>
   );
