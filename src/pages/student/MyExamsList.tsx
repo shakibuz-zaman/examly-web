@@ -1,18 +1,91 @@
-import { useState } from "react";
-import { Alert, Button, Card, Input, List, Space, Tag, Typography, message } from "antd";
+import { useMemo, useState } from "react";
+import { Alert, Button, Input, message } from "antd";
+import { CheckCircle2, Clock, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useClaimSeat, useMyExams } from "../../api/commerce";
-import { Illustration } from "../../components/Illustration";
-import { radii } from "../../theme/tokens";
+import { useClaimSeat, useInfiniteMyExams } from "../../api/commerce";
+import { bnNum } from "../../lib/bn";
+import { formatDhakaShortBn } from "../../lib/format";
+import { EmptyState } from "../../ui/EmptyState";
+import { PillButton } from "../../ui/PillButton";
+import { RowItem } from "../../ui/RowItem";
+import { SectionHeader } from "../../ui/SectionHeader";
+import { SkeletonRow } from "../../ui/Skeletons";
 import type { MyExamItem } from "../../api/types";
 
-const PAGE_SIZE = 20;
+type Group = "running" | "upcoming" | "results";
 
-// How a live entitlement was granted (Entitlement.Source).
-function sourceTag(source: string) {
-  if (source === "purchase") return <Tag color="gold">কেনা</Tag>;
-  if (source === "seat") return <Tag color="blue">সিট</Tag>;
-  return <Tag color="green">ফ্রি</Tag>; // free_claim
+// Recorded deviation 3: never-attempted lands in চলমান, not a fourth "not started"
+// group — an owned exam whose window is open is actionable now either way.
+function groupOf(item: MyExamItem, now: number): Group {
+  if (item.productType === "exam" && item.latestAttemptStatus === "submitted") return "results";
+  if (item.windowStartUtc && Date.parse(item.windowStartUtc) > now) return "upcoming";
+  return "running";
+}
+
+const GROUP_META: { key: Group; label: string }[] = [
+  { key: "running", label: "চলমান" },
+  { key: "upcoming", label: "আসছে" },
+  { key: "results", label: "ফলাফল" },
+];
+
+// Tinted lead circle. RowItem's own wrapper carries `.ex-rowitem-lead` but no colour,
+// so the tint pair rides on an inner span of the same class — same 34px box, so it
+// paints as one circle. Inline style only because the pair is group-dynamic.
+function lead(group: Group) {
+  const common = { size: 17, strokeWidth: 1.75, "aria-hidden": true } as const;
+  if (group === "results")
+    return (
+      <span
+        className="ex-rowitem-lead"
+        style={{ background: "var(--ex-green-tint)", color: "var(--ex-green)" }}
+      >
+        <CheckCircle2 {...common} />
+      </span>
+    );
+  if (group === "upcoming")
+    return (
+      <span
+        className="ex-rowitem-lead"
+        style={{ background: "var(--ex-amber-tint)", color: "var(--ex-amber)" }}
+      >
+        <Clock {...common} />
+      </span>
+    );
+  return (
+    <span
+      className="ex-rowitem-lead"
+      style={{ background: "var(--ex-teal-tint)", color: "var(--ex-teal-ink)" }}
+    >
+      <Play {...common} />
+    </span>
+  );
+}
+
+// Dot-joined meta line. Scores keep Western digits + .tnum (spec §1.2); prose
+// datetimes are Dhaka-pinned Bengali, matching TestCard's «শুরু …».
+function metaFor(item: MyExamItem, group: Group) {
+  const source = item.source === "purchase" ? "কেনা" : item.source === "seat" ? "সিট" : "ফ্রি";
+  const parts: string[] = [];
+  if (item.orgName) parts.push(item.orgName);
+  parts.push(source);
+  if (group === "upcoming" && item.windowStartUtc)
+    parts.push(`শুরু ${formatDhakaShortBn(item.windowStartUtc)}`);
+  if (group === "results") {
+    // Gate on `revealed`, not `score != null`: a bundle row and a withheld result both
+    // carry a null score for different reasons, and only the latter has a reveal time.
+    if (item.revealed && item.score !== null && item.maxScore !== null) {
+      return (
+        <>
+          {parts.join(" · ")} · স্কোর{" "}
+          <span className="tnum">{`${item.score}/${item.maxScore}`}</span>
+        </>
+      );
+    }
+    parts.push(
+      item.revealAtUtc ? `ফলাফল ${formatDhakaShortBn(item.revealAtUtc)}` : "ফলাফল অপেক্ষমাণ",
+    );
+  }
+  return parts.join(" · ");
 }
 
 // Bundles carry per-member state, so they just deep-link ("দেখুন"); single exams
@@ -26,8 +99,8 @@ function ctaFor(item: MyExamItem): { label: string; to: string } {
   return { label, to: `/student/exams/${item.productId}` };
 }
 
-// B2B seat claim by invite code; reused in the header and the empty state. The hook
-// invalidates the ownership seam on success, so a claimed exam appears here immediately.
+// B2B seat claim by invite code. The hook invalidates the ownership seam on success,
+// so a claimed exam appears in the list below immediately.
 function ClaimSeatForm() {
   const [code, setCode] = useState("");
   const claim = useClaimSeat();
@@ -59,12 +132,26 @@ function ClaimSeatForm() {
 }
 
 export function MyExamsList() {
-  const [page, setPage] = useState(1);
-  const { data, isLoading, isError, refetch } = useMyExams(page, PAGE_SIZE);
+  const query = useInfiniteMyExams();
   const navigate = useNavigate();
-  const items = data?.items ?? [];
 
-  if (isError) {
+  // One clock for the whole list. `Date.now()` in the render body is an impure
+  // render-time read (react-hooks/purity), so it is seeded lazily into state. No
+  // ticker here on purpose: unlike the store grid, nothing in this list changes
+  // look on a timer except a row crossing its own window start — a boundary the
+  // student reaches by opening the row, which refetches anyway. A `now` that is
+  // stale for the session is acceptable; the row's own page shows the truth.
+  const [now] = useState(() => Date.now());
+
+  const items = useMemo(() => query.data?.pages.flatMap((p) => p.items) ?? [], [query.data]);
+
+  const groups = useMemo(() => {
+    const map: Record<Group, MyExamItem[]> = { running: [], upcoming: [], results: [] };
+    for (const item of items) map[groupOf(item, now)].push(item);
+    return map;
+  }, [items, now]);
+
+  if (query.isError) {
     return (
       <div>
         <div style={{ marginBottom: 16 }}>
@@ -75,7 +162,7 @@ export function MyExamsList() {
           showIcon
           title="আপনার পরীক্ষা লোড করা যায়নি"
           action={
-            <Button size="small" onClick={() => refetch()}>
+            <Button size="small" onClick={() => void query.refetch()}>
               আবার চেষ্টা করুন
             </Button>
           }
@@ -89,65 +176,57 @@ export function MyExamsList() {
       <div style={{ marginBottom: 16 }}>
         <ClaimSeatForm />
       </div>
-      <List
-        loading={isLoading}
-        dataSource={items}
-        locale={{
-          emptyText: (
-            <div style={{ padding: "32px 0", textAlign: "center" }}>
-              <Illustration name="empty" />
-              <Typography.Paragraph style={{ marginTop: 12, color: "var(--ex-ink-soft)" }}>
-                আপনি এখনো কোনো পরীক্ষা কেনেননি বা যোগ দেননি
-              </Typography.Paragraph>
-              <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
-                <ClaimSeatForm />
+      {query.isLoading ? (
+        <>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </>
+      ) : items.length === 0 ? (
+        <EmptyState variant="empty" message="আপনি এখনো কোনো পরীক্ষা কেনেননি বা যোগ দেননি" />
+      ) : (
+        <>
+          {GROUP_META.map(({ key, label }) =>
+            groups[key].length === 0 ? null : (
+              <div key={key}>
+                <SectionHeader label={label} trailing={`${bnNum(groups[key].length)}টি`} />
+                {groups[key].map((item) => {
+                  const cta = ctaFor(item);
+                  return (
+                    <RowItem
+                      key={item.listingId}
+                      lead={lead(key)}
+                      title={item.title}
+                      meta={metaFor(item, key)}
+                      trailing={
+                        <PillButton
+                          variant={key === "results" ? "outline" : "tonal"}
+                          size="sm"
+                          onClick={() => navigate(cta.to)}
+                        >
+                          {key === "results" ? "রিভিউ" : cta.label}
+                        </PillButton>
+                      }
+                      onClick={() => navigate(cta.to)}
+                    />
+                  );
+                })}
               </div>
+            ),
+          )}
+          {query.hasNextPage && (
+            <div style={{ textAlign: "center", marginTop: 12 }}>
+              <PillButton
+                variant="outline"
+                onClick={() => void query.fetchNextPage()}
+                disabled={query.isFetchingNextPage}
+              >
+                আরো দেখুন
+              </PillButton>
             </div>
-          ),
-        }}
-        pagination={{
-          current: page,
-          pageSize: PAGE_SIZE,
-          total: data?.total ?? 0,
-          onChange: setPage,
-          hideOnSinglePage: true,
-        }}
-        renderItem={(item) => {
-          const cta = ctaFor(item);
-          return (
-            <List.Item style={{ padding: 0, marginBottom: 12, border: "none" }}>
-              <Card style={{ width: "100%", borderRadius: radii.md }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    gap: 12,
-                  }}
-                >
-                  <Space orientation="vertical" size={4} style={{ flex: 1, minWidth: 0 }}>
-                    <Space wrap>
-                      <Typography.Text strong>{item.title}</Typography.Text>
-                      {sourceTag(item.source)}
-                    </Space>
-                    {item.orgName && (
-                      <Typography.Text style={{ fontSize: 13, color: "var(--ex-ink-faint)" }}>
-                        {item.orgName}
-                      </Typography.Text>
-                    )}
-                    {item.examCount > 1 && (
-                      <Typography.Text type="secondary">{item.examCount}টি পরীক্ষা</Typography.Text>
-                    )}
-                  </Space>
-                  <Button type="primary" onClick={() => navigate(cta.to)}>
-                    {cta.label}
-                  </Button>
-                </div>
-              </Card>
-            </List.Item>
-          );
-        }}
-      />
+          )}
+        </>
+      )}
     </div>
   );
 }
