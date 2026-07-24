@@ -53,8 +53,17 @@ export function FilterSheet({ value, onChange }: { value: StoreFilters; onChange
   const isDesktop = Grid.useBreakpoint().md;
   const count = activeFilterCount(value);
 
+  // Desktop: antd's controlled Popover commits the new open value before the cloned
+  // child's onClick runs, so a functional toggle here would invert it straight back
+  // (net no-op). Let onOpenChange own desktop state; mobile has no such wiring and
+  // needs the handler to open the Drawer.
   const trigger = (
-    <PillButton variant="outline" size="sm" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+    <PillButton
+      variant="outline"
+      size="sm"
+      onClick={isDesktop ? undefined : () => setOpen((o) => !o)}
+      aria-expanded={open}
+    >
       <SlidersHorizontal size={15} strokeWidth={1.75} aria-hidden />
       ফিল্টার
       {count > 0 && <span className="ex-filterbadge">{count}</span>}

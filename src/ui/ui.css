@@ -213,6 +213,7 @@
   flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
   border: 1.5px solid var(--ex-line-strong); border-radius: 999px;
   padding: 5px 14px; font-size: 14px; font-family: var(--ex-font); cursor: pointer;
+  font-weight: 400; /* pinned: ancestor bold must not bleed into the unselected pill */
   background: var(--ex-card); color: var(--ex-ink);
   transition: background .15s, border-color .15s, color .15s;
 }
@@ -236,6 +237,8 @@
   font-family: var(--ex-font); font-size: 14px; color: var(--ex-ink);
 }
 .ex-searchbar input::placeholder { color: var(--ex-ink-faint); }
+/* type=search draws a native ✕ in WebKit; we render our own clear button. */
+.ex-searchbar input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
 .ex-searchbar-clear {
   display: inline-flex; border: 0; background: transparent; cursor: pointer;
   color: var(--ex-ink-faint); padding: 4px; border-radius: 999px;

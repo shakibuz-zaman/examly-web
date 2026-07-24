@@ -5,6 +5,7 @@ import { NOTEBOOK_PAGE_SIZE, useNotebook } from "../api/notebook";
 import { useStartPractice } from "../api/practice";
 import { useActiveTrack } from "../features/tracks/TrackContext";
 import { QuestionRevealCard } from "../features/qbank/QuestionRevealCard";
+import { Chip } from "../components/Chip";
 import { Illustration } from "../components/Illustration";
 import { bnNum } from "../lib/bn";
 import type { NotebookEntry } from "../api/types";
@@ -38,40 +39,6 @@ function groupByTopic(entries: NotebookEntry[]): { key: string; label: string; e
     else groups.set(key, { label, entries: [e] });
   }
   return [...groups.entries()].map(([key, g]) => ({ key, ...g }));
-}
-
-// Chip idiom mirrors the qbank pages (Task 10); a third local copy is acceptable per brief.
-function Chip({
-  label,
-  selected,
-  onClick,
-}: {
-  label: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onClick}
-      style={{
-        flex: "0 0 auto",
-        border: "1.5px solid",
-        borderRadius: 999,
-        padding: "5px 14px",
-        fontSize: 14,
-        cursor: "pointer",
-        background: selected ? "var(--ex-teal-tint)" : "var(--ex-card)",
-        borderColor: selected ? "var(--ex-teal)" : "var(--ex-line-strong)",
-        color: selected ? "var(--ex-teal-ink)" : "var(--ex-ink)",
-        fontWeight: selected ? 600 : 400,
-        transition: "background .15s, border-color .15s",
-      }}
-    >
-      {label}
-    </button>
-  );
 }
 
 function EntryHeader({ entry }: { entry: NotebookEntry }) {
