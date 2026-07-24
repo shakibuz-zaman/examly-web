@@ -259,6 +259,56 @@
 }
 .ex-sheet-row { display: flex; flex-wrap: wrap; gap: 8px; }
 
+/* ---- store card (§4 TestCard) ---- */
+.ex-testcard {
+  position: relative; display: flex; flex-direction: column; gap: 8px;
+  padding: 16px; background: var(--ex-card);
+  border-radius: var(--ex-radius-card); box-shadow: var(--ex-shadow-1);
+  cursor: pointer; overflow: hidden;
+}
+.ex-testcard--accent-live::before,
+.ex-testcard--accent-upcoming::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.ex-testcard--accent-live::before { background: var(--ex-coral); }
+.ex-testcard--accent-upcoming::before { background: var(--ex-amber); }
+.ex-testcard-chips { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ex-testcard-title {
+  margin: 0; font-size: 15.5px; font-weight: 700; line-height: 1.35; color: var(--ex-ink);
+}
+.ex-testcard-title mark {
+  background: var(--ex-amber-tint); color: inherit; border-radius: 3px; padding: 0 1px;
+}
+.ex-testcard-org { font-size: 12.5px; color: var(--ex-ink-faint); }
+.ex-testcard-org mark {
+  background: var(--ex-amber-tint); color: inherit; border-radius: 3px; padding: 0 1px;
+}
+.ex-testcard-meta { font-size: 12.5px; color: var(--ex-ink-soft); }
+.ex-testcard-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto;
+}
+.ex-testcard-reg { font-size: 12.5px; color: var(--ex-ink-soft); }
+
+/* ---- dense row (§4 RowItem) ---- */
+.ex-rowitem {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; background: var(--ex-card);
+  border-radius: 14px; box-shadow: var(--ex-shadow-1); margin-bottom: 10px;
+}
+.ex-rowitem--click { cursor: pointer; }
+.ex-rowitem-lead {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.ex-rowitem-main { flex: 1; min-width: 0; }
+.ex-rowitem-title {
+  font-size: 14.5px; font-weight: 600; color: var(--ex-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ex-rowitem-meta { font-size: 12.5px; color: var(--ex-ink-soft); }
+.ex-rowitem-meta .tnum { font-variant-numeric: tabular-nums; }
+.ex-rowitem-trailing { flex: 0 0 auto; }
+
 /* ---- reduced motion kills all of the above ---- */
 @media (prefers-reduced-motion: reduce) {
   .ex-fade-up, .ex-skeleton::after { animation: none; }

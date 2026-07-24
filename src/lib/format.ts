@@ -1,3 +1,5 @@
+import { bnNum } from "./bn";
+
 export function formatDateTime(iso: string | null | undefined): string {
   return iso ? new Date(iso).toLocaleString() : "—";
 }
@@ -18,4 +20,13 @@ export function formatClock(totalSeconds: number): string {
   const mm = String(m).padStart(2, "0");
   const ss = String(sec).padStart(2, "0");
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+// Bengali-numeral duration for card meta (§3.1 — prose counts use bnNum).
+export function formatDurationBn(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0 && m > 0) return `${bnNum(h)} ঘণ্টা ${bnNum(m)} মিনিট`;
+  if (h > 0) return `${bnNum(h)} ঘণ্টা`;
+  return `${bnNum(m)} মিনিট`;
 }
