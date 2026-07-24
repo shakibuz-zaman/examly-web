@@ -9,6 +9,7 @@ import { LiveRail } from "../features/home/LiveRail";
 import { ContinueCard } from "../features/home/ContinueCard";
 import { StreakStrip } from "../features/home/StreakStrip";
 import { PracticeCard } from "../features/home/PracticeCard";
+import { PageContainer } from "../ui/PageContainer";
 
 export function StudentHomePage() {
   const { user } = useAuth();
@@ -63,47 +64,49 @@ export function StudentHomePage() {
   const loading = activeTrackId == null || home.isLoading;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Typography.Title level={3} style={{ margin: 0, color: "var(--ex-ink)" }}>
-        {greeting}
-      </Typography.Title>
+    <PageContainer>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Typography.Title level={3} style={{ margin: 0, color: "var(--ex-ink)" }}>
+          {greeting}
+        </Typography.Title>
 
-      {loading ? (
-        <>
-          <Skeleton active />
-          <Skeleton active />
-          <Skeleton active />
-        </>
-      ) : home.isError ? (
-        <Alert
-          type="error"
-          showIcon
-          title="হোম লোড করা যায়নি"
-          action={
-            <Button size="small" onClick={() => home.refetch()}>
-              আবার চেষ্টা করুন
-            </Button>
-          }
-        />
-      ) : (
-        <>
-          <StreakStrip
-            streak={home.data?.streak ?? null}
-            onRepair={startRepairPractice}
-            repairing={start.isPending}
+        {loading ? (
+          <>
+            <Skeleton active />
+            <Skeleton active />
+            <Skeleton active />
+          </>
+        ) : home.isError ? (
+          <Alert
+            type="error"
+            showIcon
+            title="হোম লোড করা যায়নি"
+            action={
+              <Button size="small" onClick={() => home.refetch()}>
+                আবার চেষ্টা করুন
+              </Button>
+            }
           />
+        ) : (
+          <>
+            <StreakStrip
+              streak={home.data?.streak ?? null}
+              onRepair={startRepairPractice}
+              repairing={start.isPending}
+            />
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <Typography.Title level={5} style={{ margin: 0, color: "var(--ex-ink)" }}>
-              আসন্ন লাইভ
-            </Typography.Title>
-            <LiveRail items={home.data?.liveRail ?? []} />
-          </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <Typography.Title level={5} style={{ margin: 0, color: "var(--ex-ink)" }}>
+                আসন্ন লাইভ
+              </Typography.Title>
+              <LiveRail items={home.data?.liveRail ?? []} />
+            </div>
 
-          <ContinueCard card={home.data?.continueCard ?? null} />
-          <PracticeCard practice={home.data?.practice ?? null} />
-        </>
-      )}
-    </div>
+            <ContinueCard card={home.data?.continueCard ?? null} />
+            <PracticeCard practice={home.data?.practice ?? null} />
+          </>
+        )}
+      </div>
+    </PageContainer>
   );
 }

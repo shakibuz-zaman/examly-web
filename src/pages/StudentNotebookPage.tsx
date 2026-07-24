@@ -8,6 +8,7 @@ import { QuestionRevealCard } from "../features/qbank/QuestionRevealCard";
 import { Illustration } from "../components/Illustration";
 import { bnNum } from "../lib/bn";
 import type { NotebookEntry } from "../api/types";
+import { PageContainer } from "../ui/PageContainer";
 
 type SubjectChip = { id: string; label: string };
 
@@ -117,143 +118,145 @@ export function StudentNotebookPage() {
   const groups = groupByTopic(filtered);
 
   return (
-    <div style={{ paddingBottom: 24 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <Typography.Title level={3} style={{ marginBottom: 0, color: "var(--ex-ink)" }}>
-            ভুলের খাতা
-          </Typography.Title>
-          {dueCount > 0 && (
-            <Typography.Text type="secondary">{bnNum(dueCount)}টি প্রশ্ন ডিউ</Typography.Text>
-          )}
-        </div>
-        <Button
-          type="primary"
-          loading={start.isPending}
-          disabled={activeCount === 0 || !activeTrackId}
-          onClick={() =>
-            start.mutate(
-              { source: "notebook", trackId: activeTrackId! },
-              {
-                onSuccess: (s) => navigate(`/student/practice/${s.id}`),
-                onError: () => message.error("প্র্যাকটিস শুরু করা যায়নি"),
-              },
-            )
-          }
-        >
-          এগুলো প্র্যাকটিস করি
-        </Button>
-      </div>
-
-      <Segmented
-        style={{ margin: "12px 0" }}
-        value={status}
-        onChange={(v) => {
-          setStatus(v as "active" | "resolved");
-          setPage(1); // new bucket → back to the first page
-        }}
-        options={[
-          { label: "সক্রিয়", value: "active" },
-          { label: "সমাধান হয়েছে", value: "resolved" },
-        ]}
-      />
-
-      {subjects.length > 0 && (
+    <PageContainer>
+      <div style={{ paddingBottom: 24 }}>
         <div
           style={{
             display: "flex",
-            gap: 8,
-            overflowX: "auto",
-            paddingBottom: 8,
-            marginBottom: 8,
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 12,
+            flexWrap: "wrap",
           }}
         >
-          <Chip
-            label="সব"
-            selected={activeSubject === null}
-            onClick={() => {
-              setSubjectId(null);
-              setPage(1); // new subject filter → back to the first page
+          <div>
+            <Typography.Title level={3} style={{ marginBottom: 0, color: "var(--ex-ink)" }}>
+              ভুলের খাতা
+            </Typography.Title>
+            {dueCount > 0 && (
+              <Typography.Text type="secondary">{bnNum(dueCount)}টি প্রশ্ন ডিউ</Typography.Text>
+            )}
+          </div>
+          <Button
+            type="primary"
+            loading={start.isPending}
+            disabled={activeCount === 0 || !activeTrackId}
+            onClick={() =>
+              start.mutate(
+                { source: "notebook", trackId: activeTrackId! },
+                {
+                  onSuccess: (s) => navigate(`/student/practice/${s.id}`),
+                  onError: () => message.error("প্র্যাকটিস শুরু করা যায়নি"),
+                },
+              )
+            }
+          >
+            এগুলো প্র্যাকটিস করি
+          </Button>
+        </div>
+
+        <Segmented
+          style={{ margin: "12px 0" }}
+          value={status}
+          onChange={(v) => {
+            setStatus(v as "active" | "resolved");
+            setPage(1); // new bucket → back to the first page
+          }}
+          options={[
+            { label: "সক্রিয়", value: "active" },
+            { label: "সমাধান হয়েছে", value: "resolved" },
+          ]}
+        />
+
+        {subjects.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              overflowX: "auto",
+              paddingBottom: 8,
+              marginBottom: 8,
             }}
-          />
-          {subjects.map((s) => (
+          >
             <Chip
-              key={s.id}
-              label={s.label}
-              selected={activeSubject === s.id}
+              label="সব"
+              selected={activeSubject === null}
               onClick={() => {
-                setSubjectId(s.id);
+                setSubjectId(null);
                 setPage(1); // new subject filter → back to the first page
               }}
             />
-          ))}
-        </div>
-      )}
+            {subjects.map((s) => (
+              <Chip
+                key={s.id}
+                label={s.label}
+                selected={activeSubject === s.id}
+                onClick={() => {
+                  setSubjectId(s.id);
+                  setPage(1); // new subject filter → back to the first page
+                }}
+              />
+            ))}
+          </div>
+        )}
 
-      {loading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
-      ) : isError ? (
-        <Alert
-          type="error"
-          showIcon
-          title="ভুলের খাতা লোড করা যায়নি"
-          action={
-            <Button size="small" onClick={() => refetch()}>
-              আবার চেষ্টা করুন
-            </Button>
-          }
-        />
-      ) : entries.length === 0 ? (
-        <div style={{ padding: "32px 0", textAlign: "center" }}>
-          <Illustration name={status === "active" ? "success" : "empty"} />
-          <Typography.Paragraph style={{ marginTop: 12, color: "var(--ex-ink-soft)" }}>
-            {status === "active" ? "কোনো ভুল জমা নেই — চালিয়ে যান!" : "এখনো কিছু সমাধান হয়নি"}
-          </Typography.Paragraph>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {groups.map((group) => (
-            <div key={group.key}>
-              <Typography.Title level={5} style={{ marginTop: 0, color: "var(--ex-ink)" }}>
-                {group.label}
-              </Typography.Title>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {group.entries.map((entry) => (
-                  <QuestionRevealCard
-                    key={entry.id}
-                    stemHtml={entry.stemHtml}
-                    multipleCorrect={entry.multipleCorrect}
-                    options={entry.options}
-                    explanationHtml={entry.explanationHtml}
-                    takeawayText={entry.takeawayText}
-                    header={<EntryHeader entry={entry} />}
-                  />
-                ))}
+        {loading ? (
+          <Skeleton active paragraph={{ rows: 6 }} />
+        ) : isError ? (
+          <Alert
+            type="error"
+            showIcon
+            title="ভুলের খাতা লোড করা যায়নি"
+            action={
+              <Button size="small" onClick={() => refetch()}>
+                আবার চেষ্টা করুন
+              </Button>
+            }
+          />
+        ) : entries.length === 0 ? (
+          <div style={{ padding: "32px 0", textAlign: "center" }}>
+            <Illustration name={status === "active" ? "success" : "empty"} />
+            <Typography.Paragraph style={{ marginTop: 12, color: "var(--ex-ink-soft)" }}>
+              {status === "active" ? "কোনো ভুল জমা নেই — চালিয়ে যান!" : "এখনো কিছু সমাধান হয়নি"}
+            </Typography.Paragraph>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {groups.map((group) => (
+              <div key={group.key}>
+                <Typography.Title level={5} style={{ marginTop: 0, color: "var(--ex-ink)" }}>
+                  {group.label}
+                </Typography.Title>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {group.entries.map((entry) => (
+                    <QuestionRevealCard
+                      key={entry.id}
+                      stemHtml={entry.stemHtml}
+                      multipleCorrect={entry.multipleCorrect}
+                      options={entry.options}
+                      explanationHtml={entry.explanationHtml}
+                      takeawayText={entry.takeawayText}
+                      header={<EntryHeader entry={entry} />}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {!loading && !isError && total > NOTEBOOK_PAGE_SIZE && (
-        <Pagination
-          style={{ marginTop: 20, textAlign: "center" }}
-          align="center"
-          current={page}
-          pageSize={NOTEBOOK_PAGE_SIZE}
-          total={total}
-          showSizeChanger={false}
-          onChange={(p) => setPage(p)}
-        />
-      )}
-    </div>
+        {!loading && !isError && total > NOTEBOOK_PAGE_SIZE && (
+          <Pagination
+            style={{ marginTop: 20, textAlign: "center" }}
+            align="center"
+            current={page}
+            pageSize={NOTEBOOK_PAGE_SIZE}
+            total={total}
+            showSizeChanger={false}
+            onChange={(p) => setPage(p)}
+          />
+        )}
+      </div>
+    </PageContainer>
   );
 }

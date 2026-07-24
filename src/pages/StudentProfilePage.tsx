@@ -22,6 +22,7 @@ import { useThemeMode } from "../theme/ThemeContext";
 import { TrackPicker } from "../features/tracks/TrackPicker";
 import { formatDateTime } from "../lib/format";
 import type { ThemeMode } from "../theme/tokens";
+import { PageContainer } from "../ui/PageContainer";
 
 // Order status → { antd Tag color, Bangla label } (business plan order lifecycle).
 const ORDER_STATUS: Record<string, { color: string; label: string }> = {
@@ -90,74 +91,76 @@ export function StudentProfilePage() {
   }
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto" }}>
-      <Typography.Title level={3} style={{ color: "var(--ex-ink)" }}>
-        প্রোফাইল
-      </Typography.Title>
+    <PageContainer>
+      <div style={{ maxWidth: 600, margin: "0 auto" }}>
+        <Typography.Title level={3} style={{ color: "var(--ex-ink)" }}>
+          প্রোফাইল
+        </Typography.Title>
 
-      <Descriptions column={1} bordered size="small" style={{ marginTop: 8 }}
-        items={[{ key: "name", label: "নাম", children: user?.name ?? "—" }]}
-      />
+        <Descriptions column={1} bordered size="small" style={{ marginTop: 8 }}
+          items={[{ key: "name", label: "নাম", children: user?.name ?? "—" }]}
+        />
 
-      <Divider />
+        <Divider />
 
-      <Typography.Title level={5} style={{ color: "var(--ex-ink)" }}>
-        থিম
-      </Typography.Title>
-      <Segmented
-        value={mode}
-        onChange={(v) => setMode(v as ThemeMode)}
-        options={[
-          { label: "লাইট", value: "light" },
-          { label: "ডার্ক", value: "dark" },
-        ]}
-      />
+        <Typography.Title level={5} style={{ color: "var(--ex-ink)" }}>
+          থিম
+        </Typography.Title>
+        <Segmented
+          value={mode}
+          onChange={(v) => setMode(v as ThemeMode)}
+          options={[
+            { label: "লাইট", value: "light" },
+            { label: "ডার্ক", value: "dark" },
+          ]}
+        />
 
-      <Divider />
+        <Divider />
 
-      <Typography.Title level={5} style={{ color: "var(--ex-ink)" }}>
-        ট্র্যাক পরিবর্তন
-      </Typography.Title>
-      <Typography.Paragraph style={{ color: "var(--ex-ink-soft)" }}>
-        একাধিক নির্বাচন করা যাবে
-      </Typography.Paragraph>
-      <TrackPicker value={selected} onChange={setDraft} />
-      <Button
-        type="primary"
-        block
-        size="large"
-        style={{ marginTop: 16 }}
-        disabled={selected.length === 0}
-        loading={save.isPending}
-        onClick={onSave}
-      >
-        সংরক্ষণ করুন
-      </Button>
-
-      <Divider />
-
-      <Collapse
-        ghost
-        items={[
-          {
-            key: "orders",
-            label: (
-              <Typography.Text strong style={{ color: "var(--ex-ink)" }}>
-                অর্ডার হিস্টরি
-              </Typography.Text>
-            ),
-            children: <OrdersHistory />,
-          },
-        ]}
-      />
-
-      <Divider />
-
-      <Space orientation="vertical" style={{ width: "100%" }}>
-        <Button danger block onClick={onLogout}>
-          লগআউট
+        <Typography.Title level={5} style={{ color: "var(--ex-ink)" }}>
+          ট্র্যাক পরিবর্তন
+        </Typography.Title>
+        <Typography.Paragraph style={{ color: "var(--ex-ink-soft)" }}>
+          একাধিক নির্বাচন করা যাবে
+        </Typography.Paragraph>
+        <TrackPicker value={selected} onChange={setDraft} />
+        <Button
+          type="primary"
+          block
+          size="large"
+          style={{ marginTop: 16 }}
+          disabled={selected.length === 0}
+          loading={save.isPending}
+          onClick={onSave}
+        >
+          সংরক্ষণ করুন
         </Button>
-      </Space>
-    </div>
+
+        <Divider />
+
+        <Collapse
+          ghost
+          items={[
+            {
+              key: "orders",
+              label: (
+                <Typography.Text strong style={{ color: "var(--ex-ink)" }}>
+                  অর্ডার হিস্টরি
+                </Typography.Text>
+              ),
+              children: <OrdersHistory />,
+            },
+          ]}
+        />
+
+        <Divider />
+
+        <Space orientation="vertical" style={{ width: "100%" }}>
+          <Button danger block onClick={onLogout}>
+            লগআউট
+          </Button>
+        </Space>
+      </div>
+    </PageContainer>
   );
 }

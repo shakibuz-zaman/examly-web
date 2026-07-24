@@ -6,6 +6,7 @@ import { CheckoutSheet } from "../components/CheckoutSheet";
 import { formatDateTime, formatDuration } from "../lib/format";
 import type { StudentBundleExam } from "../api/types";
 import { ATTEMPT_STATUS_COLORS } from "../theme/status";
+import { PageContainer } from "../ui/PageContainer";
 
 const STATUS_LABELS: Record<StudentBundleExam["myStatus"], string> = {
   not_started: "Not started",
@@ -20,98 +21,110 @@ export function StudentModelTestPage() {
   const navigate = useNavigate();
   const [buyOpen, setBuyOpen] = useState(false);
 
-  if (isLoading) return <Spin style={{ display: "block", marginTop: 80 }} />;
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <Spin style={{ display: "block", marginTop: 80 }} />
+      </PageContainer>
+    );
+  }
   if (isError || !bundle) {
-    return <Typography.Text type="danger">This model test is not available.</Typography.Text>;
+    return (
+      <PageContainer>
+        <Typography.Text type="danger">This model test is not available.</Typography.Text>
+      </PageContainer>
+    );
   }
 
   const listing = bundle.listing;
   const ownedPaid = listing.owned && listing.priceBdt > 0;
 
   return (
-    <div>
-      <Space wrap align="center">
-        <Typography.Title level={3} style={{ marginBottom: 0 }}>
-          {bundle.title}
-        </Typography.Title>
-        {ownedPaid && <Tag color="cyan">কেনা আছে</Tag>}
-      </Space>
-      {bundle.orgName && (
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          {bundle.orgName}
-        </Typography.Paragraph>
-      )}
-      {bundle.description && (
-        <Typography.Paragraph style={{ marginTop: 8 }}>{bundle.description}</Typography.Paragraph>
-      )}
-      {listing.canBuy && (
-        <Button
-          type="primary"
-          size="large"
-          style={{ marginTop: 8 }}
-          onClick={() => setBuyOpen(true)}
-        >
-          ৳{listing.priceBdt} — কিনুন
-        </Button>
-      )}
+    <PageContainer>
+      <div>
+        <Space wrap align="center">
+          <Typography.Title level={3} style={{ marginBottom: 0 }}>
+            {bundle.title}
+          </Typography.Title>
+          {ownedPaid && <Tag color="cyan">কেনা আছে</Tag>}
+        </Space>
+        {bundle.orgName && (
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            {bundle.orgName}
+          </Typography.Paragraph>
+        )}
+        {bundle.description && (
+          <Typography.Paragraph style={{ marginTop: 8 }}>{bundle.description}</Typography.Paragraph>
+        )}
+        {listing.canBuy && (
+          <Button
+            type="primary"
+            size="large"
+            style={{ marginTop: 8 }}
+            onClick={() => setBuyOpen(true)}
+          >
+            ৳{listing.priceBdt} — কিনুন
+          </Button>
+        )}
 
-      <CheckoutSheet
-        open={buyOpen}
-        onClose={() => setBuyOpen(false)}
-        listingId={listing.listingId}
-        title={bundle.title}
-        priceBdt={listing.priceBdt}
-        onPurchased={() => {
-          // Ownership invalidations run inside useStubPay; the bundle page refetches on its own.
-          // The sheet shows its success screen then auto-closes itself.
-        }}
-      />
+        <CheckoutSheet
+          open={buyOpen}
+          onClose={() => setBuyOpen(false)}
+          listingId={listing.listingId}
+          title={bundle.title}
+          priceBdt={listing.priceBdt}
+          onPurchased={() => {
+            // Ownership invalidations run inside useStubPay; the bundle page refetches on its own.
+            // The sheet shows its success screen then auto-closes itself.
+          }}
+        />
 
-      <div style={{ marginTop: 16 }}>
-        {bundle.exams.map((exam) => {
-          const finalized = exam.myStatus === "submitted" || exam.myStatus === "expired";
-          return (
-            <Card key={exam.id} size="small" style={{ marginBottom: 12 }}>
-              <Space orientation="vertical" size={4} style={{ width: "100%" }}>
-                <Space wrap>
-                  <Typography.Text strong>{exam.title}</Typography.Text>
-                  <Tag color={ATTEMPT_STATUS_COLORS[exam.myStatus] ?? "default"}>
-                    {STATUS_LABELS[exam.myStatus]}
-                  </Tag>
-                </Space>
-                <Typography.Text type="secondary">
-                  {exam.questionCount} questions · {formatDuration(exam.durationMinutes)} ·{" "}
-                  {exam.totalMarks} marks
-                  {exam.windowStartUtc ? ` · window ${formatDateTime(exam.windowStartUtc)} → ${formatDateTime(exam.windowEndUtc)}` : ""}
-                </Typography.Text>
-                {finalized && exam.myRevealed && exam.myScore !== null && (
-                  <Typography.Text strong>
-                    Score: {exam.myScore} / {exam.myMaxScore}
-                  </Typography.Text>
-                )}
-                {finalized && !exam.myRevealed && (
+        <div style={{ marginTop: 16 }}>
+          {bundle.exams.map((exam) => {
+            const finalized = exam.myStatus === "submitted" || exam.myStatus === "expired";
+            return (
+              <Card key={exam.id} size="small" style={{ marginBottom: 12 }}>
+                <Space orientation="vertical" size={4} style={{ width: "100%" }}>
+                  <Space wrap>
+                    <Typography.Text strong>{exam.title}</Typography.Text>
+                    <Tag color={ATTEMPT_STATUS_COLORS[exam.myStatus] ?? "default"}>
+                      {STATUS_LABELS[exam.myStatus]}
+                    </Tag>
+                  </Space>
                   <Typography.Text type="secondary">
-                    Results at {formatDateTime(exam.revealAtUtc)}
+                    {exam.questionCount} questions · {formatDuration(exam.durationMinutes)} ·{" "}
+                    {exam.totalMarks} marks
+                    {exam.windowStartUtc ? ` · window ${formatDateTime(exam.windowStartUtc)} → ${formatDateTime(exam.windowEndUtc)}` : ""}
                   </Typography.Text>
-                )}
-                <Space wrap>
-                  <Button onClick={() => navigate(`/student/exams/${exam.id}`)}>Open</Button>
-                  {exam.myStatus === "in_progress" && (
-                    <Button type="primary" onClick={() => navigate(`/student/exams/${exam.id}/take`)}>
-                      Resume
-                    </Button>
+                  {finalized && exam.myRevealed && exam.myScore !== null && (
+                    <Typography.Text strong>
+                      Score: {exam.myScore} / {exam.myMaxScore}
+                    </Typography.Text>
                   )}
-                  {finalized && exam.myRevealed && exam.myAttemptId && (
-                    <Button onClick={() => navigate(`/student/attempts/${exam.myAttemptId}/result`)}>
-                      Review
-                    </Button>
+                  {finalized && !exam.myRevealed && (
+                    <Typography.Text type="secondary">
+                      Results at {formatDateTime(exam.revealAtUtc)}
+                    </Typography.Text>
                   )}
+                  <Space wrap>
+                    <Button onClick={() => navigate(`/student/exams/${exam.id}`)}>Open</Button>
+                    {exam.myStatus === "in_progress" && (
+                      <Button type="primary" onClick={() => navigate(`/student/exams/${exam.id}/take`)}>
+                        Resume
+                      </Button>
+                    )}
+                    {finalized && exam.myRevealed && exam.myAttemptId && (
+                      <Button onClick={() => navigate(`/student/attempts/${exam.myAttemptId}/result`)}>
+                        Review
+                      </Button>
+                    )}
+                  </Space>
                 </Space>
-              </Space>
-            </Card>
-          );
-        })}
+              </Card>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
