@@ -54,7 +54,10 @@
 .ex-appbar-inner {
   display: flex; align-items: center; gap: 12px;
   height: 56px; max-width: 1040px; margin: 0 auto; padding: 0 16px;
+  transition: height .15s ease-out;
 }
+/* ---- compact bar (§5: 52px sticky once the hero band has scrolled away) ---- */
+.ex-appbar.is-compact .ex-appbar-inner { height: 52px; }
 @media (min-width: 768px) { .ex-appbar-inner { gap: 16px; padding: 0 24px; } }
 .ex-appbar-logo {
   font-weight: 700; font-size: 17px; color: var(--ex-band-ink); text-decoration: none;
@@ -332,4 +335,5 @@
   .ex-hover-lift, .ex-hover-lift:hover, .ex-hover-lift:active,
   .ex-tabbar-link, .ex-tabbar-link:active { transition: none; transform: none; }
   .ex-btn, .ex-btn:active { transition: none; transform: none; }
+  .ex-appbar-inner { transition: none; }
 }

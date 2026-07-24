@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Dropdown, Grid } from "antd";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Search, Sun } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { categoryShortLabel } from "../api/categories";
 import { useThemeMode } from "../theme/ThemeContext";
 import { useActiveTrack } from "../features/tracks/TrackContext";
+import { getBandVisible, subscribeBand } from "./bandSentinel";
 import { STUDENT_NAV } from "./nav";
 
 // rAF-throttled scroll flag for the sticky bar's shadow.
@@ -61,6 +62,9 @@ export function AppHeader() {
   const { mode, toggle } = useThemeMode();
   const isDesktop = Grid.useBreakpoint().md;
   const scrolled = useScrolled();
+  // Band-less pages keep the sentinel at its default `true`, so they never compact.
+  const bandVisible = useSyncExternalStore(subscribeBand, getBandVisible);
+  const compact = isDesktop === true && !bandVisible;
 
   const initial = (user?.name ?? "").trim().charAt(0) || "প";
 
@@ -74,7 +78,11 @@ export function AppHeader() {
   ];
 
   return (
-    <header className={scrolled ? "ex-appbar is-scrolled" : "ex-appbar"}>
+    <header
+      className={["ex-appbar", scrolled ? "is-scrolled" : "", compact ? "is-compact" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="ex-appbar-inner">
         <Link to="/student/home" className="ex-appbar-logo">
           Examly
@@ -90,6 +98,23 @@ export function AppHeader() {
           </nav>
         )}
         <div className="ex-appbar-right">
+          {compact && (
+            <button
+              type="button"
+              className="ex-appbar-iconbtn"
+              aria-label="খুঁজুন"
+              onClick={() => {
+                const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+                window.setTimeout(
+                  () => document.getElementById("ex-page-search")?.focus(),
+                  reduce ? 0 : 350,
+                );
+              }}
+            >
+              <Search size={17} strokeWidth={1.75} />
+            </button>
+          )}
           <TrackPill />
           {isDesktop && (
             <button
