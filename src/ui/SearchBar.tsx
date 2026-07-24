@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
+import { setSearchTargetPresent } from "./bandSentinel";
+
+// The id the compact app bar's search shortcut focuses (AppHeader, plan 7b Task 10).
+const COMPACT_FOCUS_ID = "ex-page-search";
 
 // Floating level-2 search (§4). Debounces 300ms into onSearch; `/` focuses when
 // hotkey is on (skipped while another input has focus). id is the compact bar's
@@ -7,7 +11,7 @@ import { Search, X } from "lucide-react";
 export function SearchBar({
   placeholder,
   onSearch,
-  id = "ex-page-search",
+  id = COMPACT_FOCUS_ID,
   hotkey = true,
 }: {
   placeholder: string;
@@ -28,6 +32,15 @@ export function SearchBar({
     const t = window.setTimeout(() => onSearchRef.current(value.trim()), 300);
     return () => window.clearTimeout(t);
   }, [value]);
+
+  // Tell the app bar a focus target exists, so the compact bar only shows its
+  // search shortcut while this input is actually mounted (e.g. not on the
+  // "আমার পরীক্ষা" tab, which renders no SearchBar).
+  useEffect(() => {
+    if (id !== COMPACT_FOCUS_ID) return;
+    setSearchTargetPresent(true);
+    return () => setSearchTargetPresent(false);
+  }, [id]);
 
   useEffect(() => {
     if (!hotkey) return;

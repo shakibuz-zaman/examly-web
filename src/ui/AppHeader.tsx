@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Dropdown, Grid } from "antd";
 import { Moon, Search, Sun } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
@@ -6,7 +6,12 @@ import { useAuth } from "../auth/useAuth";
 import { categoryShortLabel } from "../api/categories";
 import { useThemeMode } from "../theme/ThemeContext";
 import { useActiveTrack } from "../features/tracks/TrackContext";
-import { getBandVisible, subscribeBand } from "./bandSentinel";
+import {
+  getBandVisible,
+  getSearchTargetPresent,
+  subscribeBand,
+  subscribeSearchTarget,
+} from "./bandSentinel";
 import { STUDENT_NAV } from "./nav";
 
 // rAF-throttled scroll flag for the sticky bar's shadow.
@@ -65,6 +70,13 @@ export function AppHeader() {
   // Band-less pages keep the sentinel at its default `true`, so they never compact.
   const bandVisible = useSyncExternalStore(subscribeBand, getBandVisible);
   const compact = isDesktop === true && !bandVisible;
+  // Only offer the search shortcut when a SearchBar is actually mounted to focus —
+  // otherwise the icon would be dead (e.g. the catalog's "আমার পরীক্ষা" tab).
+  const searchTargetPresent = useSyncExternalStore(subscribeSearchTarget, getSearchTargetPresent);
+
+  // Tracked so an in-flight focus never fires after unmount.
+  const focusTimerRef = useRef(0);
+  useEffect(() => () => window.clearTimeout(focusTimerRef.current), []);
 
   const initial = (user?.name ?? "").trim().charAt(0) || "প";
 
@@ -98,7 +110,7 @@ export function AppHeader() {
           </nav>
         )}
         <div className="ex-appbar-right">
-          {compact && (
+          {compact && searchTargetPresent && (
             <button
               type="button"
               className="ex-appbar-iconbtn"
@@ -106,13 +118,16 @@ export function AppHeader() {
               onClick={() => {
                 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
                 window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
-                window.setTimeout(
-                  () => document.getElementById("ex-page-search")?.focus(),
+                window.clearTimeout(focusTimerRef.current);
+                focusTimerRef.current = window.setTimeout(
+                  // preventScroll: a plain focus() would scroll the input into view
+                  // itself, which cancels the smooth scroll mid-animation.
+                  () => document.getElementById("ex-page-search")?.focus({ preventScroll: true }),
                   reduce ? 0 : 350,
                 );
               }}
             >
-              <Search size={17} strokeWidth={1.75} />
+              <Search size={17} strokeWidth={1.75} aria-hidden />
             </button>
           )}
           <TrackPill />
