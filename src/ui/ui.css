@@ -208,6 +208,54 @@
 .ex-skel-card { height: 132px; border-radius: var(--ex-radius-card); }
 .ex-skel-row { height: 64px; border-radius: 14px; }
 
+/* ---- filter chip (shared atom — components/Chip + FilterChips render this) ---- */
+.ex-chip {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
+  border: 1.5px solid var(--ex-line-strong); border-radius: 999px;
+  padding: 5px 14px; font-size: 14px; font-family: var(--ex-font); cursor: pointer;
+  background: var(--ex-card); color: var(--ex-ink);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.ex-chip:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: 2px; }
+/* §4: selected = dark inverse pill */
+.ex-chip.is-selected {
+  background: var(--ex-ink); border-color: var(--ex-ink);
+  color: var(--ex-bg); font-weight: 600;
+}
+
+/* ---- floating search (level-2, overlaps the band edge) ---- */
+.ex-searchbar {
+  display: flex; align-items: center; gap: 8px;
+  height: 46px; padding: 0 16px; border-radius: 14px;
+  background: var(--ex-card); border: 1px solid var(--ex-line);
+  box-shadow: var(--ex-shadow-2); color: var(--ex-ink-faint);
+}
+.ex-searchbar:focus-within { border-color: var(--ex-teal); }
+.ex-searchbar input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+  font-family: var(--ex-font); font-size: 14px; color: var(--ex-ink);
+}
+.ex-searchbar input::placeholder { color: var(--ex-ink-faint); }
+.ex-searchbar-clear {
+  display: inline-flex; border: 0; background: transparent; cursor: pointer;
+  color: var(--ex-ink-faint); padding: 4px; border-radius: 999px;
+}
+.ex-searchbar-clear:hover { color: var(--ex-ink); }
+.ex-searchbar-clear:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: 2px; }
+
+/* ---- filter-sheet trigger badge + body ---- */
+.ex-filterbadge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: var(--ex-teal); color: var(--ex-on-solid); font-size: 11px; font-weight: 700;
+}
+.ex-sheet-group { margin-bottom: 16px; }
+.ex-sheet-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .09em; color: var(--ex-ink-faint); margin-bottom: 8px;
+}
+.ex-sheet-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
 /* ---- reduced motion kills all of the above ---- */
 @media (prefers-reduced-motion: reduce) {
   .ex-fade-up, .ex-skeleton::after { animation: none; }
