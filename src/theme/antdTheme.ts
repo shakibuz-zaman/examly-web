@@ -28,7 +28,7 @@ export function buildTheme(density: AppDensity, mode: ThemeMode): ThemeConfig {
       colorTextTertiary: p.inkFaint,
       colorBorder: p.lineStrong,
       colorBorderSecondary: p.line,
-      borderRadius: density === "student" ? 12 : 10,
+      borderRadius: density === "student" ? 14 : 10,
       fontFamily: FONT_STACK,
       fontSize: density === "student" ? 15 : 14,
       controlHeight: density === "student" ? 40 : 32,

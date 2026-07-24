@@ -22,6 +22,10 @@ export function applyCssVars(mode: ThemeMode): void {
     "--ex-green": p.green, "--ex-green-tint": p.greenTint,
     "--ex-red": p.red, "--ex-red-tint": p.redTint,
     "--ex-on-solid": p.onSolid,
+    "--ex-band-from": p.bandFrom, "--ex-band-to": p.bandTo,
+    "--ex-band-ink": p.bandInk, "--ex-band-ink-soft": p.bandInkSoft,
+    "--ex-band-pill": p.bandPill, "--ex-band-pill-hover": p.bandPillHover,
+    "--ex-shadow-1": p.shadow1, "--ex-shadow-2": p.shadow2,
   };
   for (const [k, v] of Object.entries(map)) root.style.setProperty(k, v);
 }
