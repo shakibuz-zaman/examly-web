@@ -22,6 +22,24 @@ export function formatClock(totalSeconds: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+const MONTHS_BN = [
+  "জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন",
+  "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর",
+];
+
+// Dhaka-pinned (+06:00 fixed) short datetime in Bengali digits: «২৫ জুলাই, ৩:০৫ PM».
+// Prose datetimes are Bengali-first (spec §3.1); AM/PM stays Latin per common BD usage.
+export function formatDhakaShortBn(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  const d = new Date(t + 6 * 3_600_000);
+  let h = d.getUTCHours();
+  const ampm = h < 12 ? "AM" : "PM";
+  h = h % 12 || 12;
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${bnNum(d.getUTCDate())} ${MONTHS_BN[d.getUTCMonth()]}, ${bnNum(h)}:${bnNum(mm)} ${ampm}`;
+}
+
 // Bengali-numeral duration for card meta (§3.1 — prose counts use bnNum).
 export function formatDurationBn(minutes: number): string {
   const h = Math.floor(minutes / 60);

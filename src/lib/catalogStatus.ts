@@ -7,9 +7,16 @@ export type CatalogTimeStatus = "live" | "upcoming" | "anytime" | "ended";
 const DHAKA_OFFSET_MS = 6 * 3_600_000;
 const dhakaDay = (ms: number) => Math.floor((ms + DHAKA_OFFSET_MS) / 86_400_000);
 
+// Malformed/absent timestamps read as "no window" — never silently as লাইভ.
+const ms = (s: string | null | undefined): number | null => {
+  if (!s) return null;
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? null : t;
+};
+
 export function catalogStatus(item: CatalogItem, now: number): CatalogTimeStatus {
-  const start = item.windowStartUtc ? Date.parse(item.windowStartUtc) : null;
-  const end = item.windowEndUtc ? Date.parse(item.windowEndUtc) : null;
+  const start = ms(item.windowStartUtc);
+  const end = ms(item.windowEndUtc);
   if (end !== null && now >= end) return "ended";
   if (start !== null && now < start) return "upcoming";
   if (item.mode === "live" && start !== null) return "live";
@@ -20,8 +27,10 @@ export function catalogStatus(item: CatalogItem, now: number): CatalogTimeStatus
 export function isLiveTodaySection(item: CatalogItem, now: number): boolean {
   const s = catalogStatus(item, now);
   if (s === "live") return true;
-  if (s === "upcoming" && item.windowStartUtc) {
-    return dhakaDay(Date.parse(item.windowStartUtc)) === dhakaDay(now);
+  // Mirror the API's LiveTodayCount: only Mode==live items join the section.
+  if (s === "upcoming" && item.mode === "live") {
+    const start = ms(item.windowStartUtc);
+    return start !== null && dhakaDay(start) === dhakaDay(now);
   }
   return false;
 }
