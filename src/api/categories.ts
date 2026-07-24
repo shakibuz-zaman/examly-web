@@ -88,3 +88,8 @@ export function useUpdateExamCategory() {
 export function categoryLabel(c: ExamCategoryResponse): string {
   return c.name.bn && c.name.en ? `${c.name.bn} — ${c.name.en}` : c.name.en ?? c.name.bn ?? c.slug;
 }
+
+// Short Bengali-first label for tight chrome (track pill, chips) — no "bn — en" combo.
+export function categoryShortLabel(c: ExamCategoryResponse): string {
+  return c.name.bn || c.name.en || c.slug;
+}

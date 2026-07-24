@@ -28,6 +28,7 @@
     "axios": "^1.16.1",
     "dayjs": "^1.11.21",
     "katex": "^0.16.46",
+    "lucide-react": "^1.26.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-hook-form": "^7.75.0",
