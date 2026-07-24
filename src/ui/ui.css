@@ -151,9 +151,67 @@
 .ex-tabbar-link.active .ex-tabbar-label { font-weight: 700; }
 .ex-tabbar-link:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: -2px; }
 
+/* ---- status chips (§3.4: tint bg + dot + ink; price/ownership variants) ---- */
+.ex-chipstat {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 10px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 600; white-space: nowrap;
+}
+.ex-chipstat-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+.ex-chipstat--live { background: var(--ex-coral-tint); color: var(--ex-coral); }
+.ex-chipstat--upcoming { background: var(--ex-amber-tint); color: var(--ex-amber); }
+.ex-chipstat--anytime { background: var(--ex-teal-tint); color: var(--ex-teal-ink); }
+.ex-chipstat--ended { background: var(--ex-stage); color: var(--ex-ink-faint); }
+.ex-chipstat--free { background: var(--ex-green-tint); color: var(--ex-green); }
+.ex-chipstat--price {
+  background: var(--ex-stage); color: var(--ex-ink);
+  border: 1px solid var(--ex-line-strong); font-weight: 700;
+}
+.ex-chipstat--owned { background: var(--ex-purple-tint); color: var(--ex-purple); }
+
+/* ---- pill buttons (§3.5) ---- */
+.ex-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 36px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer;
+  font-family: var(--ex-font); font-size: 14px; font-weight: 600; white-space: nowrap;
+  transition: background .15s ease-out, box-shadow .15s ease-out, transform .1s ease-out;
+}
+.ex-btn:active { transform: scale(.97); }
+.ex-btn:disabled { opacity: .55; cursor: default; }
+.ex-btn:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: 2px; }
+.ex-btn--primary {
+  background: var(--ex-teal); color: var(--ex-on-solid);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ex-teal) 35%, transparent);
+}
+.ex-btn--primary:hover { background: var(--ex-teal-hover); }
+.ex-btn--tonal { background: var(--ex-teal-tint); color: var(--ex-teal-ink); }
+.ex-btn--tonal:hover { background: var(--ex-teal-tint-2); }
+.ex-btn--outline { background: transparent; border: 1.5px solid var(--ex-line-strong); color: var(--ex-ink); }
+.ex-btn--outline:hover { border-color: var(--ex-teal); color: var(--ex-teal-ink); }
+.ex-btn--ghost { background: transparent; color: var(--ex-coral); }
+.ex-btn--sm { height: 30px; padding: 0 14px; font-size: 13px; }
+
+/* ---- section header (overline + rule + trailing) ---- */
+.ex-secheader { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; }
+.ex-secheader-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .09em; color: var(--ex-ink-faint); white-space: nowrap;
+}
+.ex-secheader-rule { flex: 1; height: 1px; background: var(--ex-line); }
+.ex-secheader-trailing { font-size: 12.5px; color: var(--ex-ink-soft); white-space: nowrap; }
+
+/* ---- empty state ---- */
+.ex-empty { text-align: center; padding: 40px 0; }
+.ex-empty-msg { margin: 12px 0 16px; font-size: 14px; color: var(--ex-ink-soft); }
+
+/* ---- skeleton shapes (base .ex-skeleton ships shimmer) ---- */
+.ex-skel-card { height: 132px; border-radius: var(--ex-radius-card); }
+.ex-skel-row { height: 64px; border-radius: 14px; }
+
 /* ---- reduced motion kills all of the above ---- */
 @media (prefers-reduced-motion: reduce) {
   .ex-fade-up, .ex-skeleton::after { animation: none; }
   .ex-hover-lift, .ex-hover-lift:hover, .ex-hover-lift:active,
   .ex-tabbar-link, .ex-tabbar-link:active { transition: none; transform: none; }
+  .ex-btn, .ex-btn:active { transition: none; transform: none; }
 }
