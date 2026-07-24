@@ -15,7 +15,7 @@
 /* ---- surfaces ---- */
 .ex-card {
   background: var(--ex-card);
-  border-radius: 18px;
+  border-radius: var(--ex-radius-card);
   box-shadow: var(--ex-shadow-1);
 }
 .ex-hover-lift { transition: transform .15s ease-out, box-shadow .15s ease-out; }
@@ -99,9 +99,12 @@
 .ex-appbar a:focus-visible,
 .ex-appbar button:focus-visible { outline: 2px solid var(--ex-band-ink); outline-offset: 2px; }
 
-/* ---- hero band (per-page extension under the app bar) ---- */
+/* ---- hero band (per-page extension under the app bar) ----
+   Gradient is near-vertical (175deg, not the spec's original 135deg/160deg):
+   at wide viewports a diagonal ramp made the band's top edge disagree with the
+   flat app-bar fill and read as a seam. User decision 2026-07-25 (7a final review). */
 .ex-heroband {
-  background: linear-gradient(160deg, var(--ex-band-from), var(--ex-band-to));
+  background: linear-gradient(175deg, var(--ex-band-from), var(--ex-band-to));
   padding: 8px 0 20px;
 }
 .ex-heroband--overlap { padding-bottom: 44px; }

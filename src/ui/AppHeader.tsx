@@ -1,22 +1,12 @@
 import { useEffect, useState } from "react";
 import { Dropdown, Grid } from "antd";
-import {
-  BookOpen, FileText, House, Moon, NotebookPen, Sun, TrendingUp, type LucideIcon,
-} from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { categoryShortLabel } from "../api/categories";
 import { useThemeMode } from "../theme/ThemeContext";
 import { useActiveTrack } from "../features/tracks/TrackContext";
-
-// eslint-disable-next-line react-refresh/only-export-components -- house pattern (see theme/ThemeContext.tsx); BottomTabBar consumes this
-export const STUDENT_NAV: { to: string; label: string; Icon: LucideIcon }[] = [
-  { to: "/student/home", label: "হোম", Icon: House },
-  { to: "/student/qbank", label: "প্রশ্নব্যাংক", Icon: BookOpen },
-  { to: "/student/tests", label: "মডেল টেস্ট", Icon: FileText },
-  { to: "/student/notebook", label: "ভুলের খাতা", Icon: NotebookPen },
-  { to: "/student/progress", label: "প্রোগ্রেস", Icon: TrendingUp },
-];
+import { STUDENT_NAV } from "./nav";
 
 // rAF-throttled scroll flag for the sticky bar's shadow.
 function useScrolled(threshold = 8): boolean {
