@@ -7,13 +7,9 @@ import { Chip } from "../components/Chip";
 import { Illustration } from "../components/Illustration";
 import { bnNum } from "../lib/bn";
 import { radii } from "../theme/tokens";
-import type { CategoryNode } from "../api/categories";
+import { categoryShortLabel } from "../api/categories";
 import type { QbankPaperSummary } from "../api/types";
 import { PageContainer } from "../ui/PageContainer";
-
-function chipLabel(c: CategoryNode): string {
-  return c.name.bn || c.name.en || c.slug;
-}
 
 // Papers grouped by year, newest first, so the list reads like a shelf of past papers.
 function groupByYear(papers: QbankPaperSummary[]): [number, QbankPaperSummary[]][] {
@@ -82,7 +78,7 @@ export function StudentQbankPage() {
             {collections.map((c) => (
               <Chip
                 key={c.id}
-                label={chipLabel(c)}
+                label={categoryShortLabel(c)}
                 selected={activeCollection === c.id}
                 onClick={() => {
                   setCollectionId(c.id);

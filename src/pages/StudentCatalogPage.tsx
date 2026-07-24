@@ -9,7 +9,7 @@ import { MyExamsList } from "./student/MyExamsList";
 import { formatDateTime, formatDuration } from "../lib/format";
 import { radii } from "../theme/tokens";
 import type { CatalogItem } from "../api/types";
-import type { CategoryNode } from "../api/categories";
+import { categoryShortLabel } from "../api/categories";
 import { PageContainer } from "../ui/PageContainer";
 import { HeroBand } from "../ui/HeroBand";
 
@@ -31,10 +31,6 @@ function windowTag(item: CatalogItem) {
     return <Tag color="gold">চলছে · {formatDateTime(item.windowEndUtc)} পর্যন্ত</Tag>;
   }
   return <Tag>শেষ</Tag>;
-}
-
-function chipLabel(c: CategoryNode): string {
-  return c.name.bn || c.name.en || c.slug;
 }
 
 export function StudentCatalogPage() {
@@ -130,7 +126,7 @@ export function StudentCatalogPage() {
                   {collections.map((c) => (
                     <Chip
                       key={c.id}
-                      label={chipLabel(c)}
+                      label={categoryShortLabel(c)}
                       selected={activeCollection === c.id}
                       onClick={() => selectCollection(c.id)}
                     />

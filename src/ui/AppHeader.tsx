@@ -41,7 +41,11 @@ function TrackPill() {
   if (tracks.length === 0) return null;
   const active = tracks.find((t) => t.id === activeTrackId) ?? tracks[0];
   if (tracks.length === 1) {
-    return <span className="ex-track-pill ex-track-pill--static">{categoryShortLabel(active)}</span>;
+    return (
+      <span className="ex-track-pill ex-track-pill--static">
+        <span className="ex-track-pill-label">{categoryShortLabel(active)}</span>
+      </span>
+    );
   }
   return (
     <Dropdown
@@ -54,7 +58,8 @@ function TrackPill() {
       }}
     >
       <button type="button" className="ex-track-pill">
-        {categoryShortLabel(active)} ▾
+        <span className="ex-track-pill-label">{categoryShortLabel(active)}</span>
+        <span aria-hidden>▾</span>
       </button>
     </Dropdown>
   );

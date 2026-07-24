@@ -25,7 +25,7 @@ export function HeroBand({
       <div className="ex-heroband-inner">
         {back && (
           <Link className="ex-heroband-back" to={back.to}>
-            ‹ {back.label}
+            <span aria-hidden>‹</span> {back.label}
           </Link>
         )}
         <div className="ex-heroband-titlerow">

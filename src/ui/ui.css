@@ -75,7 +75,12 @@
   height: 30px; padding: 0 14px; border-radius: 999px; border: 0; cursor: pointer;
   background: var(--ex-band-pill); color: var(--ex-band-ink);
   font-size: 12.5px; font-family: var(--ex-font); white-space: nowrap;
-  max-width: 180px; overflow: hidden; text-overflow: ellipsis;
+  max-width: 180px;
+}
+/* ellipsis must live on a non-flex child — text-overflow is inert on a flex container,
+   and min-width:0 lets the label shrink below its content width so it can truncate. */
+.ex-track-pill-label {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ex-track-pill--static { cursor: default; }
 .ex-appbar-iconbtn {
