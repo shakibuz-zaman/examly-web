@@ -90,7 +90,11 @@ export function FilterSheet({ value, onChange }: { value: StoreFilters; onChange
         open={open}
         onClose={() => setOpen(false)}
         placement="bottom"
-        height="auto"
+        // antd 6 deprecated `height`/`width` in favour of `size`. `size` takes the
+        // "default"/"large" presets, a number, OR any other CSS length string — a
+        // non-numeric string is forwarded verbatim as the wrapper's height, so
+        // "auto" keeps the content-sized bottom sheet without the console warning.
+        size="auto"
         title="ফিল্টার"
       >
         <SheetBody value={value} onChange={onChange} />

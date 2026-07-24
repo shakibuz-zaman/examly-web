@@ -307,6 +307,25 @@
 .ex-rowitem-meta .tnum { font-variant-numeric: tabular-nums; }
 .ex-rowitem-trailing { flex: 0 0 auto; }
 
+/* ---- band pill tabs (§6 — replaces Segmented) ---- */
+.ex-bandtab {
+  height: 32px; padding: 0 16px; border-radius: 999px; border: 0; cursor: pointer;
+  background: transparent; color: var(--ex-band-ink-soft);
+  font-family: var(--ex-font); font-size: 13.5px; font-weight: 500;
+  transition: background .15s, color .15s;
+}
+.ex-bandtab:hover { background: var(--ex-band-pill-hover); color: var(--ex-band-ink); }
+.ex-bandtab.is-active { background: var(--ex-band-pill); color: var(--ex-band-ink); font-weight: 600; }
+.ex-bandtab:focus-visible { outline: 2px solid var(--ex-band-ink); outline-offset: 2px; }
+
+/* ---- store card grid (§6: 2-col desktop, 1-col mobile) ---- */
+.ex-cardgrid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 768px) { .ex-cardgrid { grid-template-columns: 1fr 1fr; } }
+
+/* ---- filter row layout: chips scroll, sheet trigger stays put ---- */
+.ex-filterrow { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
+.ex-filterrow > .ex-scroll-x { flex: 1; min-width: 0; }
+
 /* ---- reduced motion kills all of the above ---- */
 @media (prefers-reduced-motion: reduce) {
   .ex-fade-up, .ex-skeleton::after { animation: none; }
