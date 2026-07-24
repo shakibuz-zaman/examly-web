@@ -17,7 +17,13 @@ type Group = "running" | "upcoming" | "results";
 // Recorded deviation 3: never-attempted lands in চলমান, not a fourth "not started"
 // group — an owned exam whose window is open is actionable now either way.
 function groupOf(item: MyExamItem, now: number): Group {
-  if (item.productType === "exam" && item.latestAttemptStatus === "submitted") return "results";
+  // `expired` is finalised and scored just like `submitted` (overdue finalisation writes the
+  // score), so a timed-out attempt belongs in ফলাফল — not in চলমান behind a Play icon.
+  if (
+    item.productType === "exam" &&
+    (item.latestAttemptStatus === "submitted" || item.latestAttemptStatus === "expired")
+  )
+    return "results";
   if (item.windowStartUtc && Date.parse(item.windowStartUtc) > now) return "upcoming";
   return "running";
 }
@@ -68,6 +74,8 @@ function metaFor(item: MyExamItem, group: Group) {
   const parts: string[] = [];
   if (item.orgName) parts.push(item.orgName);
   parts.push(source);
+  if (item.productType === "model_test" && item.examCount > 0)
+    parts.push(`${bnNum(item.examCount)}টি পরীক্ষা`);
   if (group === "upcoming" && item.windowStartUtc)
     parts.push(`শুরু ${formatDhakaShortBn(item.windowStartUtc)}`);
   if (group === "results") {
@@ -202,7 +210,10 @@ export function MyExamsList() {
                         <PillButton
                           variant={key === "results" ? "outline" : "tonal"}
                           size="sm"
-                          onClick={() => navigate(cta.to)}
+                          onClick={(e) => {
+                            e.stopPropagation(); // same destination as the row — avoid double-fire
+                            navigate(cta.to);
+                          }}
                         >
                           {key === "results" ? "রিভিউ" : cta.label}
                         </PillButton>
