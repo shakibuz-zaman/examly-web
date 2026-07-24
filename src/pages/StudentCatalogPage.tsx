@@ -25,7 +25,12 @@ import { MyExamsList } from "./student/MyExamsList";
 import type { CatalogItem } from "../api/types";
 
 const PAGE_SIZE = 20;
-const FILTER_LABELS: Record<string, string> = {
+// Keyed on the non-"all" members of the sheet's unions, so adding a type/price
+// option without a Bengali label is a compile error rather than an `undefined` chip.
+const FILTER_LABELS: Record<
+  Exclude<StoreFilters["type"] | StoreFilters["price"], "all">,
+  string
+> = {
   model_test: "মডেল টেস্ট",
   exam: "একক পরীক্ষা",
   free: "ফ্রি",
@@ -74,36 +79,113 @@ export function StudentCatalogPage() {
   // callback rather than the effect body, so it doesn't cascade renders
   // (react-hooks/set-state-in-effect).
   const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 30_000);
-    return () => window.clearInterval(id);
-  }, []);
-
   const groups = useMemo(() => groupCatalog(items, now), [items, now]);
 
-  // Infinite scroll sentinel.
+  // Only time-sensitive cards need the ticker: a live/starting-today card is the one
+  // thing that can change section or CTA on its own. An all-anytime track, an empty
+  // result and the আমার-পরীক্ষা tab all park the timer instead of re-rendering the
+  // whole grid every 30s. (Boolean dep, so the effect re-arms only on the edges.)
+  const needsClock = tab === "store" && groups.liveToday.length > 0;
+  useEffect(() => {
+    if (!needsClock) return;
+    const id = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, [needsClock]);
+
+  // Infinite scroll sentinel, scroll-intent gated. Most ended tests sit behind the
+  // collapsed শেষ section, so the visible cards often don't fill the viewport and the
+  // sentinel stays intersecting — an ungated observer then chain-fetches the entire
+  // catalog on load. Allow exactly ONE observer-driven auto-advance per query (so wide
+  // desktop viewports still fill), after which a real scroll gesture is required.
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  const autoAdvanced = useRef(false);
+  const userScrolled = useRef(false);
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isPlaceholderData } = query;
+
+  // Serialized query identity — a new filter/search/track starts a fresh budget.
+  const queryIdentity = JSON.stringify([activeCollection, filters, q, activeTrackId]);
+  useEffect(() => {
+    autoAdvanced.current = false;
+    userScrolled.current = false;
+  }, [queryIdentity]);
+
+  // Set by the observer effect: re-observes the sentinel so its CURRENT intersection
+  // is re-delivered. An IntersectionObserver only calls back when the ratio crosses a
+  // threshold, so a sentinel that was already in view when the auto-advance budget ran
+  // out would never fire again — the first scroll gesture has to poke it.
+  const pokeSentinel = useRef<(() => void) | null>(null);
+
+  // Registered once. `scroll` is capture-phase because scroll events don't bubble
+  // (an inner scroll container would otherwise never reach window); wheel/touchmove
+  // cover trackpad and touch drags that haven't moved the scrollport yet.
+  useEffect(() => {
+    const mark = () => {
+      if (userScrolled.current) return;
+      userScrolled.current = true;
+      pokeSentinel.current?.();
+    };
+    window.addEventListener("wheel", mark, { passive: true });
+    window.addEventListener("touchmove", mark, { passive: true });
+    window.addEventListener("scroll", mark, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener("wheel", mark);
+      window.removeEventListener("touchmove", mark);
+      window.removeEventListener("scroll", mark, { capture: true });
+    };
+  }, []);
+
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) void fetchNextPage();
+        // isPlaceholderData: the rows on screen belong to the PREVIOUS query while the
+        // new one is in flight — paging them would append the wrong result set.
+        if (!entries[0].isIntersecting || !hasNextPage || isFetchingNextPage) return;
+        if (isPlaceholderData) return;
+        if (!userScrolled.current) {
+          if (autoAdvanced.current) return;
+          autoAdvanced.current = true;
+        }
+        void fetchNextPage();
       },
       { rootMargin: "300px" },
     );
     io.observe(el);
-    return () => io.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, tab]);
+    pokeSentinel.current = () => {
+      io.unobserve(el);
+      io.observe(el);
+    };
+    return () => {
+      pokeSentinel.current = null;
+      io.disconnect();
+    };
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isPlaceholderData, tab]);
 
   const filtersActive =
     activeCollection !== null || activeFilterCount(filters) > 0 || q.length > 0;
+
+  // Every query-changing control also re-collapses শেষ: the old "N টি দেখুন" count
+  // belongs to the old result set. Done in the handlers, not an effect
+  // (react-hooks/set-state-in-effect).
+  const selectCollection = (id: string | null) => {
+    setCollectionId(id);
+    setEndedOpen(false);
+  };
+  const applyFilters = (v: StoreFilters) => {
+    setFilters(v);
+    setEndedOpen(false);
+  };
+  const applySearch = (value: string) => {
+    setQ(value);
+    setEndedOpen(false);
+  };
   const resetFilters = () => {
     setCollectionId(null);
     setFilters(DEFAULT_STORE_FILTERS);
     setQ("");
     setSearchNonce((n) => n + 1);
+    setEndedOpen(false);
   };
 
   const open = (item: CatalogItem) =>
@@ -115,13 +197,13 @@ export function StudentCatalogPage() {
       key: "all",
       label: "সব",
       selected: activeCollection === null,
-      onClick: () => setCollectionId(null),
+      onClick: () => selectCollection(null),
     },
     ...collections.map((c) => ({
       key: c.id,
       label: categoryShortLabel(c),
       selected: activeCollection === c.id,
-      onClick: () => setCollectionId(c.id),
+      onClick: () => selectCollection(c.id),
     })),
     ...(filters.type !== "all"
       ? [
@@ -130,7 +212,7 @@ export function StudentCatalogPage() {
             label: FILTER_LABELS[filters.type],
             selected: true,
             removable: true,
-            onClick: () => setFilters({ ...filters, type: "all" as const }),
+            onClick: () => applyFilters({ ...filters, type: "all" as const }),
           },
         ]
       : []),
@@ -141,7 +223,7 @@ export function StudentCatalogPage() {
             label: FILTER_LABELS[filters.price],
             selected: true,
             removable: true,
-            onClick: () => setFilters({ ...filters, price: "all" as const }),
+            onClick: () => applyFilters({ ...filters, price: "all" as const }),
           },
         ]
       : []),
@@ -152,11 +234,20 @@ export function StudentCatalogPage() {
             label: "শুধু লাইভ",
             selected: true,
             removable: true,
-            onClick: () => setFilters({ ...filters, liveOnly: false }),
+            onClick: () => applyFilters({ ...filters, liveOnly: false }),
           },
         ]
       : []),
   ];
+
+  const skeletonGrid = (
+    <div className="ex-cardgrid" style={{ marginTop: 16 }}>
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  );
 
   const grid = (list: CatalogItem[]) => (
     <div className="ex-cardgrid">
@@ -170,10 +261,14 @@ export function StudentCatalogPage() {
     <>
       <HeroBand
         title="মডেল টেস্ট"
+        // Counts describe the store; the আমার-পরীক্ষা tab has no equivalent, so it
+        // gets no subtitle rather than a store number that doesn't match its list.
         subtitle={
-          first
-            ? `${bnNum(first.trackTotal)}টি টেস্ট · ${bnNum(first.liveTodayCount)}টি আজ লাইভ`
-            : "—"
+          tab !== "store"
+            ? undefined
+            : first
+              ? `${bnNum(first.trackTotal)}টি টেস্ট · ${bnNum(first.liveTodayCount)}টি আজ লাইভ`
+              : "—"
         }
         overlap={tab === "store"}
         tabs={
@@ -206,13 +301,13 @@ export function StudentCatalogPage() {
               <SearchBar
                 key={searchNonce}
                 placeholder="টেস্ট বা প্রতিষ্ঠান খুঁজুন…"
-                onSearch={setQ}
+                onSearch={applySearch}
               />
             </div>
 
             <div className="ex-filterrow">
               <FilterChips items={chipItems} />
-              <FilterSheet value={filters} onChange={setFilters} />
+              <FilterSheet value={filters} onChange={applyFilters} />
             </div>
 
             {query.isError ? (
@@ -227,14 +322,13 @@ export function StudentCatalogPage() {
                 }
               />
             ) : query.isLoading || activeTrackId == null ? (
-              <div className="ex-cardgrid" style={{ marginTop: 16 }}>
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-              </div>
+              skeletonGrid
             ) : items.length === 0 ? (
-              filtersActive ? (
+              // An empty *stale* result (previous query also had no rows) must not flash
+              // the empty state at the incoming one — wait for the settled answer.
+              query.isPlaceholderData ? (
+                skeletonGrid
+              ) : filtersActive ? (
                 <EmptyState
                   variant="filtered"
                   message="এই ফিল্টারে কিছু পাওয়া যায়নি।"

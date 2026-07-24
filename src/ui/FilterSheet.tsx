@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Drawer, Grid, Popover } from "antd";
 import { SlidersHorizontal } from "lucide-react";
 import { Chip } from "../components/Chip";
+import { bnNum } from "../lib/bn";
 import { PillButton } from "./PillButton";
 
 export type StoreFilters = {
@@ -66,7 +67,7 @@ export function FilterSheet({ value, onChange }: { value: StoreFilters; onChange
     >
       <SlidersHorizontal size={15} strokeWidth={1.75} aria-hidden />
       ফিল্টার
-      {count > 0 && <span className="ex-filterbadge">{count}</span>}
+      {count > 0 && <span className="ex-filterbadge">{bnNum(count)}</span>}
     </PillButton>
   );
 

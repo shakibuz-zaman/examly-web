@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -55,10 +56,15 @@ export function useCatalog(params: CatalogParams) {
 
 // 7b store: infinite-scroll variant. Same server contract; pages accumulate client-side
 // and the band counts ride on every page (read them off pages[0]).
+// keepPreviousData: the band counts (trackTotal / liveTodayCount) are filter-independent
+// but only arrive on a query's first page, so without it every filter/search keystroke
+// blanked the subtitle to «—» and dumped the grid to a skeleton. Callers that need to
+// distinguish stale from settled read `isPlaceholderData`.
 export function useInfiniteCatalog(params: Omit<CatalogParams, "page">) {
   return useInfiniteQuery<CatalogResponse>({
     queryKey: ["student", "catalog", "infinite", params],
     enabled: !!params.trackId,
+    placeholderData: keepPreviousData,
     initialPageParam: 1,
     getNextPageParam: (last) =>
       last.page * last.pageSize < last.total ? last.page + 1 : undefined,
