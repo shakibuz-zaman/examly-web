@@ -5,6 +5,7 @@ import "@fontsource/hind-siliguri/700.css";
 import "antd/dist/reset.css";
 import "katex/dist/katex.min.css";
 import "./index.css";
+import "./ui/ui.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ThemeModeProvider } from "./theme/ThemeContext";

@@ -1,0 +1,156 @@
+/* ============================================================
+   Examly UI foundation — spec 2026-07-21 §3 (direction C).
+   Class-based because inline styles cannot express hover/focus/
+   media queries. All colors via --ex-* tokens.
+   ============================================================ */
+
+/* ---- page scaffold ---- */
+.ex-page { max-width: 1040px; margin: 0 auto; padding: 16px; }
+@media (min-width: 768px) { .ex-page { padding: 20px 24px; } }
+/* mobile bottom tab bar clearance */
+@media (max-width: 767.98px) { .ex-page { padding-bottom: 88px; } }
+/* page that renders directly under a HeroBand */
+.ex-page--banded { padding-top: 8px; }
+
+/* ---- surfaces ---- */
+.ex-card {
+  background: var(--ex-card);
+  border-radius: 18px;
+  box-shadow: var(--ex-shadow-1);
+}
+.ex-hover-lift { transition: transform .15s ease-out, box-shadow .15s ease-out; }
+.ex-hover-lift:hover { transform: translateY(-2px); box-shadow: var(--ex-shadow-2); }
+.ex-hover-lift:active { transform: scale(.97); }
+
+/* ---- motion ---- */
+.ex-fade-up { animation: ex-fade-up .25s ease-out both; }
+@keyframes ex-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+/* ---- horizontal chip rail (hidden scrollbar) ---- */
+.ex-scroll-x { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.ex-scroll-x::-webkit-scrollbar { display: none; }
+
+/* ---- shimmer skeleton ---- */
+.ex-skeleton { position: relative; overflow: hidden; background: var(--ex-stage); border-radius: 14px; }
+.ex-skeleton::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  animation: ex-shimmer 1.4s infinite;
+}
+@keyframes ex-shimmer { to { transform: translateX(100%); } }
+
+/* ---- focus ring (content surfaces; band/tabbar define their own) ---- */
+.ex-ring:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: 2px; }
+
+/* ---- app header (sticky teal bar) ---- */
+.ex-appbar {
+  position: sticky; top: 0; z-index: 40;
+  background: var(--ex-band-from);
+  transition: box-shadow .15s ease-out;
+}
+.ex-appbar.is-scrolled { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); }
+.ex-appbar-inner {
+  display: flex; align-items: center; gap: 12px;
+  height: 56px; max-width: 1040px; margin: 0 auto; padding: 0 16px;
+}
+@media (min-width: 768px) { .ex-appbar-inner { gap: 16px; padding: 0 24px; } }
+.ex-appbar-logo {
+  font-weight: 700; font-size: 17px; color: var(--ex-band-ink); text-decoration: none;
+}
+.ex-appbar-nav { display: flex; gap: 4px; }
+.ex-appbar-nav a {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 14px; border-radius: 999px;
+  font-size: 13.5px; line-height: 1; font-weight: 500;
+  color: var(--ex-band-ink-soft); text-decoration: none;
+  transition: background .15s, color .15s;
+}
+.ex-appbar-nav a:hover { background: var(--ex-band-pill-hover); color: var(--ex-band-ink); }
+.ex-appbar-nav a.active { background: var(--ex-band-pill); color: var(--ex-band-ink); font-weight: 600; }
+.ex-appbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.ex-track-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 14px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--ex-band-pill); color: var(--ex-band-ink);
+  font-size: 12.5px; font-family: var(--ex-font); white-space: nowrap;
+  max-width: 180px;
+}
+/* ellipsis must live on a non-flex child — text-overflow is inert on a flex container,
+   and min-width:0 lets the label shrink below its content width so it can truncate. */
+.ex-track-pill-label {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ex-track-pill--static { cursor: default; }
+.ex-appbar-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 999px; border: 0; cursor: pointer;
+  background: transparent; color: var(--ex-band-ink-soft);
+}
+.ex-appbar-iconbtn:hover { background: var(--ex-band-pill-hover); color: var(--ex-band-ink); }
+.ex-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--ex-card); color: var(--ex-teal-ink);
+  font-weight: 700; font-size: 13px; font-family: var(--ex-font);
+}
+/* focus rings on the band are white (teal ring is invisible on teal) */
+.ex-appbar a:focus-visible,
+.ex-appbar button:focus-visible { outline: 2px solid var(--ex-band-ink); outline-offset: 2px; }
+
+/* ---- hero band (per-page extension under the app bar) ---- */
+.ex-heroband {
+  background: linear-gradient(160deg, var(--ex-band-from), var(--ex-band-to));
+  padding: 8px 0 20px;
+}
+.ex-heroband--overlap { padding-bottom: 44px; }
+.ex-heroband-inner { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 768px) { .ex-heroband-inner { padding: 0 24px; } }
+.ex-heroband-back {
+  font-size: 12.5px; color: var(--ex-band-ink-soft); text-decoration: none;
+}
+.ex-heroband-back:hover { color: var(--ex-band-ink); }
+.ex-heroband-titlerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ex-heroband-title {
+  margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.015em;
+  color: var(--ex-band-ink); line-height: 1.35;
+}
+@media (min-width: 768px) { .ex-heroband-title { font-size: 26px; } }
+.ex-heroband-subtitle { margin-top: 2px; font-size: 13.5px; color: var(--ex-band-ink-soft); }
+.ex-heroband-tabs { display: flex; gap: 6px; margin-top: 10px; }
+.ex-heroband a:focus-visible { outline: 2px solid var(--ex-band-ink); outline-offset: 2px; }
+/* first content block that should float over the band edge (used from 7b on) */
+.ex-band-overlap { margin-top: -26px; }
+
+/* ---- mobile bottom tab bar ---- */
+.ex-tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  display: flex;
+  background: color-mix(in srgb, var(--ex-card) 92%, transparent);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid var(--ex-line);
+  padding: 6px 4px max(10px, env(safe-area-inset-bottom));
+}
+.ex-tabbar-link {
+  flex: 1; min-width: 48px; display: flex; flex-direction: column;
+  align-items: center; gap: 2px; text-decoration: none; color: var(--ex-ink-soft);
+  transition: transform .1s ease-out;
+}
+.ex-tabbar-link:active { transform: scale(.97); }
+.ex-tabbar-iconwrap {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 26px; border-radius: 999px; transition: background .15s;
+}
+.ex-tabbar-link.active { color: var(--ex-teal-ink); }
+.ex-tabbar-link.active .ex-tabbar-iconwrap { background: var(--ex-teal-tint); }
+.ex-tabbar-label { font-size: 10.5px; line-height: 1.2; }
+.ex-tabbar-link.active .ex-tabbar-label { font-weight: 700; }
+.ex-tabbar-link:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: -2px; }
+
+/* ---- reduced motion kills all of the above ---- */
+@media (prefers-reduced-motion: reduce) {
+  .ex-fade-up, .ex-skeleton::after { animation: none; }
+  .ex-hover-lift, .ex-hover-lift:hover, .ex-hover-lift:active,
+  .ex-tabbar-link, .ex-tabbar-link:active { transition: none; transform: none; }
+}

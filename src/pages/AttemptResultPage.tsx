@@ -10,6 +10,7 @@ import { AttemptTopicStrip } from "../features/student/AttemptTopicStrip";
 import { OptionRow } from "../components/OptionRow";
 import { formatClock, formatDateTime } from "../lib/format";
 import type { LeaderboardRow, ReviewQuestion } from "../api/types";
+import { PageContainer } from "../ui/PageContainer";
 
 const BN_LETTERS = ["ক", "খ", "গ", "ঘ", "ঙ", "চ", "ছ", "জ"];
 const LEADERBOARD_PAGE_SIZE = 20;
@@ -80,33 +81,47 @@ export function AttemptResultPage() {
   const leaderboardQuery = useLeaderboard(
     status?.examId, unlocked, leaderboardPage, LEADERBOARD_PAGE_SIZE);
 
-  if (statusQuery.isLoading) return <Spin style={{ display: "block", marginTop: 80 }} />;
+  if (statusQuery.isLoading) {
+    return (
+      <PageContainer>
+        <Spin style={{ display: "block", marginTop: 80 }} />
+      </PageContainer>
+    );
+  }
   if (statusQuery.isError || !status) {
-    return <Typography.Text type="danger">This attempt is not available.</Typography.Text>;
+    return (
+      <PageContainer>
+        <Typography.Text type="danger">This attempt is not available.</Typography.Text>
+      </PageContainer>
+    );
   }
 
   if (status.status === "in_progress") {
     return (
-      <Card>
-        <Typography.Paragraph>This attempt is still in progress.</Typography.Paragraph>
-        <Button type="primary" onClick={() => navigate(`/student/exams/${status.examId}/take`)}>
-          Resume exam
-        </Button>
-      </Card>
+      <PageContainer>
+        <Card>
+          <Typography.Paragraph>This attempt is still in progress.</Typography.Paragraph>
+          <Button type="primary" onClick={() => navigate(`/student/exams/${status.examId}/take`)}>
+            Resume exam
+          </Button>
+        </Card>
+      </PageContainer>
     );
   }
 
   if (!revealed) {
     return (
-      <Card>
-        <Typography.Title level={4}>{status.examTitle}</Typography.Title>
-        <Alert
-          type="info"
-          showIcon
-          title="Submitted"
-          description={`Score, correct answers, and the leaderboard unlock at ${formatDateTime(status.revealAtUtc)}.`}
-        />
-      </Card>
+      <PageContainer>
+        <Card>
+          <Typography.Title level={4}>{status.examTitle}</Typography.Title>
+          <Alert
+            type="info"
+            showIcon
+            title="Submitted"
+            description={`Score, correct answers, and the leaderboard unlock at ${formatDateTime(status.revealAtUtc)}.`}
+          />
+        </Card>
+      </PageContainer>
     );
   }
 
@@ -135,119 +150,121 @@ export function AttemptResultPage() {
   ];
 
   return (
-    <div>
-      <Typography.Title level={3} style={{ marginBottom: 4 }}>
-        {status.examTitle}
-      </Typography.Title>
-      <Typography.Text type="secondary">
-        Attempt #{status.attemptNumber}
-        {status.status === "expired" ? " · time expired (auto-submitted)" : ""}
-        {status.attemptNumber > 1 ? " · practice attempts don't rank" : ""}
-      </Typography.Text>
+    <PageContainer>
+      <div>
+        <Typography.Title level={3} style={{ marginBottom: 4 }}>
+          {status.examTitle}
+        </Typography.Title>
+        <Typography.Text type="secondary">
+          Attempt #{status.attemptNumber}
+          {status.status === "expired" ? " · time expired (auto-submitted)" : ""}
+          {status.attemptNumber > 1 ? " · practice attempts don't rank" : ""}
+        </Typography.Text>
 
-      <Tabs
-        style={{ marginTop: 12 }}
-        defaultActiveKey="analysis"
-        items={[
-          {
-            key: "analysis",
-            label: "অ্যানালাইসিস",
-            children: (
-              <div>
-                <Card>
-                  {me && status.attemptNumber === 1 && (
-                    <div style={{ marginBottom: 16 }}>
-                      <div
-                        className="tnum"
-                        style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.1 }}
-                      >
-                        পার্সেন্টাইল {me.percentile}
+        <Tabs
+          style={{ marginTop: 12 }}
+          defaultActiveKey="analysis"
+          items={[
+            {
+              key: "analysis",
+              label: "অ্যানালাইসিস",
+              children: (
+                <div>
+                  <Card>
+                    {me && status.attemptNumber === 1 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div
+                          className="tnum"
+                          style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.1 }}
+                        >
+                          পার্সেন্টাইল {me.percentile}
+                        </div>
+                        <Typography.Text type="secondary">
+                          র‍্যাঙ্ক {me.rank}/{board?.participants}
+                        </Typography.Text>
                       </div>
-                      <Typography.Text type="secondary">
-                        র‍্যাঙ্ক {me.rank}/{board?.participants}
-                      </Typography.Text>
-                    </div>
-                  )}
-                  <Row gutter={[16, 16]}>
-                    <Col xs={12} md={6}>
-                      <Statistic title="Score" value={`${status.score} / ${status.maxScore}`} />
-                    </Col>
-                    {board && (
-                      <Col xs={12} md={6}>
-                        <Statistic title="গড় স্কোর" value={board.averageScore ?? "—"} />
-                      </Col>
                     )}
-                    <Col xs={12} md={6}>
-                      <Statistic title="Correct · Wrong · Blank"
-                        value={`${status.correct} · ${status.wrong} · ${status.unanswered}`} />
-                    </Col>
-                  </Row>
-                </Card>
-                <AttemptTopicStrip attemptId={status.id} enabled={unlocked} />
-              </div>
-            ),
-          },
-          {
-            key: "review",
-            label: "রিভিউ",
-            children: reviewQuery.isLoading ? (
-              <Spin />
-            ) : review ? (
-              <div>
-                {review.sections.map((section, sIndex) => {
-                  const offset = review.sections
-                    .slice(0, sIndex)
-                    .reduce((n, s) => n + s.questions.length, 0);
-                  return (
-                    <div key={sIndex} style={{ marginBottom: 16 }}>
-                      {(section.title || review.sections.length > 1) && (
-                        <Typography.Title level={5}>
-                          {section.title ?? `Section ${sIndex + 1}`}
-                        </Typography.Title>
+                    <Row gutter={[16, 16]}>
+                      <Col xs={12} md={6}>
+                        <Statistic title="Score" value={`${status.score} / ${status.maxScore}`} />
+                      </Col>
+                      {board && (
+                        <Col xs={12} md={6}>
+                          <Statistic title="গড় স্কোর" value={board.averageScore ?? "—"} />
+                        </Col>
                       )}
-                      {section.questions.map((question, qIndex) => (
-                        <ReviewQuestionCard
-                          key={question.questionId}
-                          question={question}
-                          number={offset + qIndex + 1}
-                        />
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <Typography.Text type="secondary">Review unavailable.</Typography.Text>
-            ),
-          },
-          {
-            key: "leaderboard",
-            label: "লিডারবোর্ড",
-            children: (
-              <Table
-                size="small"
-                rowKey={(row) => `${row.rank}-${row.studentName}`}
-                loading={leaderboardQuery.isLoading}
-                columns={leaderboardColumns}
-                dataSource={board?.items ?? []}
-                pagination={{
-                  current: leaderboardPage,
-                  pageSize: LEADERBOARD_PAGE_SIZE,
-                  total: board?.total ?? 0,
-                  onChange: setLeaderboardPage,
-                  hideOnSinglePage: true,
-                }}
-                scroll={{ x: true }}
-              />
-            ),
-          },
-        ]}
-      />
+                      <Col xs={12} md={6}>
+                        <Statistic title="Correct · Wrong · Blank"
+                          value={`${status.correct} · ${status.wrong} · ${status.unanswered}`} />
+                      </Col>
+                    </Row>
+                  </Card>
+                  <AttemptTopicStrip attemptId={status.id} enabled={unlocked} />
+                </div>
+              ),
+            },
+            {
+              key: "review",
+              label: "রিভিউ",
+              children: reviewQuery.isLoading ? (
+                <Spin />
+              ) : review ? (
+                <div>
+                  {review.sections.map((section, sIndex) => {
+                    const offset = review.sections
+                      .slice(0, sIndex)
+                      .reduce((n, s) => n + s.questions.length, 0);
+                    return (
+                      <div key={sIndex} style={{ marginBottom: 16 }}>
+                        {(section.title || review.sections.length > 1) && (
+                          <Typography.Title level={5}>
+                            {section.title ?? `Section ${sIndex + 1}`}
+                          </Typography.Title>
+                        )}
+                        {section.questions.map((question, qIndex) => (
+                          <ReviewQuestionCard
+                            key={question.questionId}
+                            question={question}
+                            number={offset + qIndex + 1}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Typography.Text type="secondary">Review unavailable.</Typography.Text>
+              ),
+            },
+            {
+              key: "leaderboard",
+              label: "লিডারবোর্ড",
+              children: (
+                <Table
+                  size="small"
+                  rowKey={(row) => `${row.rank}-${row.studentName}`}
+                  loading={leaderboardQuery.isLoading}
+                  columns={leaderboardColumns}
+                  dataSource={board?.items ?? []}
+                  pagination={{
+                    current: leaderboardPage,
+                    pageSize: LEADERBOARD_PAGE_SIZE,
+                    total: board?.total ?? 0,
+                    onChange: setLeaderboardPage,
+                    hideOnSinglePage: true,
+                  }}
+                  scroll={{ x: true }}
+                />
+              ),
+            },
+          ]}
+        />
 
-      <Space style={{ marginTop: 16 }} wrap>
-        <Link to="/student/me">← My exams</Link>
-        <Button onClick={() => navigate("/student/progress")}>See your progress</Button>
-      </Space>
-    </div>
+        <Space style={{ marginTop: 16 }} wrap>
+          <Link to="/student/me">← My exams</Link>
+          <Button onClick={() => navigate("/student/progress")}>See your progress</Button>
+        </Space>
+      </div>
+    </PageContainer>
   );
 }

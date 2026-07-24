@@ -8,6 +8,7 @@ import { QuestionRevealCard } from "../features/qbank/QuestionRevealCard";
 import { Chip } from "../components/Chip";
 import { bnNum } from "../lib/bn";
 import type { QbankQuestion } from "../api/types";
+import { PageContainer } from "../ui/PageContainer";
 
 type SubjectChip = { id: string; label: string };
 
@@ -73,20 +74,26 @@ export function StudentQbankPaperPage() {
   const search = useQbankSearch(query, { paperId: id });
 
   if (isLoading) {
-    return <Skeleton active paragraph={{ rows: 8 }} />;
+    return (
+      <PageContainer>
+        <Skeleton active paragraph={{ rows: 8 }} />
+      </PageContainer>
+    );
   }
   if (isError || !data) {
     return (
-      <Alert
-        type="error"
-        showIcon
-        title="প্রশ্নব্যাংক লোড করা যায়নি"
-        action={
-          <Button size="small" onClick={() => refetch()}>
-            আবার চেষ্টা করুন
-          </Button>
-        }
-      />
+      <PageContainer>
+        <Alert
+          type="error"
+          showIcon
+          title="প্রশ্নব্যাংক লোড করা যায়নি"
+          action={
+            <Button size="small" onClick={() => refetch()}>
+              আবার চেষ্টা করুন
+            </Button>
+          }
+        />
+      </PageContainer>
     );
   }
 
@@ -105,94 +112,96 @@ export function StudentQbankPaperPage() {
   const searchResults = search.data?.items.map((h) => h.question) ?? [];
 
   return (
-    <div style={{ paddingBottom: 76 }}>
-      <Typography.Title level={3} style={{ marginBottom: 0, color: "var(--ex-ink)" }}>
-        {paper.title}
-      </Typography.Title>
-      <Typography.Text type="secondary">
-        {bnNum(paper.year)} · {bnNum(paper.questionCount)}টি প্রশ্ন
-      </Typography.Text>
+    <PageContainer>
+      <div style={{ paddingBottom: 76 }}>
+        <Typography.Title level={3} style={{ marginBottom: 0, color: "var(--ex-ink)" }}>
+          {paper.title}
+        </Typography.Title>
+        <Typography.Text type="secondary">
+          {bnNum(paper.year)} · {bnNum(paper.questionCount)}টি প্রশ্ন
+        </Typography.Text>
 
-      {subjects.length > 0 && (
+        {subjects.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              overflowX: "auto",
+              paddingBottom: 8,
+              marginTop: 12,
+              marginBottom: 4,
+            }}
+          >
+            <Chip label="সব" selected={activeSubject === null} onClick={() => setSubjectId(null)} />
+            {subjects.map((s) => (
+              <Chip
+                key={s.id}
+                label={s.label}
+                selected={activeSubject === s.id}
+                onClick={() => setSubjectId(s.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        <Input.Search
+          placeholder="এই সেটে খুঁজুন"
+          allowClear
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ margin: "8px 0 16px" }}
+        />
+
+        {isSearching ? (
+          search.isLoading ? (
+            <Skeleton active paragraph={{ rows: 4 }} />
+          ) : search.isError ? (
+            <Alert
+              type="error"
+              showIcon
+              title="খোঁজা যায়নি"
+              action={
+                <Button size="small" onClick={() => search.refetch()}>
+                  আবার চেষ্টা করুন
+                </Button>
+              }
+            />
+          ) : (
+            <QuestionList questions={searchResults} />
+          )
+        ) : (
+          <QuestionList questions={subjectFiltered} />
+        )}
+
         <div
           style={{
-            display: "flex",
-            gap: 8,
-            overflowX: "auto",
-            paddingBottom: 8,
-            marginTop: 12,
-            marginBottom: 4,
+            position: "sticky",
+            bottom: 0,
+            marginTop: 16,
+            padding: "12px 0",
+            background: "var(--ex-bg)",
+            borderTop: "1px solid var(--ex-line)",
           }}
         >
-          <Chip label="সব" selected={activeSubject === null} onClick={() => setSubjectId(null)} />
-          {subjects.map((s) => (
-            <Chip
-              key={s.id}
-              label={s.label}
-              selected={activeSubject === s.id}
-              onClick={() => setSubjectId(s.id)}
-            />
-          ))}
-        </div>
-      )}
-
-      <Input.Search
-        placeholder="এই সেটে খুঁজুন"
-        allowClear
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        style={{ margin: "8px 0 16px" }}
-      />
-
-      {isSearching ? (
-        search.isLoading ? (
-          <Skeleton active paragraph={{ rows: 4 }} />
-        ) : search.isError ? (
-          <Alert
-            type="error"
-            showIcon
-            title="খোঁজা যায়নি"
-            action={
-              <Button size="small" onClick={() => search.refetch()}>
-                আবার চেষ্টা করুন
-              </Button>
+          <Button
+            type="primary"
+            block
+            loading={start.isPending}
+            disabled={!activeTrackId}
+            onClick={() =>
+              start.mutate(
+                { source: "paper", sourceId: paper.id, trackId: activeTrackId! },
+                {
+                  onSuccess: (s) => navigate(`/student/practice/${s.id}`),
+                  onError: () => message.error("প্র্যাকটিস শুরু করা যায়নি"),
+                },
+              )
             }
-          />
-        ) : (
-          <QuestionList questions={searchResults} />
-        )
-      ) : (
-        <QuestionList questions={subjectFiltered} />
-      )}
-
-      <div
-        style={{
-          position: "sticky",
-          bottom: 0,
-          marginTop: 16,
-          padding: "12px 0",
-          background: "var(--ex-bg)",
-          borderTop: "1px solid var(--ex-line)",
-        }}
-      >
-        <Button
-          type="primary"
-          block
-          loading={start.isPending}
-          disabled={!activeTrackId}
-          onClick={() =>
-            start.mutate(
-              { source: "paper", sourceId: paper.id, trackId: activeTrackId! },
-              {
-                onSuccess: (s) => navigate(`/student/practice/${s.id}`),
-                onError: () => message.error("প্র্যাকটিস শুরু করা যায়নি"),
-              },
-            )
-          }
-        >
-          এই সেট থেকে প্র্যাকটিস টেস্ট দাও
-        </Button>
+          >
+            এই সেট থেকে প্র্যাকটিস টেস্ট দাও
+          </Button>
+        </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
