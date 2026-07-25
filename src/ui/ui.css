@@ -290,7 +290,8 @@
 .ex-testcard-title {
   margin: 0; font-size: 15.5px; font-weight: 700; line-height: 1.35; color: var(--ex-ink);
 }
-.ex-testcard-org { font-size: 12.5px; color: var(--ex-ink-faint); }
+/* ink-soft (AA): faint was 3.26:1 at 12.5px on card — 7c fix of the 7b leftover */
+.ex-testcard-org { font-size: 12.5px; color: var(--ex-ink-soft); }
 /* shared highlightText() mark style — UA default is off-palette in dark mode.
    color is ink, not inherit: on the faint org line an inherited ink sits ~2.75:1
    against the amber tint; ink holds 4.5:1 (AA) in both modes. */
@@ -322,6 +323,27 @@
 .ex-rowitem-meta { font-size: 12.5px; color: var(--ex-ink-soft); }
 .ex-rowitem-meta .tnum { font-variant-numeric: tabular-nums; }
 .ex-rowitem-trailing { flex: 0 0 auto; }
+
+/* ---- qbank paper card (§4 PaperCard, §7 list) ---- */
+.ex-papercard {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 14px; background: var(--ex-card);
+  border-radius: var(--ex-radius-card); box-shadow: var(--ex-shadow-1);
+  cursor: pointer;
+}
+/* 14/700 per the approved mockup — deliberate compact-card exception to §3.1 (D8) */
+.ex-papercard-title { font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--ex-ink); }
+/* ink-soft, not ink-faint: small meta on card must hold AA (the .ex-testcard-org lesson) */
+.ex-papercard-meta { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ex-ink-soft); }
+.ex-papercard-ans {
+  font-size: 11px; font-weight: 600; color: var(--ex-green);
+  background: var(--ex-green-tint); padding: 1px 8px; border-radius: 999px;
+}
+.ex-papercard-cta { margin-top: 7px; width: 100%; }
+
+/* ---- paper grid (§7: 3-col desktop / 2-col mobile) ---- */
+.ex-papergrid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+@media (min-width: 768px) { .ex-papergrid { grid-template-columns: repeat(3, 1fr); } }
 
 /* ---- band pill tabs (§6 — replaces Segmented) ---- */
 .ex-bandtab {
