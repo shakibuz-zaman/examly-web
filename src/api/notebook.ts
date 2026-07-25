@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
-import type { NotebookResponse } from "./types";
+import type { AddToNotebookResponse, NotebookResponse } from "./types";
 
 export const NOTEBOOK_PAGE_SIZE = 20;
 
@@ -27,6 +27,19 @@ export function useNotebook({
       });
       if (subjectId) params.set("subjectId", subjectId);
       return (await apiClient.get<NotebookResponse>(`/api/v1/student/notebook?${params}`)).data;
+    },
+  });
+}
+
+// «ভুলের খাতায় রাখুন» (plan 7c): idempotent neutral save — created:false means the
+// question already had an entry.
+export function useAddToNotebook() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (questionId: string) =>
+      (await apiClient.post<AddToNotebookResponse>("/api/v1/student/notebook", { questionId })).data,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["notebook"] });
     },
   });
 }

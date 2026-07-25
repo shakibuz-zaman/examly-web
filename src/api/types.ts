@@ -659,6 +659,7 @@ export type QbankPapersResponse = {
   total: number;
   page: number;
   pageSize: number;
+  trackTotal: number; // band subtitle count — ignores categoryId/year (plan 7c)
 };
 
 export type QbankQuestion = {
@@ -679,6 +680,8 @@ export type QbankQuestion = {
 };
 
 export type QbankPaperDetail = { paper: QbankPaperSummary; questions: QbankQuestion[] };
+
+export type AddToNotebookResponse = { created: boolean };
 
 // ---- Admin question bank (Plan 7b, platform_admin) ----
 

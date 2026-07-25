@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Button } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useInfiniteCatalog } from "../api/student";
@@ -6,6 +6,7 @@ import { useActiveTrack } from "../features/tracks/TrackContext";
 import { categoryShortLabel } from "../api/categories";
 import { bnNum } from "../lib/bn";
 import { groupCatalog } from "../lib/catalogStatus";
+import { useInfiniteSentinel } from "../lib/useInfiniteSentinel";
 import { HeroBand } from "../ui/HeroBand";
 import { PageContainer } from "../ui/PageContainer";
 import { SearchBar } from "../ui/SearchBar";
@@ -97,75 +98,17 @@ export function StudentCatalogPage() {
     return () => window.clearInterval(id);
   }, [needsClock]);
 
-  // Infinite scroll sentinel, scroll-intent gated. Most ended tests sit behind the
-  // collapsed শেষ section, so the visible cards often don't fill the viewport and the
-  // sentinel stays intersecting — an ungated observer then chain-fetches the entire
-  // catalog on load. Allow exactly ONE observer-driven auto-advance per query (so wide
-  // desktop viewports still fill), after which a real scroll gesture is required.
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const autoAdvanced = useRef(false);
-  const userScrolled = useRef(false);
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isPlaceholderData } = query;
-
   // Serialized query identity — a new filter/search/track starts a fresh budget.
   const queryIdentity = JSON.stringify([activeCollection, filters, q, activeTrackId]);
-  useEffect(() => {
-    autoAdvanced.current = false;
-    userScrolled.current = false;
-  }, [queryIdentity]);
-
-  // Set by the observer effect: re-observes the sentinel so its CURRENT intersection
-  // is re-delivered. An IntersectionObserver only calls back when the ratio crosses a
-  // threshold, so a sentinel that was already in view when the auto-advance budget ran
-  // out would never fire again — the first scroll gesture has to poke it.
-  const pokeSentinel = useRef<(() => void) | null>(null);
-
-  // Registered once. `scroll` is capture-phase because scroll events don't bubble
-  // (an inner scroll container would otherwise never reach window); wheel/touchmove
-  // cover trackpad and touch drags that haven't moved the scrollport yet.
-  useEffect(() => {
-    const mark = () => {
-      if (userScrolled.current) return;
-      userScrolled.current = true;
-      pokeSentinel.current?.();
-    };
-    window.addEventListener("wheel", mark, { passive: true });
-    window.addEventListener("touchmove", mark, { passive: true });
-    window.addEventListener("scroll", mark, { passive: true, capture: true });
-    return () => {
-      window.removeEventListener("wheel", mark);
-      window.removeEventListener("touchmove", mark);
-      window.removeEventListener("scroll", mark, { capture: true });
-    };
-  }, []);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        // isPlaceholderData: the rows on screen belong to the PREVIOUS query while the
-        // new one is in flight — paging them would append the wrong result set.
-        if (!entries[0].isIntersecting || !hasNextPage || isFetchingNextPage) return;
-        if (isPlaceholderData) return;
-        if (!userScrolled.current) {
-          if (autoAdvanced.current) return;
-          autoAdvanced.current = true;
-        }
-        void fetchNextPage();
-      },
-      { rootMargin: "300px" },
-    );
-    io.observe(el);
-    pokeSentinel.current = () => {
-      io.unobserve(el);
-      io.observe(el);
-    };
-    return () => {
-      pokeSentinel.current = null;
-      io.disconnect();
-    };
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isPlaceholderData, tab]);
+  const sentinelRef = useInfiniteSentinel({
+    queryIdentity,
+    hasNextPage: hasNextPage ?? false,
+    isFetchingNextPage,
+    isPlaceholderData,
+    fetchNextPage,
+    resetKey: tab,
+  });
 
   const filtersActive =
     activeCollection !== null || activeFilterCount(filters) > 0 || q.length > 0;
