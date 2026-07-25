@@ -681,7 +681,9 @@ export type QbankQuestion = {
 
 export type QbankPaperDetail = { paper: QbankPaperSummary; questions: QbankQuestion[] };
 
-export type AddToNotebookResponse = { created: boolean };
+// created: a new entry was inserted. reactivated: an entry the student had already
+// resolved was put back into the revision pile. Both false = it was already active.
+export type AddToNotebookResponse = { created: boolean; reactivated: boolean };
 
 // ---- Admin question bank (Plan 7b, platform_admin) ----
 
