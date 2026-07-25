@@ -1,6 +1,5 @@
 import { bnNum } from "../lib/bn";
-
-export type TimeStatus = "live" | "upcoming" | "anytime" | "ended";
+import type { TimeStatus } from "../lib/catalogStatus";
 
 // §3.4 time-status chip: tint bg + dot + ink. Label is caller-supplied Bengali.
 export function TimeStatusChip({ status, label }: { status: TimeStatus; label: string }) {

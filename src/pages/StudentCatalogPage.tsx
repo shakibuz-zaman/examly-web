@@ -47,9 +47,14 @@ export function StudentCatalogPage() {
   // remounts it with an empty field; the mount debounce re-emits "" which is a no-op
   // against an already-empty `q`.
   const [searchNonce, setSearchNonce] = useState(0);
-  const [endedOpen, setEndedOpen] = useState(false);
+  // শেষ expansion is keyed to the track it was opened on, so a track switch —
+  // which has no local handler to reset in — derives back to collapsed instead
+  // of needing a setState-in-effect. Deliberately sticky per track (A→B→A
+  // restores A's expansion), matching how filters survive a track round-trip.
+  const [endedOpenFor, setEndedOpenFor] = useState<string | null>(null);
   const { collections, activeTrackId } = useActiveTrack();
   const navigate = useNavigate();
+  const endedOpen = endedOpenFor !== null && endedOpenFor === activeTrackId;
 
   // Stale collection selection (after a track switch) falls back to সব.
   const activeCollection =
@@ -170,22 +175,22 @@ export function StudentCatalogPage() {
   // (react-hooks/set-state-in-effect).
   const selectCollection = (id: string | null) => {
     setCollectionId(id);
-    setEndedOpen(false);
+    setEndedOpenFor(null);
   };
   const applyFilters = (v: StoreFilters) => {
     setFilters(v);
-    setEndedOpen(false);
+    setEndedOpenFor(null);
   };
   const applySearch = (value: string) => {
     setQ(value);
-    setEndedOpen(false);
+    setEndedOpenFor(null);
   };
   const resetFilters = () => {
     setCollectionId(null);
     setFilters(DEFAULT_STORE_FILTERS);
     setQ("");
     setSearchNonce((n) => n + 1);
-    setEndedOpen(false);
+    setEndedOpenFor(null);
   };
 
   const open = (item: CatalogItem) =>
@@ -302,6 +307,9 @@ export function StudentCatalogPage() {
                 key={searchNonce}
                 placeholder="টেস্ট বা প্রতিষ্ঠান খুঁজুন…"
                 onSearch={applySearch}
+                // Remount after a store↔mine tab switch restores the active query
+                // (user decision: search persists across tabs).
+                defaultValue={q}
               />
             </div>
 
@@ -344,7 +352,13 @@ export function StudentCatalogPage() {
                 />
               )
             ) : (
-              <>
+              // While a new query is in flight the rows on screen are the PREVIOUS
+              // result set (keepPreviousData) — dim them so they read as stale
+              // rather than as the answer to the new filter/search.
+              <div
+                className={query.isPlaceholderData ? "ex-results is-stale" : "ex-results"}
+                aria-busy={query.isPlaceholderData}
+              >
                 {groups.liveToday.length > 0 && (
                   <>
                     <SectionHeader
@@ -368,7 +382,11 @@ export function StudentCatalogPage() {
                     <SectionHeader
                       label="শেষ"
                       trailing={
-                        <PillButton variant="ghost" size="sm" onClick={() => setEndedOpen((o) => !o)}>
+                        <PillButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEndedOpenFor(endedOpen ? null : activeTrackId)}
+                        >
                           {endedOpen ? "লুকান" : `${bnNum(groups.ended.length)}টি দেখুন`}
                         </PillButton>
                       }
@@ -383,7 +401,7 @@ export function StudentCatalogPage() {
                   </div>
                 )}
                 <div ref={sentinelRef} aria-hidden />
-              </>
+              </div>
             )}
           </div>
         )}

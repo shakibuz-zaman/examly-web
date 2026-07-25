@@ -236,16 +236,7 @@ export function useClaimSeat() {
 
 // ---- Student library + orders ----
 
-export function useMyExams(page = 1, pageSize = 20) {
-  return useQuery<MyExamsResponse>({
-    queryKey: ["student", "my-exams", page, pageSize],
-    queryFn: async () =>
-      (await apiClient.get<MyExamsResponse>(
-        `/api/v1/student/my-exams?page=${page}&pageSize=${pageSize}`)).data,
-  });
-}
-
-// 7b store: infinite-scroll variant of useMyExams. The key extends the ["student", "my-exams"]
+// 7b store: infinite-scroll my-exams. The key extends the ["student", "my-exams"]
 // prefix in OWNERSHIP_KEYS, so a claim / purchase / free-register invalidates it too.
 export function useInfiniteMyExams(pageSize = 20) {
   return useInfiniteQuery<MyExamsResponse>({

@@ -1,6 +1,7 @@
 import type { CatalogItem } from "../api/types";
 
-export type CatalogTimeStatus = "live" | "upcoming" | "anytime" | "ended";
+// Single source of truth for the status union — TimeStatusChip types against it too.
+export type TimeStatus = "live" | "upcoming" | "anytime" | "ended";
 
 // Client-side status grouping from existing fields (spec §10 note 3). Day-math uses
 // the fixed Asia/Dhaka +06:00 offset (Bangladesh has no DST) — same rule as the API.
@@ -14,7 +15,7 @@ const ms = (s: string | null | undefined): number | null => {
   return Number.isNaN(t) ? null : t;
 };
 
-export function catalogStatus(item: CatalogItem, now: number): CatalogTimeStatus {
+export function catalogStatus(item: CatalogItem, now: number): TimeStatus {
   const start = ms(item.windowStartUtc);
   const end = ms(item.windowEndUtc);
   if (end !== null && now >= end) return "ended";
@@ -48,7 +49,7 @@ export function groupCatalog(items: CatalogItem[], now: number) {
 }
 
 // §3.4 chip labels.
-export function timeStatusLabel(status: CatalogTimeStatus): string {
+export function timeStatusLabel(status: TimeStatus): string {
   switch (status) {
     case "live": return "লাইভ";
     case "upcoming": return "আসছে";

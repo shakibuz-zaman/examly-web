@@ -164,7 +164,8 @@
 .ex-chipstat--live { background: var(--ex-coral-tint); color: var(--ex-coral); }
 .ex-chipstat--upcoming { background: var(--ex-amber-tint); color: var(--ex-amber); }
 .ex-chipstat--anytime { background: var(--ex-teal-tint); color: var(--ex-teal-ink); }
-.ex-chipstat--ended { background: var(--ex-stage); color: var(--ex-ink-faint); }
+/* ink-soft, not ink-faint: faint on stage is 2.71:1 (4.04 dark) — below AA. */
+.ex-chipstat--ended { background: var(--ex-stage); color: var(--ex-ink-soft); }
 .ex-chipstat--free { background: var(--ex-green-tint); color: var(--ex-green); }
 .ex-chipstat--price {
   background: var(--ex-stage); color: var(--ex-ink);
@@ -186,13 +187,20 @@
   background: var(--ex-teal); color: var(--ex-on-solid);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--ex-teal) 35%, transparent);
 }
-.ex-btn--primary:hover { background: var(--ex-teal-hover); }
+.ex-btn--primary:not(:disabled):hover { background: var(--ex-teal-hover); }
 .ex-btn--tonal { background: var(--ex-teal-tint); color: var(--ex-teal-ink); }
-.ex-btn--tonal:hover { background: var(--ex-teal-tint-2); }
+.ex-btn--tonal:not(:disabled):hover { background: var(--ex-teal-tint-2); }
 .ex-btn--outline { background: transparent; border: 1.5px solid var(--ex-line-strong); color: var(--ex-ink); }
-.ex-btn--outline:hover { border-color: var(--ex-teal); color: var(--ex-teal-ink); }
+.ex-btn--outline:not(:disabled):hover { border-color: var(--ex-teal); color: var(--ex-teal-ink); }
 .ex-btn--ghost { background: transparent; color: var(--ex-coral); }
 .ex-btn--sm { height: 30px; padding: 0 14px; font-size: 13px; }
+
+/* Results container: washes out while showing the previous query's rows
+   (keepPreviousData). saturate() preserves relative luminance, so text keeps its
+   WCAG ratios exactly — an opacity dim would drop the 4.5:1 chips to ~3.3 even
+   at .9 (composited against the stage bg). */
+.ex-results { transition: filter .2s ease-out; }
+.ex-results.is-stale { filter: saturate(.35); }
 
 /* ---- section header (overline + rule + trailing) ---- */
 .ex-secheader { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; }
@@ -280,9 +288,11 @@
   margin: 0; font-size: 15.5px; font-weight: 700; line-height: 1.35; color: var(--ex-ink);
 }
 .ex-testcard-org { font-size: 12.5px; color: var(--ex-ink-faint); }
-/* shared highlightText() mark style — UA default is off-palette in dark mode */
+/* shared highlightText() mark style — UA default is off-palette in dark mode.
+   color is ink, not inherit: on the faint org line an inherited ink sits ~2.75:1
+   against the amber tint; ink holds 4.5:1 (AA) in both modes. */
 .ex-mark-scope mark {
-  background: var(--ex-amber-tint); color: inherit; border-radius: 3px; padding: 0 1px;
+  background: var(--ex-amber-tint); color: var(--ex-ink); border-radius: 3px; padding: 0 1px;
 }
 .ex-testcard-meta { font-size: 12.5px; color: var(--ex-ink-soft); }
 .ex-testcard-footer {

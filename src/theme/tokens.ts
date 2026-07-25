@@ -6,10 +6,13 @@ export const palette = {
   bg: "#F4F2EC", stage: "#EDEAE1", card: "#FFFFFF", card2: "#FBFAF6",
   ink: "#1C201D", inkSoft: "#565C56", inkFaint: "#8A908A",
   line: "#E6E3DA", lineStrong: "#D6D2C6",
-  coral: "#D2593F", coralTint: "#FBE7E1",
-  purple: "#7B54C4", purpleTint: "#EEE7FA",
-  amber: "#B7791F", amberTint: "#F7EBD3",
-  green: "#2F8F5B", greenTint: "#E4F1E8",
+  // coral/purple/amber/green double as tint-chip inks: values must hold 4.5:1
+  // (WCAG AA, spec §10) against their tints AND against white (ghost button).
+  // The ended chip meets AA by using inkSoft, not inkFaint (ui.css).
+  coral: "#B8442B", coralTint: "#FBE7E1",
+  purple: "#7A52C3", purpleTint: "#EEE7FA",
+  amber: "#926119", amberTint: "#F7EBD3",
+  green: "#287A4E", greenTint: "#E4F1E8",
   red: "#C0432E", redTint: "#F7E1DC",
   bandFrom: "#0E7A6B", bandTo: "#0B6357",
   bandInk: "#FFFFFF", bandInkSoft: "#D3E9E4",
@@ -27,7 +30,7 @@ export const paletteDark: Palette = {
   ink: "#E9E7DF", inkSoft: "#A9AFA7", inkFaint: "#787E76",
   line: "#33372F", lineStrong: "#42463D",
   coral: "#E07A5F", coralTint: "#3A241D",
-  purple: "#9D7BE0", purpleTint: "#2C2440",
+  purple: "#A487E4", purpleTint: "#2C2440", // 5.0:1 on tint (was 4.43)
   amber: "#D89A3D", amberTint: "#3A2F19",
   green: "#4CAF7D", greenTint: "#1D3327",
   red: "#D96A55", redTint: "#3B211C",
