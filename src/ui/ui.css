@@ -281,10 +281,13 @@
    display+width restore that full-width block box: a <button>'s auto width is
    shrink-to-fit even at display:block. white-space is spelled out because the UA
    button rule has historically been `pre` — long Bengali titles must still wrap.
-   Declared BEFORE .ex-testcard-title / .ex-papercard-title on purpose — `font:
-   inherit` is a shorthand at equal specificity, so those rules must come later to
-   keep their own size/weight/line-height. */
-.ex-cardtitle-btn {
+   :where() zeroes this rule's specificity so it can never win against a title rule
+   regardless of source order. It has to: on PaperCard the reset and
+   .ex-papercard-title sit on the SAME element, so `font: inherit` — a shorthand —
+   would otherwise clobber 14/700/1.35 if the file were ever re-sorted. (TestCard is
+   immune either way: its reset and title are on different elements, so `inherit` is
+   the mechanism there rather than a conflict.) */
+:where(.ex-cardtitle-btn) {
   display: block; width: 100%;
   background: none; border: 0; padding: 0; margin: 0;
   font: inherit; color: inherit; white-space: normal; text-align: left; cursor: pointer;

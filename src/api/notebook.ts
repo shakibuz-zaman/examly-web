@@ -41,6 +41,9 @@ export function useAddToNotebook() {
       (await apiClient.post<AddToNotebookResponse>("/api/v1/student/notebook", { questionId })).data,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["notebook"] });
+      // The home summary carries dueNotebookCount, so it goes stale too — same pair
+      // the practice mutations invalidate.
+      void qc.invalidateQueries({ queryKey: ["student"] });
     },
   });
 }
