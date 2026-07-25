@@ -339,7 +339,9 @@
   font-size: 11px; font-weight: 600; color: var(--ex-green);
   background: var(--ex-green-tint); padding: 1px 8px; border-radius: 999px;
 }
-.ex-papercard-cta { margin-top: 7px; width: 100%; }
+/* auto (not a fixed margin): grid items stretch, so short-title cards must still
+   bottom-align the CTA across a row — same trick as the testcard footer */
+.ex-papercard-cta { margin-top: auto; width: 100%; }
 
 /* ---- paper grid (§7: 3-col desktop / 2-col mobile) ---- */
 .ex-papergrid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }

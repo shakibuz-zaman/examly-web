@@ -19,7 +19,13 @@ export function PaperCard({
   practicing?: boolean;
 }) {
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter") onOpen();
+    // Only card-originated keys open the paper — Enter on the nested CTA would
+    // otherwise bubble here AND synthesize the button's click (two navigations).
+    if (e.target !== e.currentTarget) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onOpen();
+    }
   };
   const practice = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
