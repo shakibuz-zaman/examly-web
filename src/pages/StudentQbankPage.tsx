@@ -43,7 +43,10 @@ function SearchHitCard({ hit, onOpen }: { hit: QbankSearchHit; onOpen: () => voi
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => {
-        if (e.key === "Enter") onOpen();
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
       }}
     >
       <QuestionContentView html={hit.question.stemHtml} />
@@ -222,7 +225,7 @@ export function StudentQbankPage() {
         </Button>
       }
     />
-  ) : searchQuery.isLoading ? (
+  ) : searchQuery.isLoading || activeTrackId == null ? (
     <div className="ex-qhit-list" style={{ marginTop: 16 }}>
       <SkeletonRow />
       <SkeletonRow />
