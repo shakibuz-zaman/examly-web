@@ -1,19 +1,24 @@
-import { useState } from "react";
-import { Alert, Button, Input, Skeleton, Space, Tag, Typography, message } from "antd";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Button, Skeleton, message } from "antd";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQbankPaper, useQbankSearch } from "../api/qbank";
+import { useAddToNotebook } from "../api/notebook";
 import { useStartPractice } from "../api/practice";
 import { useActiveTrack } from "../features/tracks/TrackContext";
-import { QuestionRevealCard } from "../features/qbank/QuestionRevealCard";
-import { Chip } from "../components/Chip";
+import { PaperQuestionCard } from "../features/qbank/PaperQuestionCard";
 import { bnNum } from "../lib/bn";
-import type { QbankQuestion } from "../api/types";
+import { HeroBand } from "../ui/HeroBand";
 import { PageContainer } from "../ui/PageContainer";
+import { SearchBar } from "../ui/SearchBar";
+import { FilterChips, type FilterChipItem } from "../ui/FilterChips";
+import { PillButton } from "../ui/PillButton";
+import { EmptyState } from "../ui/EmptyState";
+import type { QbankQuestion } from "../api/types";
 
 type SubjectChip = { id: string; label: string };
 
-// Distinct subjects across the loaded questions, in first-seen order. Chips are
-// built client-side (spec) — the paper detail response carries subjectName inline.
+// Distinct subjects across the loaded questions, in first-seen order (unchanged
+// from the pre-7c page — the detail response carries subjectName inline).
 function distinctSubjects(questions: QbankQuestion[]): SubjectChip[] {
   const seen = new Map<string, SubjectChip>();
   for (const q of questions) {
@@ -25,53 +30,34 @@ function distinctSubjects(questions: QbankQuestion[]): SubjectChip[] {
   return [...seen.values()];
 }
 
-function QuestionHeader({ order, sectionLabel }: { order: number; sectionLabel: string | null }) {
-  return (
-    <Space size={8} style={{ marginBottom: 8 }}>
-      <Typography.Text strong style={{ color: "var(--ex-ink)" }}>
-        {bnNum(order)}
-      </Typography.Text>
-      {sectionLabel && <Tag>{sectionLabel}</Tag>}
-    </Space>
-  );
-}
-
-function QuestionList({ questions }: { questions: QbankQuestion[] }) {
-  if (questions.length === 0) {
-    return (
-      <Typography.Paragraph style={{ padding: "24px 0", textAlign: "center", color: "var(--ex-ink-soft)" }}>
-        কোনো প্রশ্ন পাওয়া যায়নি।
-      </Typography.Paragraph>
-    );
-  }
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {questions.map((q) => (
-        <QuestionRevealCard
-          key={q.id}
-          stemHtml={q.stemHtml}
-          multipleCorrect={q.multipleCorrect}
-          options={q.options}
-          explanationHtml={q.explanationHtml}
-          takeawayText={q.takeawayText}
-          header={<QuestionHeader order={q.order} sectionLabel={q.sectionLabel} />}
-        />
-      ))}
-    </div>
-  );
-}
-
 export function StudentQbankPaperPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  // Search deep-link (§7): the matched question arrives auto-expanded + scrolled into view.
+  const focusId = params.get("focus");
   const { activeTrackId } = useActiveTrack();
   const start = useStartPractice();
+  const add = useAddToNotebook();
   const { data, isLoading, isError, refetch } = useQbankPaper(id);
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   const isSearching = query.trim().length >= 2;
   const search = useQbankSearch(query, { paperId: id });
+
+  // One-shot scroll to the deep-linked card once the questions have rendered.
+  const scrolledRef = useRef(false);
+  useEffect(() => {
+    if (!focusId || !data || scrolledRef.current) return;
+    scrolledRef.current = true;
+    // rAF: let the expanded card lay out before measuring.
+    requestAnimationFrame(() => {
+      document.getElementById(`q-${focusId}`)?.scrollIntoView({ block: "center" });
+    });
+  }, [focusId, data]);
 
   if (isLoading) {
     return (
@@ -99,63 +85,62 @@ export function StudentQbankPaperPage() {
 
   const { paper, questions } = data;
   const subjects = distinctSubjects(questions);
-
-  // A stale subject selection (should not happen within one paper, but guard anyway)
-  // falls back to all.
-  const activeSubject =
-    subjectId && subjects.some((s) => s.id === subjectId) ? subjectId : null;
-
+  const activeSubject = subjectId && subjects.some((s) => s.id === subjectId) ? subjectId : null;
   const subjectFiltered = activeSubject
     ? questions.filter((q) => q.subjectId === activeSubject)
     : questions;
-
   const searchResults = search.data?.items.map((h) => h.question) ?? [];
+  const shown = isSearching ? searchResults : subjectFiltered;
+
+  const chipItems: FilterChipItem[] = [
+    { key: "all", label: "সব", selected: activeSubject === null, onClick: () => setSubjectId(null) },
+    ...subjects.map((s) => ({
+      key: s.id,
+      label: s.label,
+      selected: activeSubject === s.id,
+      onClick: () => setSubjectId(s.id),
+    })),
+  ];
+
+  const subjectLabelOf = (q: QbankQuestion) => q.subjectName?.bn ?? q.subjectName?.en ?? null;
+
+  const save = (questionId: string) => {
+    if (savingId) return;
+    setSavingId(questionId);
+    add.mutate(questionId, {
+      onSuccess: (r) => {
+        setSavedIds((prev) => new Set(prev).add(questionId));
+        message.success(r.created ? "ভুলের খাতায় রাখা হয়েছে" : "আগে থেকেই ভুলের খাতায় আছে");
+      },
+      onError: () => message.error("রাখা যায়নি — আবার চেষ্টা করুন"),
+      onSettled: () => setSavingId(null),
+    });
+  };
 
   return (
-    <PageContainer>
-      <div style={{ paddingBottom: 76 }}>
-        <Typography.Title level={3} style={{ marginBottom: 0, color: "var(--ex-ink)" }}>
-          {paper.title}
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          {bnNum(paper.year)} · {bnNum(paper.questionCount)}টি প্রশ্ন
-        </Typography.Text>
+    <>
+      <HeroBand
+        back={{ to: "/student/qbank", label: "প্রশ্নব্যাংক" }}
+        title={`${paper.title} — ${bnNum(paper.year)}`}
+        subtitle={`${bnNum(paper.questionCount)} প্রশ্ন · উত্তরসহ`}
+      />
+      <PageContainer banded>
+        <div>
+          {subjects.length > 0 && (
+            <div className="ex-filterrow">
+              <FilterChips items={chipItems} />
+            </div>
+          )}
 
-        {subjects.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              overflowX: "auto",
-              paddingBottom: 8,
-              marginTop: 12,
-              marginBottom: 4,
-            }}
-          >
-            <Chip label="সব" selected={activeSubject === null} onClick={() => setSubjectId(null)} />
-            {subjects.map((s) => (
-              <Chip
-                key={s.id}
-                label={s.label}
-                selected={activeSubject === s.id}
-                onClick={() => setSubjectId(s.id)}
-              />
-            ))}
+          {/* Secondary SearchBar: own id + no `/` hotkey — the list page owns the
+              compact-bar target; this one only filters within the paper. */}
+          <div style={{ margin: "8px 0 16px" }}>
+            <SearchBar id="ex-paper-search" hotkey={false} placeholder="এই সেটে খুঁজুন" onSearch={setQuery} />
           </div>
-        )}
 
-        <Input.Search
-          placeholder="এই সেটে খুঁজুন"
-          allowClear
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ margin: "8px 0 16px" }}
-        />
-
-        {isSearching ? (
-          search.isLoading ? (
+          {isSearching && search.isLoading ? (
             <Skeleton active paragraph={{ rows: 4 }} />
-          ) : search.isError ? (
+          ) : isSearching && search.isError ? (
             <Alert
               type="error"
               showIcon
@@ -166,42 +151,43 @@ export function StudentQbankPaperPage() {
                 </Button>
               }
             />
+          ) : shown.length === 0 ? (
+            <EmptyState variant="filtered" message="কোনো প্রশ্ন পাওয়া যায়নি।" />
           ) : (
-            <QuestionList questions={searchResults} />
-          )
-        ) : (
-          <QuestionList questions={subjectFiltered} />
-        )}
+            <div className="ex-qcard-list">
+              {shown.map((q) => (
+                <PaperQuestionCard
+                  key={q.id}
+                  question={q}
+                  subjectLabel={subjectLabelOf(q)}
+                  defaultExpanded={q.id === focusId}
+                  saved={savedIds.has(q.id)}
+                  saving={savingId === q.id}
+                  onSave={() => save(q.id)}
+                />
+              ))}
+            </div>
+          )}
 
-        <div
-          style={{
-            position: "sticky",
-            bottom: 0,
-            marginTop: 16,
-            padding: "12px 0",
-            background: "var(--ex-bg)",
-            borderTop: "1px solid var(--ex-line)",
-          }}
-        >
-          <Button
-            type="primary"
-            block
-            loading={start.isPending}
-            disabled={!activeTrackId}
-            onClick={() =>
-              start.mutate(
-                { source: "paper", sourceId: paper.id, trackId: activeTrackId! },
-                {
-                  onSuccess: (s) => navigate(`/student/practice/${s.id}`),
-                  onError: () => message.error("প্র্যাকটিস শুরু করা যায়নি"),
-                },
-              )
-            }
-          >
-            এই সেট থেকে প্র্যাকটিস টেস্ট দাও
-          </Button>
+          <div className="ex-paper-cta">
+            <PillButton
+              variant="primary"
+              disabled={!activeTrackId || start.isPending}
+              onClick={() =>
+                start.mutate(
+                  { source: "paper", sourceId: paper.id, trackId: activeTrackId! },
+                  {
+                    onSuccess: (s) => navigate(`/student/practice/${s.id}`),
+                    onError: () => message.error("প্র্যাকটিস শুরু করা যায়নি"),
+                  },
+                )
+              }
+            >
+              {start.isPending ? "শুরু হচ্ছে…" : "এই সেট থেকে প্র্যাকটিস টেস্ট দিন"}
+            </PillButton>
+          </div>
         </div>
-      </div>
-    </PageContainer>
+      </PageContainer>
+    </>
   );
 }

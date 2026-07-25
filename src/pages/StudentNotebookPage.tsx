@@ -45,7 +45,8 @@ function EntryHeader({ entry }: { entry: NotebookEntry }) {
   const subjectLabel = entry.subjectName?.bn || entry.subjectName?.en;
   return (
     <Space size={8} wrap style={{ marginBottom: 8 }}>
-      <Tag color="red">{bnNum(entry.wrongCount)} বার ভুল</Tag>
+      {/* Manual qbank saves are neutral (WrongCount 0) — no red badge for them. */}
+      {entry.wrongCount > 0 && <Tag color="red">{bnNum(entry.wrongCount)} বার ভুল</Tag>}
       {entry.due && <Tag color="gold">ডিউ</Tag>}
       {subjectLabel && <Typography.Text type="secondary">{subjectLabel}</Typography.Text>}
     </Space>
