@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
-import { setSearchTargetPresent } from "./bandSentinel";
+import { acquireSearchTargetClaim } from "./bandSentinel";
 
 // The id the compact app bar's search shortcut focuses (AppHeader, plan 7b Task 10).
 const COMPACT_FOCUS_ID = "ex-page-search";
@@ -47,12 +47,11 @@ export function SearchBar({
   }, [value]);
 
   // Tell the app bar a focus target exists, so the compact bar only shows its
-  // search shortcut while this input is actually mounted (e.g. not on the
-  // "আমার পরীক্ষা" tab, which renders no SearchBar).
+  // search shortcut while a default-id SearchBar is actually mounted.
   useEffect(() => {
     if (id !== COMPACT_FOCUS_ID) return;
-    setSearchTargetPresent(true);
-    return () => setSearchTargetPresent(false);
+    const claim = acquireSearchTargetClaim();
+    return () => claim.release();
   }, [id]);
 
   useEffect(() => {

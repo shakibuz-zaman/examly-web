@@ -1,30 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, keepPreviousData } from "@tanstack/react-query";
 import { apiClient } from "./client";
 import type { QbankPaperDetail, QbankPapersResponse, QbankSearchResponse } from "./types";
 
 export const QBANK_PAPERS_PAGE_SIZE = 20;
-
-export function useQbankPapers(
-  trackId: string | null,
-  categoryId: string | null,
-  year: number | null,
-  page: number,
-) {
-  return useQuery<QbankPapersResponse>({
-    queryKey: ["qbank", "papers", trackId, categoryId, year, page],
-    enabled: !!trackId,
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        trackId: trackId!,
-        page: String(page),
-        pageSize: String(QBANK_PAPERS_PAGE_SIZE),
-      });
-      if (categoryId) params.set("categoryId", categoryId);
-      if (year != null) params.set("year", String(year));
-      return (await apiClient.get<QbankPapersResponse>(`/api/v1/qbank/papers?${params}`)).data;
-    },
-  });
-}
 
 export function useQbankPaper(id: string | undefined) {
   return useQuery<QbankPaperDetail>({
@@ -45,5 +23,53 @@ export function useQbankSearch(q: string, opts: { trackId?: string | null; paper
       else params.set("trackId", opts.trackId!);
       return (await apiClient.get<QbankSearchResponse>(`/api/v1/qbank/search?${params}`)).data;
     },
+  });
+}
+
+export type InfiniteQbankPapersParams = {
+  trackId: string;
+  categoryId?: string | null;
+  pageSize: number;
+};
+
+export function useInfiniteQbankPapers(params: InfiniteQbankPapersParams) {
+  return useInfiniteQuery({
+    queryKey: ["qbank", "papers", "infinite", params],
+    enabled: !!params.trackId,
+    // Band subtitle rides page 1 (trackTotal); keepPreviousData mirrors the store —
+    // without it every filter change blanks the subtitle to «—».
+    placeholderData: keepPreviousData,
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const search = new URLSearchParams({
+        trackId: params.trackId,
+        page: String(pageParam),
+        pageSize: String(params.pageSize),
+      });
+      if (params.categoryId) search.set("categoryId", params.categoryId);
+      return (await apiClient.get<QbankPapersResponse>(`/api/v1/qbank/papers?${search}`)).data;
+    },
+    getNextPageParam: (last) => (last.page * last.pageSize < last.total ? last.page + 1 : undefined),
+  });
+}
+
+// Track-wide question-text search (§7) — the server endpoint already paginates.
+export function useInfiniteQbankSearch(q: string, trackId: string | null, pageSize: number) {
+  const query = q.trim();
+  return useInfiniteQuery({
+    queryKey: ["qbank", "search", "infinite", query, trackId, pageSize],
+    enabled: query.length >= 2 && !!trackId,
+    placeholderData: keepPreviousData,
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const search = new URLSearchParams({
+        q: query,
+        trackId: trackId!,
+        page: String(pageParam),
+        pageSize: String(pageSize),
+      });
+      return (await apiClient.get<QbankSearchResponse>(`/api/v1/qbank/search?${search}`)).data;
+    },
+    getNextPageParam: (last) => (last.page * last.pageSize < last.total ? last.page + 1 : undefined),
   });
 }

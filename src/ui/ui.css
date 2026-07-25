@@ -128,6 +128,9 @@
 .ex-heroband a:focus-visible { outline: 2px solid var(--ex-band-ink); outline-offset: 2px; }
 /* first content block that should float over the band edge (used from 7b on) */
 .ex-band-overlap { margin-top: -26px; }
+/* end-of-band IO sentinel: 1px is required for reliable observation, the negative
+   margin gives it back so it never nudges the geometry below the band. */
+.ex-heroband-sentinel { height: 1px; margin-bottom: -1px; }
 
 /* ---- mobile bottom tab bar ---- */
 .ex-tabbar {
@@ -287,10 +290,15 @@
 .ex-testcard-title {
   margin: 0; font-size: 15.5px; font-weight: 700; line-height: 1.35; color: var(--ex-ink);
 }
-.ex-testcard-org { font-size: 12.5px; color: var(--ex-ink-faint); }
+/* ink-soft (AA): faint was 3.26:1 at 12.5px on card — 7c fix of the 7b leftover */
+.ex-testcard-org { font-size: 12.5px; color: var(--ex-ink-soft); }
 /* shared highlightText() mark style — UA default is off-palette in dark mode.
-   color is ink, not inherit: on the faint org line an inherited ink sits ~2.75:1
-   against the amber tint; ink holds 4.5:1 (AA) in both modes. */
+   color is ink, not inherit: the org line it marks now runs at ink-soft, which
+   does clear AA on the amber tint (~5.8:1 both modes) — but an inherited ink-soft
+   reads no darker than the unmarked text beside it, leaving the tint to carry the
+   highlight alone. Pinning ink gives the match the same emphasis it gets on the
+   title line (~14:1 light, ~10.6:1 dark) and holds AA on any fainter surface a
+   future mark scope lands on. */
 .ex-mark-scope mark {
   background: var(--ex-amber-tint); color: var(--ex-ink); border-radius: 3px; padding: 0 1px;
 }
@@ -320,6 +328,91 @@
 .ex-rowitem-meta .tnum { font-variant-numeric: tabular-nums; }
 .ex-rowitem-trailing { flex: 0 0 auto; }
 
+/* ---- qbank paper card (§4 PaperCard, §7 list) ---- */
+.ex-papercard {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 14px; background: var(--ex-card);
+  border-radius: var(--ex-radius-card); box-shadow: var(--ex-shadow-1);
+  cursor: pointer;
+}
+/* 14/700 per the approved mockup — deliberate compact-card exception to §3.1 (D8) */
+.ex-papercard-title { font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--ex-ink); }
+/* ink-soft, not ink-faint: small meta on card must hold AA (the .ex-testcard-org lesson) */
+.ex-papercard-meta { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ex-ink-soft); }
+.ex-papercard-ans {
+  font-size: 11px; font-weight: 600; color: var(--ex-green);
+  background: var(--ex-green-tint); padding: 1px 8px; border-radius: 999px;
+}
+/* auto (not a fixed margin): grid items stretch, so short-title cards must still
+   bottom-align the CTA across a row — same trick as the testcard footer */
+.ex-papercard-cta { margin-top: auto; width: 100%; }
+/* .ex-hover-lift:active and .ex-btn:active each scale .97 — nested, a CTA press
+   compounds to ~.94. Cancel the inner one so the press reads as one motion. */
+.ex-papercard:active .ex-papercard-cta { transform: none; }
+
+/* ---- paper grid (§7: 3-col desktop / 2-col mobile) ---- */
+.ex-papergrid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+@media (min-width: 768px) { .ex-papergrid { grid-template-columns: repeat(3, 1fr); } }
+
+/* ---- track-wide search hit (§7 list page, search mode) ---- */
+.ex-qhit {
+  padding: 12px 14px; cursor: pointer;
+  background: var(--ex-card); border-radius: 14px; box-shadow: var(--ex-shadow-1);
+}
+.ex-qhit-meta { margin-top: 6px; font-size: 12.5px; color: var(--ex-ink-soft); }
+.ex-qhit-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---- qbank paper question card (§7: collapsed → 200ms expand, answers inline) ---- */
+.ex-qcard {
+  background: var(--ex-card); border-radius: 14px; box-shadow: var(--ex-shadow-1);
+  padding: 12px 14px; border: 1.5px solid transparent;
+  transition: border-color .2s ease-out, box-shadow .2s ease-out;
+}
+.ex-qcard.is-expanded { border-color: var(--ex-teal-tint-2); box-shadow: var(--ex-shadow-2); }
+.ex-qcard-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  cursor: pointer;
+}
+.ex-qcard-head:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: 2px; border-radius: 8px; }
+.ex-qcard-stem {
+  flex: 1; min-width: 0; display: flex; gap: 6px;
+  font-size: 14px; font-weight: 600; line-height: 1.45; color: var(--ex-ink);
+}
+.ex-qcard-order { flex: 0 0 auto; }
+.ex-qcard-caret { flex: 0 0 auto; margin-top: 2px; color: var(--ex-ink-faint); transition: transform .2s ease-out; }
+.ex-qcard.is-expanded .ex-qcard-caret { transform: rotate(180deg); color: var(--ex-teal-ink); }
+.ex-qcard-subject { margin-top: 3px; font-size: 12.5px; color: var(--ex-ink-soft); }
+/* grid-rows trick animates height without measuring content */
+.ex-qcard-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .2s ease-out; }
+.ex-qcard.is-expanded .ex-qcard-body { grid-template-rows: 1fr; }
+/* visibility (not just clipping) so a collapsed body leaves the tab order and the
+   a11y tree — otherwise the hidden save button stays activatable and SRs read the
+   answers while aria-expanded says collapsed. CSS interpolates visibility as
+   "visible for the whole duration", so the 200ms collapse still animates. */
+.ex-qcard-bodyinner { overflow: hidden; min-height: 0; visibility: hidden; transition: visibility .2s; }
+.ex-qcard.is-expanded .ex-qcard-bodyinner { visibility: visible; }
+.ex-qcard-options { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.ex-qcard-why { background: var(--ex-stage); border-radius: 10px; padding: 9px 11px; margin-top: 12px; font-size: 13px; color: var(--ex-ink); }
+.ex-qcard-whylabel { font-weight: 700; margin-right: 4px; }
+.ex-qcard-takeaway { margin-top: 6px; font-size: 12.5px; font-weight: 600; color: var(--ex-amber); }
+.ex-qcard-actions { margin-top: 10px; }
+.ex-qcard-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* ---- paper sticky CTA (§7: the funnel's always-visible conversion point).
+   Blur-backed; on mobile it rides ABOVE the fixed tab bar instead of stacking
+   page padding (the 7b-era double-clearance bug). ---- */
+.ex-paper-cta {
+  position: sticky; bottom: 12px; z-index: 30;
+  display: flex; margin-top: 16px; padding: 10px 12px; border-radius: 16px;
+  background: color-mix(in srgb, var(--ex-card) 92%, transparent);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--ex-line); box-shadow: var(--ex-shadow-2);
+}
+.ex-paper-cta .ex-btn { flex: 1; }
+@media (max-width: 767.98px) {
+  .ex-paper-cta { bottom: calc(env(safe-area-inset-bottom, 0px) + 68px); }
+}
+
 /* ---- band pill tabs (§6 — replaces Segmented) ---- */
 .ex-bandtab {
   height: 32px; padding: 0 16px; border-radius: 999px; border: 0; cursor: pointer;
@@ -346,4 +439,5 @@
   .ex-tabbar-link, .ex-tabbar-link:active { transition: none; transform: none; }
   .ex-btn, .ex-btn:active { transition: none; transform: none; }
   .ex-appbar-inner { transition: none; }
+  .ex-qcard, .ex-qcard-body, .ex-qcard-caret, .ex-qcard-bodyinner { transition: none; }
 }
