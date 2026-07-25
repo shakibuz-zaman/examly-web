@@ -1,264 +1,392 @@
-import { useState } from "react";
-import { Alert, Button, Card, List, Segmented, Space, Tag, Typography } from "antd";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Button } from "antd";
 import { useNavigate } from "react-router-dom";
-import { useCatalog } from "../api/student";
+import { useInfiniteCatalog } from "../api/student";
 import { useActiveTrack } from "../features/tracks/TrackContext";
-import { Chip } from "../components/Chip";
-import { Illustration } from "../components/Illustration";
-import { MyExamsList } from "./student/MyExamsList";
-import { formatDateTime, formatDuration } from "../lib/format";
-import { radii } from "../theme/tokens";
-import type { CatalogItem } from "../api/types";
 import { categoryShortLabel } from "../api/categories";
-import { PageContainer } from "../ui/PageContainer";
+import { bnNum } from "../lib/bn";
+import { groupCatalog } from "../lib/catalogStatus";
 import { HeroBand } from "../ui/HeroBand";
+import { PageContainer } from "../ui/PageContainer";
+import { SearchBar } from "../ui/SearchBar";
+import { FilterChips, type FilterChipItem } from "../ui/FilterChips";
+import {
+  FilterSheet,
+  DEFAULT_STORE_FILTERS,
+  activeFilterCount,
+  type StoreFilters,
+} from "../ui/FilterSheet";
+import { SectionHeader } from "../ui/SectionHeader";
+import { TestCard } from "../ui/TestCard";
+import { EmptyState } from "../ui/EmptyState";
+import { SkeletonCard } from "../ui/Skeletons";
+import { PillButton } from "../ui/PillButton";
+import { MyExamsList } from "./student/MyExamsList";
+import type { CatalogItem } from "../api/types";
 
 const PAGE_SIZE = 20;
-
-type Segment = "store" | "mine";
-type TypeFilter = "all" | "exam" | "model_test";
-type PriceFilter = "all" | "free" | "paid";
-
-function windowTag(item: CatalogItem) {
-  if (!item.windowStartUtc || !item.windowEndUtc) {
-    return <Tag color="green">যেকোনো সময়</Tag>;
-  }
-  const now = Date.now();
-  if (now < new Date(item.windowStartUtc).getTime()) {
-    return <Tag color="blue">শুরু {formatDateTime(item.windowStartUtc)}</Tag>;
-  }
-  if (now < new Date(item.windowEndUtc).getTime()) {
-    return <Tag color="gold">চলছে · {formatDateTime(item.windowEndUtc)} পর্যন্ত</Tag>;
-  }
-  return <Tag>শেষ</Tag>;
-}
+// Keyed on the non-"all" members of the sheet's unions, so adding a type/price
+// option without a Bengali label is a compile error rather than an `undefined` chip.
+const FILTER_LABELS: Record<
+  Exclude<StoreFilters["type"] | StoreFilters["price"], "all">,
+  string
+> = {
+  model_test: "মডেল টেস্ট",
+  exam: "একক পরীক্ষা",
+  free: "ফ্রি",
+  paid: "পেইড",
+};
 
 export function StudentCatalogPage() {
-  const [segment, setSegment] = useState<Segment>("store");
-  const [page, setPage] = useState(1);
+  const [tab, setTab] = useState<"store" | "mine">("store");
   const [collectionId, setCollectionId] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
-  const [liveOnly, setLiveOnly] = useState(false);
+  const [filters, setFilters] = useState<StoreFilters>(DEFAULT_STORE_FILTERS);
+  const [q, setQ] = useState("");
+  // SearchBar owns its input text (uncontrolled by design — it debounces internally),
+  // so clearing `q` from the outside would leave stale text in the box. Bumping this
+  // remounts it with an empty field; the mount debounce re-emits "" which is a no-op
+  // against an already-empty `q`.
+  const [searchNonce, setSearchNonce] = useState(0);
+  const [endedOpen, setEndedOpen] = useState(false);
   const { collections, activeTrackId } = useActiveTrack();
   const navigate = useNavigate();
 
-  // "সব" (all) is the default; a stale selection (after the active track changes)
-  // falls back to all rather than filtering everything away.
+  // Stale collection selection (after a track switch) falls back to সব.
   const activeCollection =
     collectionId && collections.some((c) => c.id === collectionId) ? collectionId : null;
 
-  // The catalog is now filtered server-side; every filter query carries the active track.
-  const { data, isLoading, isError, refetch } = useCatalog({
+  const query = useInfiniteCatalog({
     trackId: activeTrackId ?? "",
     collectionId: activeCollection,
-    type: typeFilter === "all" ? null : typeFilter,
-    price: priceFilter === "all" ? null : priceFilter,
-    live: liveOnly || undefined,
-    page,
+    type: filters.type === "all" ? null : filters.type,
+    price: filters.price === "all" ? null : filters.price,
+    live: filters.liveOnly || undefined,
+    q: q || null,
     pageSize: PAGE_SIZE,
   });
 
-  // Any chip change re-queries from page 1.
+  const items: CatalogItem[] = useMemo(
+    () => query.data?.pages.flatMap((p) => p.items) ?? [],
+    [query.data],
+  );
+  const first = query.data?.pages[0];
+
+  // One clock for the whole page so grouping, accents and CTAs all agree, and it
+  // holds still within a render pass. `Date.now()` in the render body is an impure
+  // render-time read (react-hooks/purity) — a lazy state seed is the compliant
+  // form. The 30s ticker keeps windows honest (a test that opens while the page is
+  // parked slides into «আজ লাইভ» without a reload); setState lives in the timer
+  // callback rather than the effect body, so it doesn't cascade renders
+  // (react-hooks/set-state-in-effect).
+  const [now, setNow] = useState(() => Date.now());
+  const groups = useMemo(() => groupCatalog(items, now), [items, now]);
+
+  // Only time-sensitive cards need the ticker: a live/starting-today card is the one
+  // thing that can change section or CTA on its own. An all-anytime track, an empty
+  // result and the আমার-পরীক্ষা tab all park the timer instead of re-rendering the
+  // whole grid every 30s. (Boolean dep, so the effect re-arms only on the edges.)
+  const needsClock = tab === "store" && groups.liveToday.length > 0;
+  useEffect(() => {
+    if (!needsClock) return;
+    const id = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, [needsClock]);
+
+  // Infinite scroll sentinel, scroll-intent gated. Most ended tests sit behind the
+  // collapsed শেষ section, so the visible cards often don't fill the viewport and the
+  // sentinel stays intersecting — an ungated observer then chain-fetches the entire
+  // catalog on load. Allow exactly ONE observer-driven auto-advance per query (so wide
+  // desktop viewports still fill), after which a real scroll gesture is required.
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const autoAdvanced = useRef(false);
+  const userScrolled = useRef(false);
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isPlaceholderData } = query;
+
+  // Serialized query identity — a new filter/search/track starts a fresh budget.
+  const queryIdentity = JSON.stringify([activeCollection, filters, q, activeTrackId]);
+  useEffect(() => {
+    autoAdvanced.current = false;
+    userScrolled.current = false;
+  }, [queryIdentity]);
+
+  // Set by the observer effect: re-observes the sentinel so its CURRENT intersection
+  // is re-delivered. An IntersectionObserver only calls back when the ratio crosses a
+  // threshold, so a sentinel that was already in view when the auto-advance budget ran
+  // out would never fire again — the first scroll gesture has to poke it.
+  const pokeSentinel = useRef<(() => void) | null>(null);
+
+  // Registered once. `scroll` is capture-phase because scroll events don't bubble
+  // (an inner scroll container would otherwise never reach window); wheel/touchmove
+  // cover trackpad and touch drags that haven't moved the scrollport yet.
+  useEffect(() => {
+    const mark = () => {
+      if (userScrolled.current) return;
+      userScrolled.current = true;
+      pokeSentinel.current?.();
+    };
+    window.addEventListener("wheel", mark, { passive: true });
+    window.addEventListener("touchmove", mark, { passive: true });
+    window.addEventListener("scroll", mark, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener("wheel", mark);
+      window.removeEventListener("touchmove", mark);
+      window.removeEventListener("scroll", mark, { capture: true });
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        // isPlaceholderData: the rows on screen belong to the PREVIOUS query while the
+        // new one is in flight — paging them would append the wrong result set.
+        if (!entries[0].isIntersecting || !hasNextPage || isFetchingNextPage) return;
+        if (isPlaceholderData) return;
+        if (!userScrolled.current) {
+          if (autoAdvanced.current) return;
+          autoAdvanced.current = true;
+        }
+        void fetchNextPage();
+      },
+      { rootMargin: "300px" },
+    );
+    io.observe(el);
+    pokeSentinel.current = () => {
+      io.unobserve(el);
+      io.observe(el);
+    };
+    return () => {
+      pokeSentinel.current = null;
+      io.disconnect();
+    };
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isPlaceholderData, tab]);
+
+  const filtersActive =
+    activeCollection !== null || activeFilterCount(filters) > 0 || q.length > 0;
+
+  // Every query-changing control also re-collapses শেষ: the old "N টি দেখুন" count
+  // belongs to the old result set. Done in the handlers, not an effect
+  // (react-hooks/set-state-in-effect).
   const selectCollection = (id: string | null) => {
     setCollectionId(id);
-    setPage(1);
+    setEndedOpen(false);
   };
-  const selectType = (v: TypeFilter) => {
-    setTypeFilter(v);
-    setPage(1);
+  const applyFilters = (v: StoreFilters) => {
+    setFilters(v);
+    setEndedOpen(false);
   };
-  const selectPrice = (v: PriceFilter) => {
-    setPriceFilter(v);
-    setPage(1);
-  };
-  const toggleLive = () => {
-    setLiveOnly((v) => !v);
-    setPage(1);
+  const applySearch = (value: string) => {
+    setQ(value);
+    setEndedOpen(false);
   };
   const resetFilters = () => {
     setCollectionId(null);
-    setTypeFilter("all");
-    setPriceFilter("all");
-    setLiveOnly(false);
-    setPage(1);
+    setFilters(DEFAULT_STORE_FILTERS);
+    setQ("");
+    setSearchNonce((n) => n + 1);
+    setEndedOpen(false);
   };
 
-  const items = data?.items ?? [];
-  // A non-default filter is active → an empty result is a filter miss, not an empty track.
-  const filtersActive =
-    activeCollection !== null || typeFilter !== "all" || priceFilter !== "all" || liveOnly;
+  const open = (item: CatalogItem) =>
+    navigate(item.kind === "exam" ? `/student/exams/${item.id}` : `/student/model-tests/${item.id}`);
+
+  // Collection chips + ✕-echoes of active sheet filters (§6).
+  const chipItems: FilterChipItem[] = [
+    {
+      key: "all",
+      label: "সব",
+      selected: activeCollection === null,
+      onClick: () => selectCollection(null),
+    },
+    ...collections.map((c) => ({
+      key: c.id,
+      label: categoryShortLabel(c),
+      selected: activeCollection === c.id,
+      onClick: () => selectCollection(c.id),
+    })),
+    ...(filters.type !== "all"
+      ? [
+          {
+            key: "x-type",
+            label: FILTER_LABELS[filters.type],
+            selected: true,
+            removable: true,
+            onClick: () => applyFilters({ ...filters, type: "all" as const }),
+          },
+        ]
+      : []),
+    ...(filters.price !== "all"
+      ? [
+          {
+            key: "x-price",
+            label: FILTER_LABELS[filters.price],
+            selected: true,
+            removable: true,
+            onClick: () => applyFilters({ ...filters, price: "all" as const }),
+          },
+        ]
+      : []),
+    ...(filters.liveOnly
+      ? [
+          {
+            key: "x-live",
+            label: "শুধু লাইভ",
+            selected: true,
+            removable: true,
+            onClick: () => applyFilters({ ...filters, liveOnly: false }),
+          },
+        ]
+      : []),
+  ];
+
+  const skeletonGrid = (
+    <div className="ex-cardgrid" style={{ marginTop: 16 }}>
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  );
+
+  const grid = (list: CatalogItem[]) => (
+    <div className="ex-cardgrid">
+      {list.map((item) => (
+        <TestCard key={item.listingId} item={item} now={now} highlight={q} onOpen={() => open(item)} />
+      ))}
+    </div>
+  );
 
   return (
     <>
-      <HeroBand title="মডেল টেস্ট" />
+      <HeroBand
+        title="মডেল টেস্ট"
+        // Counts describe the store; the আমার-পরীক্ষা tab has no equivalent, so it
+        // gets no subtitle rather than a store number that doesn't match its list.
+        subtitle={
+          tab !== "store"
+            ? undefined
+            : first
+              ? `${bnNum(first.trackTotal)}টি টেস্ট · ${bnNum(first.liveTodayCount)}টি আজ লাইভ`
+              : "—"
+        }
+        overlap={tab === "store"}
+        tabs={
+          <>
+            <button
+              type="button"
+              className={tab === "store" ? "ex-bandtab is-active" : "ex-bandtab"}
+              aria-pressed={tab === "store"}
+              onClick={() => setTab("store")}
+            >
+              স্টোর
+            </button>
+            <button
+              type="button"
+              className={tab === "mine" ? "ex-bandtab is-active" : "ex-bandtab"}
+              aria-pressed={tab === "mine"}
+              onClick={() => setTab("mine")}
+            >
+              আমার পরীক্ষা
+            </button>
+          </>
+        }
+      />
       <PageContainer banded>
-        <div>
-          <Segmented
-            options={[
-              { label: "স্টোর", value: "store" },
-              { label: "আমার পরীক্ষা", value: "mine" },
-            ]}
-            value={segment}
-            onChange={(v) => setSegment(v as Segment)}
-            style={{ marginBottom: 16 }}
-          />
+        {tab === "mine" ? (
+          <MyExamsList />
+        ) : (
+          <div>
+            <div className="ex-band-overlap">
+              <SearchBar
+                key={searchNonce}
+                placeholder="টেস্ট বা প্রতিষ্ঠান খুঁজুন…"
+                onSearch={applySearch}
+              />
+            </div>
 
-          {segment === "mine" ? (
-            <MyExamsList />
-          ) : (
-            <>
-              {collections.length > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    overflowX: "auto",
-                    paddingBottom: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <Chip
-                    label="সব"
-                    selected={activeCollection === null}
-                    onClick={() => selectCollection(null)}
-                  />
-                  {collections.map((c) => (
-                    <Chip
-                      key={c.id}
-                      label={categoryShortLabel(c)}
-                      selected={activeCollection === c.id}
-                      onClick={() => selectCollection(c.id)}
-                    />
-                  ))}
-                </div>
-              )}
+            <div className="ex-filterrow">
+              <FilterChips items={chipItems} />
+              <FilterSheet value={filters} onChange={applyFilters} />
+            </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  overflowX: "auto",
-                  paddingBottom: 8,
-                  marginBottom: 8,
-                }}
-              >
-                <Chip label="সব" selected={typeFilter === "all"} onClick={() => selectType("all")} />
-                <Chip
-                  label="মডেল টেস্ট"
-                  selected={typeFilter === "model_test"}
-                  onClick={() => selectType("model_test")}
-                />
-                <Chip
-                  label="একক পরীক্ষা"
-                  selected={typeFilter === "exam"}
-                  onClick={() => selectType("exam")}
-                />
-                <Chip
-                  label="ফ্রি"
-                  selected={priceFilter === "free"}
-                  onClick={() => selectPrice(priceFilter === "free" ? "all" : "free")}
-                />
-                <Chip
-                  label="পেইড"
-                  selected={priceFilter === "paid"}
-                  onClick={() => selectPrice(priceFilter === "paid" ? "all" : "paid")}
-                />
-                <Chip label="লাইভ" selected={liveOnly} onClick={toggleLive} />
-              </div>
-
-              {isError ? (
-                <Alert
-                  type="error"
-                  showIcon
-                  title="স্টোর লোড করা যায়নি"
-                  action={
-                    <Button size="small" onClick={() => refetch()}>
-                      আবার চেষ্টা করুন
-                    </Button>
-                  }
+            {query.isError ? (
+              <Alert
+                type="error"
+                showIcon
+                title="স্টোর লোড করা যায়নি"
+                action={
+                  <Button size="small" onClick={() => void query.refetch()}>
+                    আবার চেষ্টা করুন
+                  </Button>
+                }
+              />
+            ) : query.isLoading || activeTrackId == null ? (
+              skeletonGrid
+            ) : items.length === 0 ? (
+              // An empty *stale* result (previous query also had no rows) must not flash
+              // the empty state at the incoming one — wait for the settled answer.
+              query.isPlaceholderData ? (
+                skeletonGrid
+              ) : filtersActive ? (
+                <EmptyState
+                  variant="filtered"
+                  message="এই ফিল্টারে কিছু পাওয়া যায়নি।"
+                  actionLabel="সব দেখুন"
+                  onAction={resetFilters}
                 />
               ) : (
-                <List
-                  loading={isLoading || activeTrackId == null}
-                  dataSource={items}
-                  locale={{
-                    emptyText: filtersActive ? (
-                      <div style={{ padding: "32px 0", textAlign: "center" }}>
-                        <Typography.Paragraph style={{ color: "var(--ex-ink-soft)" }}>
-                          এই ফিল্টারে কিছু পাওয়া যায়নি।
-                        </Typography.Paragraph>
-                        <Button type="link" onClick={resetFilters}>
-                          সব দেখুন
-                        </Button>
-                      </div>
-                    ) : (
-                      <div style={{ padding: "32px 0", textAlign: "center" }}>
-                        <Illustration name="empty" />
-                        <Typography.Paragraph style={{ marginTop: 12, color: "var(--ex-ink-soft)" }}>
-                          এই ট্র্যাকে এখনো কিছু নেই
-                        </Typography.Paragraph>
-                      </div>
-                    ),
-                  }}
-                  pagination={{
-                    current: page,
-                    pageSize: PAGE_SIZE,
-                    total: data?.total ?? 0,
-                    onChange: setPage,
-                    hideOnSinglePage: true,
-                  }}
-                  renderItem={(item) => (
-                    <List.Item style={{ padding: 0, marginBottom: 12, border: "none" }}>
-                      <Card
-                        hoverable
-                        style={{ width: "100%", borderRadius: radii.md }}
-                        onClick={() =>
-                          navigate(
-                            item.kind === "exam"
-                              ? `/student/exams/${item.id}`
-                              : `/student/model-tests/${item.id}`,
-                          )
-                        }
-                      >
-                        <Space orientation="vertical" size={4} style={{ width: "100%" }}>
-                          <Space wrap>
-                            <Typography.Text strong>{item.title}</Typography.Text>
-                            {item.kind === "model_test" && <Tag color="purple">মডেল টেস্ট</Tag>}
-                            {item.priceBdt === 0 ? (
-                              <Tag color="green">ফ্রি</Tag>
-                            ) : (
-                              <Tag color="gold">৳{item.priceBdt}</Tag>
-                            )}
-                            {item.mode === "live" && <Tag color="red">লাইভ</Tag>}
-                            {item.mode === "archive" && <Tag>আর্কাইভ</Tag>}
-                            {item.owned && <Tag color="cyan">কেনা আছে</Tag>}
-                            {windowTag(item)}
-                          </Space>
-                          {item.orgName && (
-                            <Typography.Text style={{ fontSize: 13, color: "var(--ex-ink-faint)" }}>
-                              {item.orgName}
-                            </Typography.Text>
-                          )}
-                          <Typography.Text type="secondary">
-                            {item.kind === "model_test" ? `${item.examCount} exams · ` : ""}
-                            {item.questionCount} questions · {formatDuration(item.durationMinutes)} ·{" "}
-                            {item.totalMarks} marks
-                          </Typography.Text>
-                          {item.mode === "live" && item.registeredCount > 0 && (
-                            <Typography.Text type="secondary">
-                              {item.registeredCount} জন রেজিস্টার করেছে
-                            </Typography.Text>
-                          )}
-                        </Space>
-                      </Card>
-                    </List.Item>
-                  )}
+                <EmptyState
+                  variant="empty"
+                  message="এই ট্র্যাকে এখনো কিছু নেই"
+                  actionLabel="প্রশ্নব্যাংক দেখুন"
+                  onAction={() => navigate("/student/qbank")}
                 />
-              )}
-            </>
-          )}
-        </div>
+              )
+            ) : (
+              <>
+                {groups.liveToday.length > 0 && (
+                  <>
+                    <SectionHeader
+                      label="🔴 আজ লাইভ"
+                      trailing={`${bnNum(groups.liveToday.length)}টি`}
+                    />
+                    {grid(groups.liveToday)}
+                  </>
+                )}
+                {groups.anytime.length > 0 && (
+                  <>
+                    <SectionHeader
+                      label="যেকোনো সময়"
+                      trailing={`${bnNum(groups.anytime.length)}টি`}
+                    />
+                    {grid(groups.anytime)}
+                  </>
+                )}
+                {groups.ended.length > 0 && (
+                  <>
+                    <SectionHeader
+                      label="শেষ"
+                      trailing={
+                        <PillButton variant="ghost" size="sm" onClick={() => setEndedOpen((o) => !o)}>
+                          {endedOpen ? "লুকান" : `${bnNum(groups.ended.length)}টি দেখুন`}
+                        </PillButton>
+                      }
+                    />
+                    {endedOpen && grid(groups.ended)}
+                  </>
+                )}
+                {isFetchingNextPage && (
+                  <div className="ex-cardgrid" style={{ marginTop: 12 }}>
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                )}
+                <div ref={sentinelRef} aria-hidden />
+              </>
+            )}
+          </div>
+        )}
       </PageContainer>
     </>
   );

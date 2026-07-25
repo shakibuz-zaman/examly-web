@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { STUDENT_NAV } from "./AppHeader";
+import { STUDENT_NAV } from "./nav";
 
 export function BottomTabBar() {
   return (

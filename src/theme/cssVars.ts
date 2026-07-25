@@ -1,4 +1,4 @@
-import { FONT_STACK, paletteFor, type ThemeMode } from "./tokens";
+import { FONT_STACK, paletteFor, radii, type ThemeMode } from "./tokens";
 
 // Semantic vars for non-antd surfaces (runner, charts, illustrations).
 export function applyCssVars(mode: ThemeMode): void {
@@ -26,6 +26,7 @@ export function applyCssVars(mode: ThemeMode): void {
     "--ex-band-ink": p.bandInk, "--ex-band-ink-soft": p.bandInkSoft,
     "--ex-band-pill": p.bandPill, "--ex-band-pill-hover": p.bandPillHover,
     "--ex-shadow-1": p.shadow1, "--ex-shadow-2": p.shadow2,
+    "--ex-radius-card": `${radii.card}px`,
   };
   for (const [k, v] of Object.entries(map)) root.style.setProperty(k, v);
 }

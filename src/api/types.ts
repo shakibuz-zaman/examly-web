@@ -352,6 +352,9 @@ export type CatalogResponse = {
   total: number;
   page: number;
   pageSize: number;
+  // 7b band subtitle counts — track-scoped, filter-independent.
+  trackTotal: number;
+  liveTodayCount: number;
 };
 
 export type StudentBundleExam = {
@@ -550,6 +553,13 @@ export type MyExamItem = {
   grantedAt: string;
   latestAttemptId: string | null;
   latestAttemptStatus: string | null;
+  // 7b: listing window + latest-attempt reveal state (single exams; bundles null/false).
+  windowStartUtc: string | null;
+  windowEndUtc: string | null;
+  revealAtUtc: string | null;
+  revealed: boolean;
+  score: number | null;
+  maxScore: number | null;
 };
 
 export type MyExamsResponse = {

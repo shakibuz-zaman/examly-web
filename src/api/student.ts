@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { apiClient } from "./client";
 import type { StrengthRow } from "./analytics";
 import type {
@@ -24,6 +30,7 @@ export type CatalogParams = {
   type?: string | null;
   price?: string | null;
   live?: boolean;
+  q?: string | null;
   page: number;
   pageSize: number;
 };
@@ -39,7 +46,37 @@ export function useCatalog(params: CatalogParams) {
       if (params.type) q.set("type", params.type);
       if (params.price) q.set("price", params.price);
       if (params.live) q.set("live", "true");
+      if (params.q) q.set("q", params.q);
       q.set("page", String(params.page));
+      q.set("pageSize", String(params.pageSize));
+      return (await apiClient.get<CatalogResponse>(`/api/v1/student/catalog?${q}`)).data;
+    },
+  });
+}
+
+// 7b store: infinite-scroll variant. Same server contract; pages accumulate client-side
+// and the band counts ride on every page (read them off pages[0]).
+// keepPreviousData: the band counts (trackTotal / liveTodayCount) are filter-independent
+// but only arrive on a query's first page, so without it every filter/search keystroke
+// blanked the subtitle to «—» and dumped the grid to a skeleton. Callers that need to
+// distinguish stale from settled read `isPlaceholderData`.
+export function useInfiniteCatalog(params: Omit<CatalogParams, "page">) {
+  return useInfiniteQuery<CatalogResponse>({
+    queryKey: ["student", "catalog", "infinite", params],
+    enabled: !!params.trackId,
+    placeholderData: keepPreviousData,
+    initialPageParam: 1,
+    getNextPageParam: (last) =>
+      last.page * last.pageSize < last.total ? last.page + 1 : undefined,
+    queryFn: async ({ pageParam }) => {
+      const q = new URLSearchParams();
+      q.set("trackId", params.trackId);
+      if (params.collectionId) q.set("collectionId", params.collectionId);
+      if (params.type) q.set("type", params.type);
+      if (params.price) q.set("price", params.price);
+      if (params.live) q.set("live", "true");
+      if (params.q) q.set("q", params.q);
+      q.set("page", String(pageParam));
       q.set("pageSize", String(params.pageSize));
       return (await apiClient.get<CatalogResponse>(`/api/v1/student/catalog?${q}`)).data;
     },

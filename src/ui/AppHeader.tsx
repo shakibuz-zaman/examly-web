@@ -1,22 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Dropdown, Grid } from "antd";
-import {
-  BookOpen, FileText, House, Moon, NotebookPen, Sun, TrendingUp, type LucideIcon,
-} from "lucide-react";
+import { Moon, Search, Sun } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { categoryShortLabel } from "../api/categories";
 import { useThemeMode } from "../theme/ThemeContext";
 import { useActiveTrack } from "../features/tracks/TrackContext";
-
-// eslint-disable-next-line react-refresh/only-export-components -- house pattern (see theme/ThemeContext.tsx); BottomTabBar consumes this
-export const STUDENT_NAV: { to: string; label: string; Icon: LucideIcon }[] = [
-  { to: "/student/home", label: "হোম", Icon: House },
-  { to: "/student/qbank", label: "প্রশ্নব্যাংক", Icon: BookOpen },
-  { to: "/student/tests", label: "মডেল টেস্ট", Icon: FileText },
-  { to: "/student/notebook", label: "ভুলের খাতা", Icon: NotebookPen },
-  { to: "/student/progress", label: "প্রোগ্রেস", Icon: TrendingUp },
-];
+import {
+  getBandVisible,
+  getSearchTargetPresent,
+  subscribeBand,
+  subscribeSearchTarget,
+} from "./bandSentinel";
+import { STUDENT_NAV } from "./nav";
 
 // rAF-throttled scroll flag for the sticky bar's shadow.
 function useScrolled(threshold = 8): boolean {
@@ -71,6 +67,16 @@ export function AppHeader() {
   const { mode, toggle } = useThemeMode();
   const isDesktop = Grid.useBreakpoint().md;
   const scrolled = useScrolled();
+  // Band-less pages keep the sentinel at its default `true`, so they never compact.
+  const bandVisible = useSyncExternalStore(subscribeBand, getBandVisible);
+  const compact = isDesktop === true && !bandVisible;
+  // Only offer the search shortcut when a SearchBar is actually mounted to focus —
+  // otherwise the icon would be dead (e.g. the catalog's "আমার পরীক্ষা" tab).
+  const searchTargetPresent = useSyncExternalStore(subscribeSearchTarget, getSearchTargetPresent);
+
+  // Tracked so an in-flight focus never fires after unmount.
+  const focusTimerRef = useRef(0);
+  useEffect(() => () => window.clearTimeout(focusTimerRef.current), []);
 
   const initial = (user?.name ?? "").trim().charAt(0) || "প";
 
@@ -84,7 +90,11 @@ export function AppHeader() {
   ];
 
   return (
-    <header className={scrolled ? "ex-appbar is-scrolled" : "ex-appbar"}>
+    <header
+      className={["ex-appbar", scrolled ? "is-scrolled" : "", compact ? "is-compact" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="ex-appbar-inner">
         <Link to="/student/home" className="ex-appbar-logo">
           Examly
@@ -100,6 +110,26 @@ export function AppHeader() {
           </nav>
         )}
         <div className="ex-appbar-right">
+          {compact && searchTargetPresent && (
+            <button
+              type="button"
+              className="ex-appbar-iconbtn"
+              aria-label="খুঁজুন"
+              onClick={() => {
+                const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+                window.clearTimeout(focusTimerRef.current);
+                focusTimerRef.current = window.setTimeout(
+                  // preventScroll: a plain focus() would scroll the input into view
+                  // itself, which cancels the smooth scroll mid-animation.
+                  () => document.getElementById("ex-page-search")?.focus({ preventScroll: true }),
+                  reduce ? 0 : 350,
+                );
+              }}
+            >
+              <Search size={17} strokeWidth={1.75} aria-hidden />
+            </button>
+          )}
           <TrackPill />
           {isDesktop && (
             <button

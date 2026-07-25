@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { apiClient } from "./client";
 import type { ExamResponse } from "./types";
 import type { MyExamsResponse } from "./types";
@@ -237,6 +242,20 @@ export function useMyExams(page = 1, pageSize = 20) {
     queryFn: async () =>
       (await apiClient.get<MyExamsResponse>(
         `/api/v1/student/my-exams?page=${page}&pageSize=${pageSize}`)).data,
+  });
+}
+
+// 7b store: infinite-scroll variant of useMyExams. The key extends the ["student", "my-exams"]
+// prefix in OWNERSHIP_KEYS, so a claim / purchase / free-register invalidates it too.
+export function useInfiniteMyExams(pageSize = 20) {
+  return useInfiniteQuery<MyExamsResponse>({
+    queryKey: ["student", "my-exams", "infinite", pageSize],
+    initialPageParam: 1,
+    getNextPageParam: (last) =>
+      last.page * last.pageSize < last.total ? last.page + 1 : undefined,
+    queryFn: async ({ pageParam }) =>
+      (await apiClient.get<MyExamsResponse>(
+        `/api/v1/student/my-exams?page=${pageParam}&pageSize=${pageSize}`)).data,
   });
 }
 
