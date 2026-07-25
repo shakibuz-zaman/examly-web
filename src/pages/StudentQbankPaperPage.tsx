@@ -126,7 +126,9 @@ export function StudentQbankPaperPage() {
       />
       <PageContainer banded>
         <div>
-          {subjects.length > 0 && (
+          {/* Hidden while searching: same as the list page — D6 says search ignores
+              the subject/collection filter, so active-looking chips would lie. */}
+          {!isSearching && subjects.length > 0 && (
             <div className="ex-filterrow">
               <FilterChips items={chipItems} />
             </div>

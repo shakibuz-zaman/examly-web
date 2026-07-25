@@ -40,7 +40,15 @@ export function PaperQuestionCard({
   return (
     <div className={expanded ? "ex-qcard is-expanded" : "ex-qcard"} id={`q-${question.id}`}>
       {/* div+role, not <button>: the stem HTML contains block elements. */}
-      <div className="ex-qcard-head" role="button" tabIndex={0} aria-expanded={expanded} onClick={toggle} onKeyDown={onKeyDown}>
+      <div
+        className="ex-qcard-head"
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-controls={`q-${question.id}-body`}
+        onClick={toggle}
+        onKeyDown={onKeyDown}
+      >
         <span className="ex-qcard-stem">
           <span className="ex-qcard-order">{bnNum(question.order)}.</span>
           <QuestionContentView html={question.stemHtml} />
@@ -48,7 +56,7 @@ export function PaperQuestionCard({
         <ChevronDown size={16} strokeWidth={2} aria-hidden className="ex-qcard-caret" />
       </div>
       {subjectLabel && <div className="ex-qcard-subject">{subjectLabel}</div>}
-      <div className="ex-qcard-body">
+      <div className="ex-qcard-body" id={`q-${question.id}-body`}>
         <div className="ex-qcard-bodyinner">
           <div className="ex-qcard-options">
             {question.options.map((o, i) => (

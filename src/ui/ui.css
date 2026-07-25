@@ -378,7 +378,12 @@
 /* grid-rows trick animates height without measuring content */
 .ex-qcard-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .2s ease-out; }
 .ex-qcard.is-expanded .ex-qcard-body { grid-template-rows: 1fr; }
-.ex-qcard-bodyinner { overflow: hidden; min-height: 0; }
+/* visibility (not just clipping) so a collapsed body leaves the tab order and the
+   a11y tree — otherwise the hidden save button stays activatable and SRs read the
+   answers while aria-expanded says collapsed. CSS interpolates visibility as
+   "visible for the whole duration", so the 200ms collapse still animates. */
+.ex-qcard-bodyinner { overflow: hidden; min-height: 0; visibility: hidden; transition: visibility .2s; }
+.ex-qcard.is-expanded .ex-qcard-bodyinner { visibility: visible; }
 .ex-qcard-options { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .ex-qcard-why { background: var(--ex-stage); border-radius: 10px; padding: 9px 11px; margin-top: 12px; font-size: 13px; color: var(--ex-ink); }
 .ex-qcard-whylabel { font-weight: 700; margin-right: 4px; }
@@ -427,5 +432,5 @@
   .ex-tabbar-link, .ex-tabbar-link:active { transition: none; transform: none; }
   .ex-btn, .ex-btn:active { transition: none; transform: none; }
   .ex-appbar-inner { transition: none; }
-  .ex-qcard, .ex-qcard-body, .ex-qcard-caret { transition: none; }
+  .ex-qcard, .ex-qcard-body, .ex-qcard-caret, .ex-qcard-bodyinner { transition: none; }
 }
