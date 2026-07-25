@@ -24,43 +24,23 @@ import type {
 // Phase 8 storefront: the catalog is server-scoped to a track (required) with optional
 // collection / type / price / live filters. trackId absent → query disabled (the server 400s
 // on an empty trackId).
-export type CatalogParams = {
+export type InfiniteCatalogParams = {
   trackId: string;
   collectionId?: string | null;
   type?: string | null;
   price?: string | null;
   live?: boolean;
   q?: string | null;
-  page: number;
   pageSize: number;
 };
 
-export function useCatalog(params: CatalogParams) {
-  return useQuery<CatalogResponse>({
-    queryKey: ["student", "catalog", params],
-    enabled: !!params.trackId,
-    queryFn: async () => {
-      const q = new URLSearchParams();
-      q.set("trackId", params.trackId);
-      if (params.collectionId) q.set("collectionId", params.collectionId);
-      if (params.type) q.set("type", params.type);
-      if (params.price) q.set("price", params.price);
-      if (params.live) q.set("live", "true");
-      if (params.q) q.set("q", params.q);
-      q.set("page", String(params.page));
-      q.set("pageSize", String(params.pageSize));
-      return (await apiClient.get<CatalogResponse>(`/api/v1/student/catalog?${q}`)).data;
-    },
-  });
-}
-
-// 7b store: infinite-scroll variant. Same server contract; pages accumulate client-side
+// 7b store: infinite scroll; pages accumulate client-side
 // and the band counts ride on every page (read them off pages[0]).
 // keepPreviousData: the band counts (trackTotal / liveTodayCount) are filter-independent
 // but only arrive on a query's first page, so without it every filter/search keystroke
 // blanked the subtitle to «—» and dumped the grid to a skeleton. Callers that need to
 // distinguish stale from settled read `isPlaceholderData`.
-export function useInfiniteCatalog(params: Omit<CatalogParams, "page">) {
+export function useInfiniteCatalog(params: InfiniteCatalogParams) {
   return useInfiniteQuery<CatalogResponse>({
     queryKey: ["student", "catalog", "infinite", params],
     enabled: !!params.trackId,
@@ -82,10 +62,6 @@ export function useInfiniteCatalog(params: Omit<CatalogParams, "page">) {
     },
   });
 }
-
-// The student's owned library. Lives in commerce.ts (shares the ownership invalidation seam);
-// re-exported here so student pages import it alongside the other student hooks.
-export { useMyExams as useMyExamsList } from "./commerce";
 
 export function useStudentHome(trackId: string | null) {
   return useQuery<StudentHomeResponse>({
