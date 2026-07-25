@@ -293,8 +293,12 @@
 /* ink-soft (AA): faint was 3.26:1 at 12.5px on card — 7c fix of the 7b leftover */
 .ex-testcard-org { font-size: 12.5px; color: var(--ex-ink-soft); }
 /* shared highlightText() mark style — UA default is off-palette in dark mode.
-   color is ink, not inherit: on the faint org line an inherited ink sits ~2.75:1
-   against the amber tint; ink holds 4.5:1 (AA) in both modes. */
+   color is ink, not inherit: the org line it marks now runs at ink-soft, which
+   does clear AA on the amber tint (~5.8:1 both modes) — but an inherited ink-soft
+   reads no darker than the unmarked text beside it, leaving the tint to carry the
+   highlight alone. Pinning ink gives the match the same emphasis it gets on the
+   title line (~14:1 light, ~10.6:1 dark) and holds AA on any fainter surface a
+   future mark scope lands on. */
 .ex-mark-scope mark {
   background: var(--ex-amber-tint); color: var(--ex-ink); border-radius: 3px; padding: 0 1px;
 }
@@ -342,6 +346,9 @@
 /* auto (not a fixed margin): grid items stretch, so short-title cards must still
    bottom-align the CTA across a row — same trick as the testcard footer */
 .ex-papercard-cta { margin-top: auto; width: 100%; }
+/* .ex-hover-lift:active and .ex-btn:active each scale .97 — nested, a CTA press
+   compounds to ~.94. Cancel the inner one so the press reads as one motion. */
+.ex-papercard:active .ex-papercard-cta { transform: none; }
 
 /* ---- paper grid (§7: 3-col desktop / 2-col mobile) ---- */
 .ex-papergrid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }

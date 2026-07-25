@@ -20,13 +20,18 @@ export function PaperQuestionCard({
   defaultExpanded = false,
   saved,
   saving,
+  disabled = false,
   onSave,
 }: {
   question: QbankQuestion;
   subjectLabel: string | null;
   defaultExpanded?: boolean;
   saved: boolean;
+  // THIS card's turn — drives the label only.
   saving: boolean;
+  // List-wide "a save is in flight": the page guards on a single pending id, so
+  // every other card's button must go dead too or the clicks are silently dropped.
+  disabled?: boolean;
   onSave: () => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -49,10 +54,13 @@ export function PaperQuestionCard({
         onClick={toggle}
         onKeyDown={onKeyDown}
       >
-        <span className="ex-qcard-stem">
+        {/* div, not span: QuestionContentView renders block content — a span
+            wrapper would be invalid nesting (.ex-qcard-stem is already flex, so
+            no visual change). The order prefix stays inline. */}
+        <div className="ex-qcard-stem">
           <span className="ex-qcard-order">{bnNum(question.order)}.</span>
           <QuestionContentView html={question.stemHtml} />
-        </span>
+        </div>
         <ChevronDown size={16} strokeWidth={2} aria-hidden className="ex-qcard-caret" />
       </div>
       {subjectLabel && <div className="ex-qcard-subject">{subjectLabel}</div>}
@@ -80,7 +88,7 @@ export function PaperQuestionCard({
           )}
           {question.takeawayText && <div className="ex-qcard-takeaway">💡 {question.takeawayText}</div>}
           <div className="ex-qcard-actions">
-            <PillButton variant="tonal" size="sm" disabled={saved || saving} onClick={onSave}>
+            <PillButton variant="tonal" size="sm" disabled={disabled || saved || saving} onClick={onSave}>
               {saved ? "ভুলের খাতায় আছে ✓" : saving ? "রাখা হচ্ছে…" : "ভুলের খাতায় রাখুন"}
             </PillButton>
           </div>

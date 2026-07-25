@@ -155,6 +155,10 @@ export function StudentQbankPage() {
           title={paper.title}
           questionCount={paper.questionCount}
           practicing={practicingId === paper.id}
+          // List-wide, not per-card: the CTA stops propagation, so a tap on another
+          // card's still-enabled button would be swallowed by practiceFrom's guard
+          // and the in-flight start would navigate into the first paper (§7).
+          disabled={practicingId !== null}
           onOpen={() => navigate(`/student/qbank/papers/${paper.id}`)}
           onPractice={() => practiceFrom(paper.id)}
         />

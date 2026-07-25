@@ -42,6 +42,9 @@ export function StudentQbankPaperPage() {
   const { data, isLoading, isError, refetch } = useQbankPaper(id);
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  // Remount nonce clears the (uncontrolled) SearchBar on reset — same pattern as
+  // the list page.
+  const [searchNonce, setSearchNonce] = useState(0);
   const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
   const [savingId, setSavingId] = useState<string | null>(null);
 
@@ -104,6 +107,11 @@ export function StudentQbankPaperPage() {
 
   const subjectLabelOf = (q: QbankQuestion) => q.subjectName?.bn ?? q.subjectName?.en ?? null;
 
+  const resetSearch = () => {
+    setQuery("");
+    setSearchNonce((n) => n + 1);
+  };
+
   const save = (questionId: string) => {
     if (savingId) return;
     setSavingId(questionId);
@@ -137,7 +145,14 @@ export function StudentQbankPaperPage() {
           {/* Secondary SearchBar: own id + no `/` hotkey — the list page owns the
               compact-bar target; this one only filters within the paper. */}
           <div style={{ margin: "8px 0 16px" }}>
-            <SearchBar id="ex-paper-search" hotkey={false} placeholder="এই সেটে খুঁজুন" onSearch={setQuery} />
+            <SearchBar
+              key={searchNonce}
+              id="ex-paper-search"
+              hotkey={false}
+              placeholder="এই সেটে খুঁজুন"
+              onSearch={setQuery}
+              defaultValue={query}
+            />
           </div>
 
           {isSearching && search.isLoading ? (
@@ -154,7 +169,25 @@ export function StudentQbankPaperPage() {
               }
             />
           ) : shown.length === 0 ? (
-            <EmptyState variant="filtered" message="কোনো প্রশ্ন পাওয়া যায়নি।" />
+            // An empty result always offers the way out of whatever caused it (same
+            // as the list page); only a genuinely empty paper has no action to give.
+            isSearching ? (
+              <EmptyState
+                variant="filtered"
+                message="কোনো প্রশ্ন পাওয়া যায়নি।"
+                actionLabel="খোঁজা মুছুন"
+                onAction={resetSearch}
+              />
+            ) : activeSubject !== null ? (
+              <EmptyState
+                variant="filtered"
+                message="কোনো প্রশ্ন পাওয়া যায়নি।"
+                actionLabel="সব দেখুন"
+                onAction={() => setSubjectId(null)}
+              />
+            ) : (
+              <EmptyState variant="filtered" message="কোনো প্রশ্ন পাওয়া যায়নি।" />
+            )
           ) : (
             <div className="ex-qcard-list">
               {shown.map((q) => (
@@ -165,6 +198,9 @@ export function StudentQbankPaperPage() {
                   defaultExpanded={q.id === focusId}
                   saved={savedIds.has(q.id)}
                   saving={savingId === q.id}
+                  // List-wide: save() early-returns while another save is pending,
+                  // so leaving sibling buttons enabled would swallow those clicks.
+                  disabled={savingId !== null}
                   onSave={() => save(q.id)}
                 />
               ))}
