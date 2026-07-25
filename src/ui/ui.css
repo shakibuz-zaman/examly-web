@@ -347,6 +347,14 @@
 .ex-papergrid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
 @media (min-width: 768px) { .ex-papergrid { grid-template-columns: repeat(3, 1fr); } }
 
+/* ---- track-wide search hit (§7 list page, search mode) ---- */
+.ex-qhit {
+  padding: 12px 14px; cursor: pointer;
+  background: var(--ex-card); border-radius: 14px; box-shadow: var(--ex-shadow-1);
+}
+.ex-qhit-meta { margin-top: 6px; font-size: 12.5px; color: var(--ex-ink-soft); }
+.ex-qhit-list { display: flex; flex-direction: column; gap: 10px; }
+
 /* ---- band pill tabs (§6 — replaces Segmented) ---- */
 .ex-bandtab {
   height: 32px; padding: 0 16px; border-radius: 999px; border: 0; cursor: pointer;
