@@ -1,10 +1,14 @@
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { MouseEvent } from "react";
 import { PillButton } from "./PillButton";
 import { bnNum } from "../lib/bn";
 
 // Qbank compact card (§4 PaperCard, §7): title, count + উত্তরসহ tag, tonal practice
-// CTA. Whole card opens the paper page; the CTA goes straight to the practice runner
-// (stopPropagation so it doesn't also navigate).
+// CTA. The title is the card's real control — a <button> — and the CTA is its
+// sibling, so the card offers exactly two named stops. The container is a plain
+// div: its onClick is mouse convenience only, NOT a role="button", because ARIA
+// 1.2 makes role="button" children-presentational and would risk flattening the
+// practice CTA (a primary conversion action) out of the accessibility tree. Both
+// inner buttons stopPropagation, so one press is always one navigation.
 //
 // `practicing` is THIS card's turn (it drives the label only); `disabled` is the
 // list-wide "a start is in flight" signal. They are separate because stopPropagation
@@ -26,22 +30,19 @@ export function PaperCard({
   practicing?: boolean;
   disabled?: boolean;
 }) {
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    // Only card-originated keys open the paper — Enter on the nested CTA would
-    // otherwise bubble here AND synthesize the button's click (two navigations).
-    if (e.target !== e.currentTarget) return;
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      onOpen();
-    }
+  const open = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation(); // the container's onClick would otherwise push the route twice
+    onOpen();
   };
   const practice = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     onPractice();
   };
   return (
-    <div className="ex-papercard ex-hover-lift ex-ring" role="button" tabIndex={0} onClick={onOpen} onKeyDown={onKeyDown}>
-      <div className="ex-papercard-title">{title}</div>
+    <div className="ex-papercard ex-hover-lift" onClick={onOpen}>
+      <button type="button" className="ex-papercard-title ex-cardtitle-btn" onClick={open}>
+        {title}
+      </button>
       <div className="ex-papercard-meta">
         <span>{bnNum(questionCount)} প্রশ্ন</span>
         <span className="ex-papercard-ans">উত্তরসহ</span>

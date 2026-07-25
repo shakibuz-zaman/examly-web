@@ -273,6 +273,27 @@
 }
 .ex-sheet-row { display: flex; flex-wrap: wrap; gap: 8px; }
 
+/* ---- shared card title button (TestCard + PaperCard) ----
+   Both cards put their navigation on the title as a real <button> instead of a
+   role="button" container, so each card is one named stop and a secondary CTA
+   stays a sibling (ARIA 1.2 makes role="button" children-presentational). This is
+   a neutral reset — titles must look exactly as they did as a <div>/<h3>.
+   display+width restore that full-width block box: a <button>'s auto width is
+   shrink-to-fit even at display:block. white-space is spelled out because the UA
+   button rule has historically been `pre` — long Bengali titles must still wrap.
+   Declared BEFORE .ex-testcard-title / .ex-papercard-title on purpose — `font:
+   inherit` is a shorthand at equal specificity, so those rules must come later to
+   keep their own size/weight/line-height. */
+.ex-cardtitle-btn {
+  display: block; width: 100%;
+  background: none; border: 0; padding: 0; margin: 0;
+  font: inherit; color: inherit; white-space: normal; text-align: left; cursor: pointer;
+}
+/* Same treatment as .ex-ring:focus-visible — the ring moved off the card and onto
+   the control that actually takes focus. It fits inside the card padding, so
+   .ex-testcard's overflow:hidden never clips it. */
+.ex-cardtitle-btn:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: 2px; }
+
 /* ---- store card (§4 TestCard) ---- */
 .ex-testcard {
   position: relative; display: flex; flex-direction: column; gap: 8px;

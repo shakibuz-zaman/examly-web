@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { bnNum } from "../lib/bn";
 import { formatDhakaShortBn, formatDurationBn } from "../lib/format";
 import { catalogStatus, isLiveTodaySection, timeStatusLabel } from "../lib/catalogStatus";
@@ -46,6 +47,12 @@ export function TestCard({
     status === "upcoming" && item.windowStartUtc
       ? `শুরু ${formatDhakaShortBn(item.windowStartUtc)}`
       : timeStatusLabel(status);
+  // Title button and footer CTA share the container's destination; stopPropagation
+  // keeps one press to one navigation now that the <article> onClick is mouse-only.
+  const open = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    onOpen();
+  };
 
   return (
     <article
@@ -56,7 +63,16 @@ export function TestCard({
         <TimeStatusChip status={status} label={timeLabel} />
         <PriceChip priceBdt={item.priceBdt} owned={item.owned} />
       </div>
-      <h3 className="ex-testcard-title ex-mark-scope">{highlightText(item.title, highlight)}</h3>
+      {/* The title carries the navigation as a real <button>, so the card has a
+          keyboard/AT stop at all (the <article> never had one) without turning the
+          container into a role="button" that would swallow the footer CTA. The
+          button sits INSIDE the h3 rather than replacing it: the store list keeps
+          its heading outline, and ex-mark-scope still reaches the <mark>s. */}
+      <h3 className="ex-testcard-title ex-mark-scope">
+        <button type="button" className="ex-cardtitle-btn" onClick={open}>
+          {highlightText(item.title, highlight)}
+        </button>
+      </h3>
       {item.orgName && (
         <div className="ex-testcard-org ex-mark-scope">{highlightText(item.orgName, highlight)}</div>
       )}
@@ -67,14 +83,7 @@ export function TestCard({
             ? `${bnNum(item.registeredCount)} জন রেজিস্টার করেছে`
             : ""}
         </span>
-        <PillButton
-          variant={action.variant}
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation(); // same destination as the card — avoid double-fire
-            onOpen();
-          }}
-        >
+        <PillButton variant={action.variant} size="sm" onClick={open}>
           {action.label}
         </PillButton>
       </div>
