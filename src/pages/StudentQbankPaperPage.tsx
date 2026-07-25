@@ -118,7 +118,13 @@ export function StudentQbankPaperPage() {
     add.mutate(questionId, {
       onSuccess: (r) => {
         setSavedIds((prev) => new Set(prev).add(questionId));
-        message.success(r.created ? "ভুলের খাতায় রাখা হয়েছে" : "আগে থেকেই ভুলের খাতায় আছে");
+        message.success(
+          r.created
+            ? "ভুলের খাতায় রাখা হয়েছে"
+            : r.reactivated
+              ? "ভুলের খাতায় আবার যোগ হয়েছে"
+              : "আগে থেকেই ভুলের খাতায় আছে",
+        );
       },
       onError: () => message.error("রাখা যায়নি — আবার চেষ্টা করুন"),
       onSettled: () => setSavingId(null),

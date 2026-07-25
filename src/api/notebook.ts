@@ -31,8 +31,9 @@ export function useNotebook({
   });
 }
 
-// «ভুলের খাতায় রাখুন» (plan 7c): idempotent neutral save — created:false means the
-// question already had an entry.
+// «ভুলের খাতায় রাখুন» (plan 7c): neutral save. Three outcomes — created (a new entry),
+// reactivated (one the student had already resolved is back in the revision pile), or
+// neither (it was already active, so nothing changed).
 export function useAddToNotebook() {
   const qc = useQueryClient();
   return useMutation({
@@ -40,6 +41,9 @@ export function useAddToNotebook() {
       (await apiClient.post<AddToNotebookResponse>("/api/v1/student/notebook", { questionId })).data,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["notebook"] });
+      // The home summary carries dueNotebookCount, so it goes stale too — same pair
+      // the practice mutations invalidate.
+      void qc.invalidateQueries({ queryKey: ["student"] });
     },
   });
 }

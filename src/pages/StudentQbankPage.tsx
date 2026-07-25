@@ -37,6 +37,9 @@ function groupByYear(papers: QbankPaperSummary[]): [number, QbankPaperSummary[]]
 
 function SearchHitCard({ hit, onOpen }: { hit: QbankSearchHit; onOpen: () => void }) {
   return (
+    // role="button" is correct HERE and deliberately unlike PaperCard/TestCard (whose
+    // titles are real <button>s): this hit has no interactive descendants for ARIA
+    // 1.2's children-presentational rule to flatten, so the whole card IS the control.
     <div
       className="ex-qhit ex-hover-lift ex-ring"
       role="button"
