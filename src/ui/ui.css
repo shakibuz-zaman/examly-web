@@ -128,6 +128,9 @@
 .ex-heroband a:focus-visible { outline: 2px solid var(--ex-band-ink); outline-offset: 2px; }
 /* first content block that should float over the band edge (used from 7b on) */
 .ex-band-overlap { margin-top: -26px; }
+/* end-of-band IO sentinel: 1px is required for reliable observation, the negative
+   margin gives it back so it never nudges the geometry below the band. */
+.ex-heroband-sentinel { height: 1px; margin-bottom: -1px; }
 
 /* ---- mobile bottom tab bar ---- */
 .ex-tabbar {

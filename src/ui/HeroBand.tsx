@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { setBandVisible } from "./bandSentinel";
+import { acquireBandClaim } from "./bandSentinel";
 
 // Per-page extension of the teal app bar (spec §5). Renders full-bleed, so pages
 // place it OUTSIDE PageContainer:  <><HeroBand …/><PageContainer banded>…</></>
@@ -25,17 +25,19 @@ export function HeroBand({
   // collapses to its compact 52px form (spec §5) once the title/tabs have
   // actually scrolled out — not on the first ~64px of scroll. It carries an
   // explicit 1px height because a zero-area element is unreliable for
-  // IntersectionObserver. Cleanup resets the flag so navigating to a band-less
-  // page can never leave the bar stuck compact.
+  // IntersectionObserver. Releasing the claim on unmount means a band-less page
+  // can never leave the bar stuck compact, regardless of mount/cleanup ordering
+  // against another page's band.
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setBandVisible(entry.isIntersecting));
+    const claim = acquireBandClaim();
+    const io = new IntersectionObserver(([entry]) => claim.set(entry.isIntersecting));
     io.observe(el);
     return () => {
       io.disconnect();
-      setBandVisible(true); // leaving a band page must un-compact the bar
+      claim.release(); // this band stops voting; a band-less page un-compacts the bar
     };
   }, []);
 
@@ -54,7 +56,7 @@ export function HeroBand({
         {subtitle && <div className="ex-heroband-subtitle">{subtitle}</div>}
         {tabs && <div className="ex-heroband-tabs">{tabs}</div>}
       </div>
-      <div ref={sentinelRef} style={{ height: 1 }} aria-hidden />
+      <div ref={sentinelRef} className="ex-heroband-sentinel" aria-hidden />
     </div>
   );
 }
