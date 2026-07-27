@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from "react";
 import { Spin } from "antd";
 import { buildCategoryTree, useExamCategories } from "../../api/categories";
 import type { CategoryNode } from "../../api/categories";
+import { Chip } from "../../components/Chip";
 
 export type TrackPickerProps = {
   value: string[];
@@ -52,38 +53,6 @@ const subStyle: CSSProperties = {
   color: "var(--ex-ink-soft)",
   lineHeight: 1.6,
 };
-
-function Chip({
-  label,
-  selected,
-  onClick,
-}: {
-  label: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onClick}
-      style={{
-        border: "1.5px solid",
-        borderRadius: 999,
-        padding: "6px 14px",
-        fontSize: 14,
-        cursor: "pointer",
-        background: selected ? "var(--ex-teal-tint)" : "var(--ex-card)",
-        borderColor: selected ? "var(--ex-teal)" : "var(--ex-line-strong)",
-        color: selected ? "var(--ex-teal-ink)" : "var(--ex-ink)",
-        fontWeight: selected ? 600 : 400,
-        transition: "background .15s, border-color .15s",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
 
 export function TrackPicker({ value, onChange }: TrackPickerProps) {
   const { data, isLoading } = useExamCategories();

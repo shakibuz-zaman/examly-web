@@ -13,6 +13,7 @@ import {
   subscribeSearchTarget,
 } from "./bandSentinel";
 import { STUDENT_NAV } from "./nav";
+import { Sheet } from "./Sheet";
 
 // rAF-throttled scroll flag for the sticky bar's shadow.
 function useScrolled(threshold = 8): boolean {
@@ -34,6 +35,8 @@ function useScrolled(threshold = 8): boolean {
 
 function TrackPill() {
   const { tracks, activeTrackId, setActiveTrackId } = useActiveTrack();
+  const isDesktop = Grid.useBreakpoint().md;
+  const [open, setOpen] = useState(false);
   if (tracks.length === 0) return null;
   const active = tracks.find((t) => t.id === activeTrackId) ?? tracks[0];
   if (tracks.length === 1) {
@@ -43,21 +46,57 @@ function TrackPill() {
       </span>
     );
   }
+  if (isDesktop) {
+    return (
+      <Dropdown
+        trigger={["click"]}
+        menu={{
+          items: tracks.map((t) => ({ key: t.id, label: categoryShortLabel(t) })),
+          selectable: true,
+          selectedKeys: activeTrackId ? [activeTrackId] : [],
+          onClick: ({ key }) => setActiveTrackId(key),
+        }}
+      >
+        <button type="button" className="ex-track-pill">
+          <span className="ex-track-pill-label">{categoryShortLabel(active)}</span>
+          <span aria-hidden>▾</span>
+        </button>
+      </Dropdown>
+    );
+  }
+  // Mobile (spec §5): tap opens a bottom switcher sheet instead of the dropdown (D11).
+  // No onClick on the trigger — Sheet owns it (see Sheet.tsx).
   return (
-    <Dropdown
-      trigger={["click"]}
-      menu={{
-        items: tracks.map((t) => ({ key: t.id, label: categoryShortLabel(t) })),
-        selectable: true,
-        selectedKeys: activeTrackId ? [activeTrackId] : [],
-        onClick: ({ key }) => setActiveTrackId(key),
-      }}
+    <Sheet
+      open={open}
+      onOpenChange={setOpen}
+      title="ট্র্যাক বদলান"
+      trigger={
+        <button type="button" className="ex-track-pill">
+          <span className="ex-track-pill-label">{categoryShortLabel(active)}</span>
+          <span aria-hidden>▾</span>
+        </button>
+      }
     >
-      <button type="button" className="ex-track-pill">
-        <span className="ex-track-pill-label">{categoryShortLabel(active)}</span>
-        <span aria-hidden>▾</span>
-      </button>
-    </Dropdown>
+      <div className="ex-tracksheet" role="listbox" aria-label="ট্র্যাক">
+        {tracks.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="option"
+            aria-selected={t.id === active.id}
+            className={t.id === active.id ? "ex-tracksheet-row is-selected" : "ex-tracksheet-row"}
+            onClick={() => {
+              setActiveTrackId(t.id);
+              setOpen(false);
+            }}
+          >
+            <span>{categoryShortLabel(t)}</span>
+            {t.id === active.id && <span aria-hidden>✓</span>}
+          </button>
+        ))}
+      </div>
+    </Sheet>
   );
 }
 

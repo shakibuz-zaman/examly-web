@@ -102,6 +102,17 @@
 .ex-appbar a:focus-visible,
 .ex-appbar button:focus-visible { outline: 2px solid var(--ex-band-ink); outline-offset: 2px; }
 
+/* ---- mobile track-switcher sheet rows ---- */
+.ex-tracksheet { display: flex; flex-direction: column; gap: 4px; }
+.ex-tracksheet-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 14px; border: 0; border-radius: 12px; cursor: pointer;
+  background: transparent; color: var(--ex-ink);
+  font-family: var(--ex-font); font-size: 15px; text-align: left;
+}
+.ex-tracksheet-row.is-selected { background: var(--ex-teal-tint); color: var(--ex-teal-ink); font-weight: 600; }
+.ex-tracksheet-row:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: 2px; }
+
 /* ---- hero band (per-page extension under the app bar) ----
    Gradient is near-vertical (175deg, not the spec's original 135deg/160deg):
    at wide viewports a diagonal ramp made the band's top edge disagree with the
