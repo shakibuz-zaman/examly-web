@@ -78,13 +78,17 @@ function TrackPill() {
         </button>
       }
     >
-      <div className="ex-tracksheet" role="listbox" aria-label="ট্র্যাক">
+      {/* Deliberately role-less (7d review): role="listbox"/"option" promises the listbox
+          keyboard model — arrow-key roving focus inside a single tab stop, aria-activedescendant
+          — and these are four plain buttons in a sheet, each its own tab stop. A role AT
+          honours but the widget does not implement is worse than none, so the semantics are
+          the honest ones (buttons) and aria-current marks the one in force. */}
+      <div className="ex-tracksheet">
         {tracks.map((t) => (
           <button
             key={t.id}
             type="button"
-            role="option"
-            aria-selected={t.id === active.id}
+            aria-current={t.id === active.id ? "true" : undefined}
             className={t.id === active.id ? "ex-tracksheet-row is-selected" : "ex-tracksheet-row"}
             onClick={() => {
               setActiveTrackId(t.id);

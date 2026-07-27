@@ -34,7 +34,9 @@ export function PracticeCard({ practice }: { practice: HomePractice | null }) {
 
   return (
     <div className="ex-callout">
-      <div className="ex-callout-title">আজকের প্র্যাকটিস ✨</div>
+      {/* Sparkle and party-popper are ornament: both sit in aria-hidden spans so the
+          callout's heading and its done line read as plain Bengali sentences. */}
+      <div className="ex-callout-title">আজকের প্র্যাকটিস <span aria-hidden>✨</span></div>
       {practice.dueNotebookCount > 0 && (
         <div className="ex-callout-sub">
           <Link className="ex-callout-link" to="/student/notebook">
@@ -44,7 +46,7 @@ export function PracticeCard({ practice }: { practice: HomePractice | null }) {
       )}
       {practice.todayDone ? (
         <div className="ex-callout-done">
-          <span>আজকের প্র্যাকটিস শেষ! 🎉</span>
+          <span>আজকের প্র্যাকটিস শেষ! <span aria-hidden>🎉</span></span>
           <Link className="ex-callout-link" to="/student/qbank">
             আরও প্র্যাকটিস
           </Link>

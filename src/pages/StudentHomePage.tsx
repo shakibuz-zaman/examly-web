@@ -84,10 +84,12 @@ export function StudentHomePage() {
         // student may have finished an hour ago. "—" is the placeholder মডেল টেস্ট and
         // ভুলের খাতা already use, and it has to be non-empty: HeroBand renders
         // `{subtitle && …}`, so undefined would drop the line and jump the band height.
+        // The tick is decoration on top of «অর্জিত», which already says it in words — an
+        // aria-hidden span keeps it out of the line a screen reader reads.
         subtitle={
           home.data
             ? home.data.practice?.todayDone
-              ? "আজকের লক্ষ্য অর্জিত ✓"
+              ? <>আজকের লক্ষ্য অর্জিত <span aria-hidden>✓</span></>
               : "আজকের লক্ষ্য: ১টি প্র্যাকটিস সেশন"
             : "—"
         }
@@ -98,10 +100,7 @@ export function StudentHomePage() {
             always filled — otherwise loading and error would leave a teal gap where the
             streak card floats. */}
         {loading ? (
-          <div
-            className="ex-band-overlap"
-            style={{ display: "flex", flexDirection: "column", gap: 12 }}
-          >
+          <div className="ex-band-overlap ex-home-skeletons">
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />
@@ -129,7 +128,9 @@ export function StudentHomePage() {
               />
             </div>
 
-            <SectionHeader label="🔴 আসন্ন লাইভ" />
+            {/* The dot is a live-ness cue for the eye only; «লাইভ» is the word that
+                carries it, so the glyph is aria-hidden and out of the read-out. */}
+            <SectionHeader label={<><span aria-hidden>🔴</span> আসন্ন লাইভ</>} />
             <LiveRail items={home.data?.liveRail ?? []} />
 
             {/* Header and card ship together: a «চালিয়ে যান» rule over nothing would
@@ -141,8 +142,9 @@ export function StudentHomePage() {
               </>
             )}
 
-            {/* The callout closes the page and carries no SectionHeader of its own. */}
-            <div style={{ marginTop: 16 }}>
+            {/* The callout closes the page and carries no SectionHeader of its own — the
+                class supplies the gap the missing header would have contributed. */}
+            <div className="ex-home-callout">
               <PracticeCard practice={home.data?.practice ?? null} />
             </div>
           </>

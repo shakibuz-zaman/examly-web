@@ -258,7 +258,10 @@ export function StudentNotebookPage() {
   return (
     <>
       <HeroBand
-        title="ভুলের খাতা ✎"
+        // The pencil is decoration, so it rides in an aria-hidden span rather than in the
+        // title string — otherwise it lands inside the h1's accessible name and is read out
+        // ("pencil") after the page title on every heading jump.
+        title={<>ভুলের খাতা <span aria-hidden>✎</span></>}
         subtitle={first ? `${bnNum(activeCount)}টি প্রশ্ন · ${bnNum(dueCount)}টি আজ ডিউ` : "—"}
         overlap={overlapping}
         tabs={
