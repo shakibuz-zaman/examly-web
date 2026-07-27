@@ -34,7 +34,7 @@ export function NegativeMarkingCard({ strategy }: { strategy: StrategyCard }) {
     <Card title="Negative marking — latest ranked attempt" size="small">
       <Typography.Paragraph style={{ marginBottom: 4 }}>{strategy.examTitle}</Typography.Paragraph>
       {strategy.wrong === 0 ? (
-        <Typography.Text type="success">No wrong answers — nothing lost to negative marking. 🎯</Typography.Text>
+        <Typography.Text type="success">No wrong answers — nothing lost to negative marking. <span aria-hidden>🎯</span></Typography.Text>
       ) : (
         <Typography.Text>
           {strategy.wrong} wrong answer{strategy.wrong === 1 ? "" : "s"} cost you{" "}

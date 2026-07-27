@@ -13,7 +13,14 @@ export function TimeStatusChip({ status, label }: { status: TimeStatus; label: s
 
 // §3.4 price/ownership chip: ownership wins over price.
 export function PriceChip({ priceBdt, owned }: { priceBdt: number; owned: boolean }) {
-  if (owned) return <span className="ex-chipstat ex-chipstat--owned">✓ কেনা আছে</span>;
+  // The ✓ is a tint on the word, not a second fact: «কেনা আছে» already says owned, so the
+  // glyph is decorative and would only add "check mark" to the announcement.
+  if (owned)
+    return (
+      <span className="ex-chipstat ex-chipstat--owned">
+        <span aria-hidden>✓</span> কেনা আছে
+      </span>
+    );
   if (priceBdt === 0) return <span className="ex-chipstat ex-chipstat--free">ফ্রি</span>;
   return <span className="ex-chipstat ex-chipstat--price">৳{bnNum(priceBdt)}</span>;
 }

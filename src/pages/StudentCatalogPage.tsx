@@ -119,6 +119,11 @@ export function StudentCatalogPage() {
   // finished (reproduced offline on হোম). The null-track clause is load-bearing on top of it:
   // the query is disabled while the track resolves (trackId ?? ""), and keepPreviousData
   // would otherwise serve the previous track's rows — data, so not pending — as this one's.
+  // Its trigger is NOT a track switch: A→B never passes through null, because TrackContext
+  // resolves to tracks[0] whenever tracks is non-empty and setActiveTrackId takes no null.
+  // It is tracks EMPTYING after having had data — a myTracks/categories refetch coming back
+  // without them (last subscription dropped, track archived) — plus the first paint before
+  // either resolves.
   const loading = query.isPending || activeTrackId == null;
 
   // Every query-changing control also re-collapses শেষ: the old "N টি দেখুন" count
@@ -313,7 +318,7 @@ export function StudentCatalogPage() {
                 {groups.liveToday.length > 0 && (
                   <>
                     <SectionHeader
-                      label="🔴 আজ লাইভ"
+                      label={<><span aria-hidden>🔴</span> আজ লাইভ</>}
                       trailing={`${bnNum(groups.liveToday.length)}টি`}
                     />
                     {grid(groups.liveToday)}

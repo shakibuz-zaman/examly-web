@@ -161,7 +161,16 @@ export function StudentQbankPaperPage() {
             />
           </div>
 
-          {isSearching && search.isLoading ? (
+          {/* isPending, NOT isLoading (= `isPending && isFetching`): a query with no data
+              that is not fetching at this instant — an offline fetch is PAUSED, not failed
+              — reports isLoading false, and with isError false and data undefined `shown`
+              collapses to [] and «কোনো প্রশ্ন পাওয়া যায়নি।» would stand in for a search that
+              never ran. The search query is disabled below 2 chars and a disabled query is
+              pending forever, so the flag is only ever read under `isSearching`, which is
+              that same enable gate — the && short-circuits before it elsewhere. (The paper
+              query above keeps isLoading: paused there falls through to `isError || !data`,
+              which is an error state with a retry — wrong in kind, but not a false claim.) */}
+          {isSearching && search.isPending ? (
             <Skeleton active paragraph={{ rows: 4 }} />
           ) : isSearching && search.isError ? (
             <Alert

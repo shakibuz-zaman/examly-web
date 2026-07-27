@@ -102,7 +102,11 @@ export function StudentQbankPage() {
   // the search no hits, over a load that never finished (reproduced offline on হোম).
   // The null-track clause is load-bearing on top of it: both queries are disabled while the
   // track resolves (trackId ?? ""), and keepPreviousData would otherwise serve the previous
-  // track's rows — data, so not pending — as this track's answer.
+  // track's rows — data, so not pending — as this track's answer. Its trigger is NOT a track
+  // switch: A→B never passes through null, because TrackContext resolves to tracks[0]
+  // whenever tracks is non-empty and setActiveTrackId takes no null. It is tracks EMPTYING
+  // after having had data — a myTracks/categories refetch coming back without them (last
+  // subscription dropped, track archived) — plus the first paint before either resolves.
   // searchQuery carries a SECOND enable gate (q ≥ 2 chars) and a disabled query stays pending
   // forever, so searchLoading is only ever read under `searching`, which is that same
   // predicate; read it outside that gate and the skeleton would never clear.

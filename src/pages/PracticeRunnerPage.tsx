@@ -203,7 +203,7 @@ function PracticeRunner({ id }: { id: string | undefined }) {
           </Typography.Title>
           {streakCurrent != null && (
             <Typography.Paragraph style={{ color: "var(--ex-teal-ink)", fontWeight: 600 }}>
-              🔥 {bnNum(streakCurrent)} দিনের স্ট্রিক
+              <span aria-hidden>🔥</span> {bnNum(streakCurrent)} দিনের স্ট্রিক
             </Typography.Paragraph>
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
@@ -428,7 +428,7 @@ function PracticeRunner({ id }: { id: string | undefined }) {
                   color: reveal.isCorrect ? "var(--ex-green)" : "var(--ex-red)",
                 }}
               >
-                {reveal.isCorrect ? "সঠিক! 🎉" : "ভুল হয়েছে"}
+                {reveal.isCorrect ? <>সঠিক! <span aria-hidden>🎉</span></> : "ভুল হয়েছে"}
               </Typography.Paragraph>
               {reveal.explanationHtml && (
                 <div style={{ marginTop: 12 }}>

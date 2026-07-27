@@ -79,7 +79,12 @@ export function StudentNotebookPage() {
   // false, and «কোনো ভুল জমা নেই» would stand in for a load that never finished (the same
   // swap is on হোম, where the offline case was reproduced). The null-track clause is
   // load-bearing on top of it: the query is disabled then, and keepPreviousData would
-  // otherwise hand back the previous track's pages — data, so not pending — as this one's answer.
+  // otherwise hand back the previous track's pages — data, so not pending — as this one's
+  // answer. Its trigger is NOT a track switch: A→B never passes through null, because
+  // TrackContext resolves to tracks[0] whenever tracks is non-empty and setActiveTrackId
+  // takes no null. It is tracks EMPTYING after having had data — a myTracks/categories
+  // refetch coming back without them (last subscription dropped, track archived) — which
+  // flips activeTrackId to null while the stale pages are still in hand.
   const loading = activeTrackId == null || query.isPending;
 
   const subjects = useMemo(() => distinctSubjects(entries), [entries]);

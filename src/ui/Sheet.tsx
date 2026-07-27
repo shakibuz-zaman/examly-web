@@ -30,6 +30,10 @@ export function Sheet({
   // separate popup surface. "dialog" over "menu"/"listbox" on both branches: what opens
   // is a titled container of ordinary controls — no menu keyboard model to honour — and
   // the value must match on desktop and mobile or the same button announces two things.
+  // True on mobile (antd's Drawer renders role="dialog"); ASPIRATIONAL on desktop, where
+  // antd's Popover renders a plain div and the hint promises a dialog that isn't there.
+  // Harmless only because nothing reaches the desktop branch yet — give the Popover
+  // content role="dialog" + aria-modal before the first caller does.
   const popupHint = { "aria-haspopup": "dialog", "aria-expanded": open } as const;
 
   if (isDesktop) {

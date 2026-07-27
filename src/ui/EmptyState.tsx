@@ -30,11 +30,13 @@ export function EmptyState({
       {actionLabel &&
         (actionTo ? (
           // A cross-page CTA is a destination, so it ships as a real href: middle-click,
-          // copy-link and the back stack all work, and it announces as a link. It also
-          // carries the primary weight — on a page with nothing on it this is the one thing
-          // left to do — while the in-place reset below stays tonal, since it only walks a
-          // filter back rather than leaving.
-          <Link className="ex-btn ex-btn--primary" to={actionTo}>
+          // copy-link and the back stack all work, and it announces as a link. Tonal, the
+          // same weight the button branch has always had: actionTo is an ADDITIVE change
+          // to element and semantics, and promoting it to primary would silently restyle
+          // three already-shipped screens (LiveRail, store, qbank cross-links). If the
+          // empty state's one remaining action should out-shout the page, that is a design
+          // decision, taken per call site, not a side effect of switching tag.
+          <Link className="ex-btn ex-btn--tonal" to={actionTo}>
             {actionLabel}
           </Link>
         ) : (
