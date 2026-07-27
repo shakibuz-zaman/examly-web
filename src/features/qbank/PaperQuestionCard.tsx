@@ -86,10 +86,25 @@ export function PaperQuestionCard({
               <QuestionContentView html={question.explanationHtml} />
             </div>
           )}
-          {question.takeawayText && <div className="ex-qcard-takeaway">💡 {question.takeawayText}</div>}
+          {question.takeawayText && (
+            <div className="ex-qcard-takeaway">
+              <span aria-hidden>💡</span> {question.takeawayText}
+            </div>
+          )}
           <div className="ex-qcard-actions">
+            {/* The ✓ is inside the button's ACCESSIBLE NAME, not body text: unhidden, the
+                saved state announces as "ভুলের খাতায় আছে check mark". «আছে» carries the
+                state on its own. */}
             <PillButton variant="tonal" size="sm" disabled={disabled || saved || saving} onClick={onSave}>
-              {saved ? "ভুলের খাতায় আছে ✓" : saving ? "রাখা হচ্ছে…" : "ভুলের খাতায় রাখুন"}
+              {saved ? (
+                <>
+                  ভুলের খাতায় আছে <span aria-hidden>✓</span>
+                </>
+              ) : saving ? (
+                "রাখা হচ্ছে…"
+              ) : (
+                "ভুলের খাতায় রাখুন"
+              )}
             </PillButton>
           </div>
         </div>

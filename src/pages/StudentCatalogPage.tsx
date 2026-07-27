@@ -113,6 +113,19 @@ export function StudentCatalogPage() {
   const filtersActive =
     activeCollection !== null || activeFilterCount(filters) > 0 || q.length > 0;
 
+  // isPending, NOT isLoading (= `isPending && isFetching`): a query with no data that is not
+  // fetching at this instant — an offline fetch is PAUSED, not failed — reports isLoading
+  // false, and the store would render «এই ট্র্যাকে এখনো কিছু নেই» over a load that never
+  // finished (reproduced offline on হোম). The null-track clause is load-bearing on top of it:
+  // the query is disabled while the track resolves (trackId ?? ""), and keepPreviousData
+  // would otherwise serve the previous track's rows — data, so not pending — as this one's.
+  // Its trigger is NOT a track switch: A→B never passes through null, because TrackContext
+  // resolves to tracks[0] whenever tracks is non-empty and setActiveTrackId takes no null.
+  // It is tracks EMPTYING after having had data — a myTracks/categories refetch coming back
+  // without them (last subscription dropped, track archived) — plus the first paint before
+  // either resolves.
+  const loading = query.isPending || activeTrackId == null;
+
   // Every query-changing control also re-collapses শেষ: the old "N টি দেখুন" count
   // belongs to the old result set. Done in the handlers, not an effect
   // (react-hooks/set-state-in-effect).
@@ -272,7 +285,7 @@ export function StudentCatalogPage() {
                   </Button>
                 }
               />
-            ) : query.isLoading || activeTrackId == null ? (
+            ) : loading ? (
               skeletonGrid
             ) : items.length === 0 ? (
               // An empty *stale* result (previous query also had no rows) must not flash
@@ -291,7 +304,7 @@ export function StudentCatalogPage() {
                   variant="empty"
                   message="এই ট্র্যাকে এখনো কিছু নেই"
                   actionLabel="প্রশ্নব্যাংক দেখুন"
-                  onAction={() => navigate("/student/qbank")}
+                  actionTo="/student/qbank"
                 />
               )
             ) : (
@@ -305,7 +318,7 @@ export function StudentCatalogPage() {
                 {groups.liveToday.length > 0 && (
                   <>
                     <SectionHeader
-                      label="🔴 আজ লাইভ"
+                      label={<><span aria-hidden>🔴</span> আজ লাইভ</>}
                       trailing={`${bnNum(groups.liveToday.length)}টি`}
                     />
                     {grid(groups.liveToday)}

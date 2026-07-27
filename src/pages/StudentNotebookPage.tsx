@@ -74,8 +74,18 @@ export function StudentNotebookPage() {
   const activeCount = first?.activeCount ?? 0;
   const dueCount = first?.dueCount ?? 0;
 
-  // activeTrackId null = tracks still resolving; the query is disabled, so show skeletons.
-  const loading = activeTrackId == null || query.isLoading;
+  // isPending, NOT isLoading (= `isPending && isFetching`): a query with no data that is not
+  // fetching at this instant — an offline fetch is PAUSED, not failed — reports isLoading
+  // false, and «কোনো ভুল জমা নেই» would stand in for a load that never finished (the same
+  // swap is on হোম, where the offline case was reproduced). The null-track clause is
+  // load-bearing on top of it: the query is disabled then, and keepPreviousData would
+  // otherwise hand back the previous track's pages — data, so not pending — as this one's
+  // answer. Its trigger is NOT a track switch: A→B never passes through null, because
+  // TrackContext resolves to tracks[0] whenever tracks is non-empty and setActiveTrackId
+  // takes no null. It is tracks EMPTYING after having had data — a myTracks/categories
+  // refetch coming back without them (last subscription dropped, track archived) — which
+  // flips activeTrackId to null while the stale pages are still in hand.
+  const loading = activeTrackId == null || query.isPending;
 
   const subjects = useMemo(() => distinctSubjects(entries), [entries]);
   // A stale subject selection (its entries no longer loaded) falls back to all rather
@@ -213,7 +223,9 @@ export function StudentNotebookPage() {
     isPlaceholderData ? (
       skeletonList
     ) : status === "active" ? (
-      <EmptyState variant="empty" message="কোনো ভুল জমা নেই — চালিয়ে যান!" />
+      // "success", not "empty": an empty সক্রিয় pile is the goal state, not a missing one —
+      // the check reads as «done», where the open folder reads as «nothing here».
+      <EmptyState variant="success" message="কোনো ভুল জমা নেই — চালিয়ে যান!" />
     ) : (
       <EmptyState variant="empty" message="এখনো কিছু সমাধান হয়নি" />
     )
@@ -251,7 +263,10 @@ export function StudentNotebookPage() {
   return (
     <>
       <HeroBand
-        title="ভুলের খাতা ✎"
+        // The pencil is decoration, so it rides in an aria-hidden span rather than in the
+        // title string — otherwise it lands inside the h1's accessible name and is read out
+        // ("pencil") after the page title on every heading jump.
+        title={<>ভুলের খাতা <span aria-hidden>✎</span></>}
         subtitle={first ? `${bnNum(activeCount)}টি প্রশ্ন · ${bnNum(dueCount)}টি আজ ডিউ` : "—"}
         overlap={overlapping}
         tabs={

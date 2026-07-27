@@ -44,7 +44,7 @@ export function StreakCard({
       </div>
       {streak.freezesBanked > 0 && (
         <span className="ex-chipstat ex-chipstat--upcoming">
-          ❄ ফ্রিজ {bnNum(streak.freezesBanked)}
+          <span aria-hidden>❄</span> ফ্রিজ {bnNum(streak.freezesBanked)}
         </span>
       )}
       {repairable && (

@@ -14,7 +14,10 @@ export function HeroBand({
   actions,
   overlap = false,
 }: {
-  title: string;
+  // ReactNode, not string, for the same reason SectionHeader's label is: a decorative
+  // glyph in the h1 has to be marked aria-hidden, and a plain string cannot carry that —
+  // it would land inside the heading's accessible name and be announced with the title.
+  title: ReactNode;
   subtitle?: ReactNode;
   back?: { to: string; label: string };
   tabs?: ReactNode;

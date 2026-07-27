@@ -96,6 +96,23 @@ export function StudentQbankPage() {
   // Band subtitle always describes the track funnel — even while a search is active.
   const first = papersQuery.data?.pages[0];
 
+  // isPending, NOT isLoading (= `isPending && isFetching`): a query with no data that is not
+  // fetching at this instant — an offline fetch is PAUSED, not failed — reports isLoading
+  // false, and the page would take its loaded branch and claim the track has no papers, or
+  // the search no hits, over a load that never finished (reproduced offline on হোম).
+  // The null-track clause is load-bearing on top of it: both queries are disabled while the
+  // track resolves (trackId ?? ""), and keepPreviousData would otherwise serve the previous
+  // track's rows — data, so not pending — as this track's answer. Its trigger is NOT a track
+  // switch: A→B never passes through null, because TrackContext resolves to tracks[0]
+  // whenever tracks is non-empty and setActiveTrackId takes no null. It is tracks EMPTYING
+  // after having had data — a myTracks/categories refetch coming back without them (last
+  // subscription dropped, track archived) — plus the first paint before either resolves.
+  // searchQuery carries a SECOND enable gate (q ≥ 2 chars) and a disabled query stays pending
+  // forever, so searchLoading is only ever read under `searching`, which is that same
+  // predicate; read it outside that gate and the skeleton would never clear.
+  const papersLoading = papersQuery.isPending || activeTrackId == null;
+  const searchLoading = searchQuery.isPending || activeTrackId == null;
+
   // One sentinel serves both modes; the active query drives it.
   const active = searching ? searchQuery : papersQuery;
   const sentinelRef = useInfiniteSentinel({
@@ -180,7 +197,7 @@ export function StudentQbankPage() {
         </Button>
       }
     />
-  ) : papersQuery.isLoading || activeTrackId == null ? (
+  ) : papersLoading ? (
     skeletonGrid
   ) : papers.length === 0 ? (
     papersQuery.isPlaceholderData ? (
@@ -197,7 +214,7 @@ export function StudentQbankPage() {
         variant="empty"
         message="এই ট্র্যাকে এখনো কোনো প্রশ্নব্যাংক নেই"
         actionLabel="মডেল টেস্ট দেখুন"
-        onAction={() => navigate("/student/tests")}
+        actionTo="/student/tests"
       />
     )
   ) : (
@@ -232,7 +249,7 @@ export function StudentQbankPage() {
         </Button>
       }
     />
-  ) : searchQuery.isLoading || activeTrackId == null ? (
+  ) : searchLoading ? (
     <div className="ex-qhit-list" style={{ marginTop: 16 }}>
       <SkeletonRow />
       <SkeletonRow />

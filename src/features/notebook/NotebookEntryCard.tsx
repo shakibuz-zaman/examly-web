@@ -2,7 +2,7 @@ import { useState, type KeyboardEvent } from "react";
 import { Tag } from "antd";
 import { ChevronDown } from "lucide-react";
 import { QuestionContentView } from "../questions/QuestionContentView";
-import { QuestionRevealCard } from "../qbank/QuestionRevealCard";
+import { QuestionRevealCard } from "./QuestionRevealCard";
 import { bnNum } from "../../lib/bn";
 import type { NotebookEntry } from "../../api/types";
 
@@ -62,9 +62,9 @@ export function NotebookEntryCard({ entry }: { entry: NotebookEntry }) {
       )}
       <div className="ex-qcard-body" id={`nb-${entry.id}-body`}>
         <div className="ex-qcard-bodyinner">
-          {/* No stemHtml: the head above already carries the question. */}
+          {/* The reveal body carries no stem and no shell of its own — the head above
+              already prints the question, and this .ex-qcard is the card. */}
           <QuestionRevealCard
-            bare
             multipleCorrect={entry.multipleCorrect}
             options={entry.options}
             explanationHtml={entry.explanationHtml}

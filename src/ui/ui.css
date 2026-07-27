@@ -188,10 +188,13 @@
 .ex-chipstat--owned { background: var(--ex-purple-tint); color: var(--ex-purple); }
 
 /* ---- pill buttons (§3.5) ---- */
+/* Also dresses an <a> (EmptyState's cross-link CTA), hence the underline reset — every
+   link class in this file kills the UA underline the same way. */
 .ex-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 36px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer;
   font-family: var(--ex-font); font-size: 14px; font-weight: 600; white-space: nowrap;
+  text-decoration: none;
   transition: background .15s ease-out, box-shadow .15s ease-out, transform .1s ease-out;
 }
 .ex-btn:active { transform: scale(.97); }
@@ -507,19 +510,20 @@
 }
 
 /* ---- হোম live mini-card (accent-top, on .ex-rail) ---- */
+/* cursor: the container's onClick is mouse convenience, so the card has to read as
+   clickable. It was a second .ex-livecard rule further down until 7e — one selector
+   declared twice is a merge conflict waiting to happen, since the later block wins
+   silently on any property the two ever come to share. */
 .ex-livecard {
   flex: 0 0 auto; width: 220px; position: relative; overflow: hidden;
   display: flex; flex-direction: column; gap: 6px; padding: 12px 14px;
   background: var(--ex-card); border-radius: 14px; box-shadow: var(--ex-shadow-1);
+  cursor: pointer;
 }
 .ex-livecard::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
 .ex-livecard--live::before { background: var(--ex-coral); }
 .ex-livecard--upcoming::before { background: var(--ex-amber); }
 .ex-livecard-meta { font-size: 12.5px; color: var(--ex-ink-soft); }
-/* Additive to the block above (kept as its own rule so the §8 fragment stays as
-   specified): the container's onClick is mouse convenience, so the card has to read as
-   clickable. */
-.ex-livecard { cursor: pointer; }
 .ex-livecard-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 /* Clamped to 2 lines so one long title can't stretch every card in the rail (flex
    items stretch to the tallest). The .ex-cardtitle-btn reset is :where()-wrapped, i.e.
@@ -561,6 +565,13 @@
   margin-top: 8px; font-size: 13px; color: var(--ex-ink);
 }
 .ex-callout-cta { margin-top: 10px; }
+
+/* ---- হোম page rhythm ----
+   The loaded page gets its vertical rhythm from the SectionHeaders between blocks; these
+   two carry it where there is no header to do it. The skeleton stack stands in for three
+   headed blocks at once, and the closing callout deliberately has no header of its own. */
+.ex-home-skeletons { display: flex; flex-direction: column; gap: 12px; }
+.ex-home-callout { margin-top: 16px; }
 
 /* ---- ভুলের খাতা রিভিশন card (floats over the band; §8) ----
    Pairs with .ex-card and MUST stay after it in source order: both selectors are one

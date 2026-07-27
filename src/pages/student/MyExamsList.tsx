@@ -184,7 +184,11 @@ export function MyExamsList() {
       <div style={{ marginBottom: 16 }}>
         <ClaimSeatForm />
       </div>
-      {query.isLoading ? (
+      {/* isPending, NOT isLoading (= `isPending && isFetching`): a query with no data that is
+          not fetching at this instant — an offline fetch is PAUSED, not failed — reports
+          isLoading false, and «কেনেননি বা যোগ দেননি» would stand in for a load that never
+          finished. This query has no enable gate, so pending only ever means loading. */}
+      {query.isPending ? (
         <>
           <SkeletonRow />
           <SkeletonRow />

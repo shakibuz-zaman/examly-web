@@ -63,7 +63,13 @@ function LiveCard({ item }: { item: HomeLiveItem }) {
           status={isLive ? "live" : "upcoming"}
           label={isLive ? "লাইভ চলছে" : "আসছে"}
         />
-        {item.registered && <span className="ex-chipstat ex-chipstat--owned">✓ রেজিস্টার্ড</span>}
+        {/* Hand-rolled twin of PriceChip's owned chip (same classes, same decorative ✓);
+            the duplication is a follow-up, the aria-hidden is not. */}
+        {item.registered && (
+          <span className="ex-chipstat ex-chipstat--owned">
+            <span aria-hidden>✓</span> রেজিস্টার্ড
+          </span>
+        )}
       </div>
       <button type="button" className="ex-livecard-title ex-cardtitle-btn" onClick={open}>
         {item.title}
@@ -98,14 +104,13 @@ function LiveCard({ item }: { item: HomeLiveItem }) {
 }
 
 export function LiveRail({ items }: { items: HomeLiveItem[] }) {
-  const navigate = useNavigate();
   if (items.length === 0) {
     return (
       <EmptyState
         variant="empty"
         message="এই ট্র্যাকে এখন কোনো লাইভ পরীক্ষা নেই"
         actionLabel="মডেল টেস্ট দেখুন"
-        onAction={() => navigate("/student/tests")}
+        actionTo="/student/tests"
       />
     );
   }

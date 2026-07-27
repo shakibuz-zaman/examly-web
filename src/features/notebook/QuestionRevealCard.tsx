@@ -6,27 +6,25 @@ import type { QbankOption } from "../../api/types";
 
 const BN_LETTERS = ["ক", "খ", "গ", "ঘ", "ঙ", "চ", "ছ", "জ"];
 
+// Recall-then-reveal body for a ভুলের খাতা entry (D7): options stay behind উত্তর দেখুন
+// until the student asks for them. Moved out of features/qbank in the 7e pre-flight —
+// qbank browses with the answers already on screen (PaperQuestionCard), so NotebookEntryCard
+// has been the only caller since 7d, and the props that served the old standalone qbank
+// usage (stemHtml, header, footer, and the shell-drawing `bare={false}`) went with it:
+// the notebook prints the stem in its own collapsed head and supplies the card around this.
+// Still antd Button/Typography inside a 7d card — that re-skin rides with plan 7e's
+// notebook work so the expanded body gets designed once, against a real spec.
 type Props = {
-  // Optional (7d): a host that already prints the stem in its own head — the notebook's
-  // collapsed entry card — passes none, so the question is not shown twice.
-  stemHtml?: string;
   multipleCorrect: boolean;
   options: QbankOption[];
   explanationHtml: string | null;
   takeawayText: string | null;
-  header?: React.ReactNode;
-  footer?: React.ReactNode;
-  // 7d: drop the outer shell (border/background/padding) so the reveal flow can live
-  // inside another card's body. Default false keeps every standalone usage unchanged.
-  bare?: boolean;
 };
 
-export function QuestionRevealCard({ stemHtml, multipleCorrect, options, explanationHtml, takeawayText, header, footer, bare = false }: Props) {
+export function QuestionRevealCard({ multipleCorrect, options, explanationHtml, takeawayText }: Props) {
   const [revealed, setRevealed] = useState(false);
   return (
-    <div style={bare ? undefined : { border: "1px solid var(--ex-line)", borderRadius: 12, background: "var(--ex-card)", padding: 16 }}>
-      {header}
-      {stemHtml && <QuestionContentView html={stemHtml} />}
+    <div>
       {revealed ? (
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
@@ -60,7 +58,6 @@ export function QuestionRevealCard({ stemHtml, multipleCorrect, options, explana
           উত্তর দেখুন
         </Button>
       )}
-      {footer}
     </div>
   );
 }

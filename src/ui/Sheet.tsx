@@ -26,6 +26,15 @@ export function Sheet({
   // The prop stays a plain ReactElement so any anchor can be passed; cloneElement
   // needs a prop shape that admits aria-expanded/onClick to type the clone.
   const anchor = trigger as ReactElement<HTMLAttributes<HTMLElement>>;
+  // aria-expanded alone says the trigger toggles something, not that the something is a
+  // separate popup surface. "dialog" over "menu"/"listbox" on both branches: what opens
+  // is a titled container of ordinary controls — no menu keyboard model to honour — and
+  // the value must match on desktop and mobile or the same button announces two things.
+  // True on mobile (antd's Drawer renders role="dialog"); ASPIRATIONAL on desktop, where
+  // antd's Popover renders a plain div and the hint promises a dialog that isn't there.
+  // Harmless only because nothing reaches the desktop branch yet — give the Popover
+  // content role="dialog" + aria-modal before the first caller does.
+  const popupHint = { "aria-haspopup": "dialog", "aria-expanded": open } as const;
 
   if (isDesktop) {
     // Desktop: antd's Popover (via @rc-component/trigger) commits the new open value and
@@ -42,13 +51,13 @@ export function Sheet({
         placement={desktopPlacement}
         content={children}
       >
-        {cloneElement(anchor, { "aria-expanded": open, onClick: undefined })}
+        {cloneElement(anchor, { ...popupHint, onClick: undefined })}
       </Popover>
     );
   }
   return (
     <>
-      {cloneElement(anchor, { "aria-expanded": open, onClick: () => onOpenChange(!open) })}
+      {cloneElement(anchor, { ...popupHint, onClick: () => onOpenChange(!open) })}
       <Drawer
         open={open}
         onClose={() => onOpenChange(false)}

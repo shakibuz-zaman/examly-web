@@ -17,20 +17,33 @@ export function ContinueCard({ card }: { card: HomeContinue | null }) {
   if (!card) return null;
 
   const isResume = card.type === "resume";
+  // Both counts are null unless type === "resume". The positive-denominator clause is no
+  // longer the NaN guard — MeterBar keeps its own now — it is the editorial one: a bar over
+  // a zero-question paper measures nothing, so it does not ship. Resolved once so the
+  // visible value row and the announced aria-valuetext are literally the same string.
+  const { answeredCount, questionCount } = card;
+  const progress =
+    answeredCount != null && questionCount != null && questionCount > 0
+      ? {
+          percent: (answeredCount / questionCount) * 100,
+          text: `${bnNum(answeredCount)}/${bnNum(questionCount)}`,
+        }
+      : null;
+
   return (
     <div className="ex-card ex-continuecard">
       {/* Not «চালিয়ে যান» — the SectionHeader directly above already says that. */}
       <div className="ex-continuecard-eyebrow">{isResume ? "অসমাপ্ত পরীক্ষা" : "পরের টেস্ট"}</div>
       <div className="ex-continuecard-title">{card.title}</div>
-      {/* Both counts are null unless type === "resume", and MeterBar's
-          Math.max/Math.min clamp PROPAGATES NaN: a NaN width is an invalid declaration
-          the browser drops, which leaves .ex-meter-fill filling the whole track — a
-          0%-progress state would read as complete, with aria-valuenow="NaN". So the bar
-          renders only on a real, positive denominator. */}
-      {card.answeredCount != null && card.questionCount != null && card.questionCount > 0 && (
+      {/* `name` because the only visible text here is «৩/১০», which says how far but not
+          how far through WHAT; the progressbar needs the noun. valueText so AT reads the
+          same «৩/১০» the eye does, instead of aria-valuenow's ASCII "30 percent". */}
+      {progress && (
         <MeterBar
-          percent={(card.answeredCount / card.questionCount) * 100}
-          trailing={`${bnNum(card.answeredCount)}/${bnNum(card.questionCount)}`}
+          percent={progress.percent}
+          name="অগ্রগতি"
+          valueText={progress.text}
+          trailing={progress.text}
         />
       )}
       <PillButton
