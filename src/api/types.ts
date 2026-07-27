@@ -618,6 +618,8 @@ export type HomeContinue = {
   kind: "exam" | "model_test";
   id: string;
   title: string;
+  answeredCount: number | null; // resume progress — both null when type === "next"
+  questionCount: number | null;
 };
 
 // Server always sends this block in 7b; the type stays nullable for the frozen seam.
@@ -627,6 +629,7 @@ export type HomeStreak = {
   freezesBanked: number;
   repairableUntilUtc: string | null;
   repairable: boolean;
+  last7: boolean[]; // oldest→newest, exactly 7 Dhaka days ending today; true = any activity
 };
 
 // Server always sends this block in 7b; the type stays nullable for the frozen seam.
@@ -807,6 +810,13 @@ export type NotebookEntry = {
   nextDueAt: string;
   due: boolean;
   status: "active" | "resolved";
+  // «subject · source» meta (7d). sourceLabel is the exam title, the paper title, or null
+  // when the entry has no resolvable source — practice-born entries never stored a paper id
+  // (D5), and those render the «প্র্যাকটিস» fallback. Discriminate the fallback on
+  // sourceLabel, not sourceKind: the server defaults sourceKind to "exam" even for legacy
+  // rows, so it is never null on the wire — the nullable type just mirrors the DTO.
+  sourceKind: "exam" | "qbank" | null;
+  sourceLabel: string | null;
 };
 
 export type NotebookResponse = {
