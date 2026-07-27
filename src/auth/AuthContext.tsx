@@ -1,5 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { activeTrackStore } from "../features/tracks/activeTrackStore";
 import { tokenStore } from "./tokenStore";
 import { registerUnauthorizedHandler } from "../api/client";
 
@@ -38,20 +40,41 @@ function decodeJwt(token: string): DecodedClaims | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>(() => {
     const token = tokenStore.get();
     return { token, user: token ? decodeJwt(token) : null };
   });
 
-  const setToken = useCallback((token: string) => {
-    tokenStore.set(token);
-    setState({ token, user: decodeJwt(token) });
-  }, []);
+  // The QueryClient is module-scoped (ThemedApp) and no query key carries a student
+  // segment — two students on the same track share byte-identical keys. So every identity
+  // change must drop the cache, or the incoming session renders the outgoing one's data
+  // from cache while its own refetch is still in flight (verified: re-seeding the old rows
+  // under the identical key after a switch reproduces the leak in full). BOTH edges need
+  // it — /login has no auth guard, so signing in as someone else never reaches logout.
+  const clearSessionState = useCallback(() => {
+    queryClient.clear();
+    activeTrackStore.clear();
+  }, [queryClient]);
 
+  const setToken = useCallback(
+    (token: string) => {
+      clearSessionState();
+      tokenStore.set(token);
+      setState({ token, user: decodeJwt(token) });
+    },
+    [clearSessionState],
+  );
+
+  // Measured on @tanstack/react-query 5.100.10: clear() empties the cache but does NOT
+  // re-render or refetch. What keeps the outgoing student's rows off screen is that both
+  // edges unmount the student tree immediately after. An in-place account switch, or a
+  // silent setToken refresh that keeps the tree mounted, would need an explicit remount.
   const logout = useCallback(() => {
     tokenStore.clear();
+    clearSessionState();
     setState({ token: null, user: null });
-  }, []);
+  }, [clearSessionState]);
 
   useEffect(() => {
     registerUnauthorizedHandler(logout);

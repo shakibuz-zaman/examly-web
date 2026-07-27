@@ -2,8 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { buildCategoryTree, useExamCategories } from "../../api/categories";
 import type { CategoryNode } from "../../api/categories";
 import { useMyTracks } from "../../api/me";
-
-const STORAGE_KEY = "examly-active-track";
+import { activeTrackStore } from "./activeTrackStore";
 
 function flatten(nodes: CategoryNode[]): CategoryNode[] {
   return nodes.flatMap((n) => [n, ...flatten(n.children)]);
@@ -22,7 +21,7 @@ const TrackContext = createContext<TrackCtx | null>(null);
 export function TrackProvider({ children }: { children: React.ReactNode }) {
   const categories = useExamCategories();
   const myTracks = useMyTracks();
-  const [activeId, setActiveId] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
+  const [activeId, setActiveId] = useState<string | null>(() => activeTrackStore.get());
 
   // Subscribed track nodes = tree flattened, kept to kind==="track" the user picked.
   const tracks = useMemo(() => {
@@ -41,11 +40,11 @@ export function TrackProvider({ children }: { children: React.ReactNode }) {
   // Persist the resolved id (incl. the fallback when a stored id is stale) so
   // the next load starts from a valid subscribed track.
   useEffect(() => {
-    if (activeTrackId) localStorage.setItem(STORAGE_KEY, activeTrackId);
+    if (activeTrackId) activeTrackStore.set(activeTrackId);
   }, [activeTrackId]);
 
   const setActiveTrackId = useCallback((id: string) => {
-    localStorage.setItem(STORAGE_KEY, id);
+    activeTrackStore.set(id);
     setActiveId(id);
   }, []);
 
