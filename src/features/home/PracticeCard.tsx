@@ -1,21 +1,13 @@
-import { Button, Typography, message } from "antd";
+import { message } from "antd";
 import { AxiosError } from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { bnNum } from "../../lib/bn";
 import { useStartPractice } from "../../api/practice";
 import { useActiveTrack } from "../tracks/TrackContext";
+import { PillButton } from "../../ui/PillButton";
 import type { HomePractice } from "../../api/types";
 
-const cardStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-  padding: 16,
-  borderRadius: 12,
-  border: "1px solid var(--ex-line)",
-  background: "var(--ex-card)",
-};
-
+// §8 আজকের প্র্যাকটিস callout — the page's closing nudge, on the teal-tint gradient.
 export function PracticeCard({ practice }: { practice: HomePractice | null }) {
   const navigate = useNavigate();
   const { activeTrackId } = useActiveTrack();
@@ -41,34 +33,33 @@ export function PracticeCard({ practice }: { practice: HomePractice | null }) {
     );
 
   return (
-    <div style={cardStyle}>
-      <Typography.Text strong style={{ color: "var(--ex-ink)" }}>
-        দৈনিক প্র্যাকটিস
-      </Typography.Text>
+    <div className="ex-callout">
+      <div className="ex-callout-title">আজকের প্র্যাকটিস ✨</div>
       {practice.dueNotebookCount > 0 && (
-        <Link to="/student/notebook" style={{ fontSize: 13, color: "var(--ex-teal-ink)" }}>
-          ভুলের খাতায় {bnNum(practice.dueNotebookCount)}টি প্রশ্ন বাকি
-        </Link>
+        <div className="ex-callout-sub">
+          <Link className="ex-callout-link" to="/student/notebook">
+            ভুলের খাতায় {bnNum(practice.dueNotebookCount)}টি প্রশ্ন বাকি
+          </Link>
+        </div>
       )}
       {practice.todayDone ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Typography.Text style={{ color: "var(--ex-green)" }}>
-            আজকের প্র্যাকটিস শেষ! 🎉
-          </Typography.Text>
-          <Link to="/student/qbank" style={{ fontSize: 13, color: "var(--ex-teal-ink)" }}>
+        <div className="ex-callout-done">
+          <span>আজকের প্র্যাকটিস শেষ! 🎉</span>
+          <Link className="ex-callout-link" to="/student/qbank">
             আরও প্র্যাকটিস
           </Link>
         </div>
       ) : (
-        <Button
-          type="primary"
-          loading={start.isPending}
-          disabled={!activeTrackId}
+        // PillButton has no antd `loading`; antd's Button also swallowed clicks while
+        // loading, so `disabled` keeps exactly the same double-submit guard.
+        <PillButton
+          className="ex-callout-cta"
+          variant="primary"
+          disabled={start.isPending || !activeTrackId}
           onClick={startDaily}
-          style={{ alignSelf: "flex-start" }}
         >
-          আজকের ৫টি প্রশ্ন
-        </Button>
+          {start.isPending ? "শুরু হচ্ছে…" : "আজকের ৫টি প্রশ্ন"}
+        </PillButton>
       )}
     </div>
   );

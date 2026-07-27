@@ -1,9 +1,12 @@
-import { Button, Tag, Typography, message } from "antd";
-import dayjs from "dayjs";
+import { message } from "antd";
 import { AxiosError } from "axios";
-import { Link, useNavigate } from "react-router-dom";
-import { Illustration } from "../../components/Illustration";
+import { useNavigate } from "react-router-dom";
+import { bnNum } from "../../lib/bn";
+import { formatDhakaShortBn } from "../../lib/format";
 import { useRegister } from "../../api/commerce";
+import { EmptyState } from "../../ui/EmptyState";
+import { PillButton } from "../../ui/PillButton";
+import { TimeStatusChip } from "../../ui/StatusChip";
 import type { HomeLiveItem } from "../../api/types";
 
 function lobbyPath(item: HomeLiveItem): string {
@@ -34,99 +37,80 @@ function LiveCard({ item }: { item: HomeLiveItem }) {
     });
   }
 
+  // Title button and price CTA share the container's destination; stopPropagation keeps
+  // one press to one navigation now that the container's onClick is mouse-only.
+  function open(e: React.MouseEvent) {
+    e.stopPropagation();
+    goToLobby();
+  }
+
+  // Dhaka-pinned Bengali datetime — dayjs().format("D MMM…") rendered an English month
+  // in the *browser's* timezone, which is wrong on both counts (§3.1).
+  const startsAt = formatDhakaShortBn(item.windowStartUtc);
+
   return (
+    // Plain container, NOT role="button": this card owns two real controls (the title
+    // and the CTA) and ARIA 1.2's children-presentational rule would flatten them out
+    // of the a11y tree. onClick is mouse convenience; the title <button> is the
+    // keyboard/AT stop. (This replaces the role="button"-wrapping-a-button defect the
+    // 7c follow-ups flagged here.)
     <div
-      role="button"
-      tabIndex={0}
+      className={isLive ? "ex-livecard ex-livecard--live" : "ex-livecard ex-livecard--upcoming"}
       onClick={goToLobby}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          goToLobby();
-        }
-      }}
-      style={{
-        flex: "0 0 auto",
-        width: 240,
-        textAlign: "left",
-        cursor: "pointer",
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        padding: 16,
-        borderRadius: 12,
-        border: `1px solid ${isLive ? "var(--ex-red)" : "var(--ex-line)"}`,
-        background: "var(--ex-card)",
-      }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {isLive ? <Tag color="red">LIVE চলছে</Tag> : <Tag>আসছে</Tag>}
-        {item.registered && <Tag color="cyan">রেজিস্টার্ড</Tag>}
-        <span className="tnum" style={{ fontSize: 12, color: "var(--ex-ink-soft)" }}>
-          {dayjs(item.windowStartUtc).format("D MMM, h:mm A")}
-        </span>
+      <div className="ex-livecard-chips">
+        <TimeStatusChip
+          status={isLive ? "live" : "upcoming"}
+          label={isLive ? "লাইভ চলছে" : "আসছে"}
+        />
+        {item.registered && <span className="ex-chipstat ex-chipstat--owned">✓ রেজিস্টার্ড</span>}
       </div>
-      <Typography.Text strong ellipsis style={{ color: "var(--ex-ink)" }}>
+      <button type="button" className="ex-livecard-title ex-cardtitle-btn" onClick={open}>
         {item.title}
-      </Typography.Text>
-      {item.orgName && (
-        <Typography.Text ellipsis style={{ fontSize: 13, color: "var(--ex-ink-soft)" }}>
-          {item.orgName}
-        </Typography.Text>
-      )}
+      </button>
+      <div className="ex-livecard-meta">
+        {item.orgName ? `${item.orgName} · ${startsAt}` : startsAt}
+      </div>
       {item.registeredCount > 0 && (
-        <Typography.Text style={{ fontSize: 12, color: "var(--ex-ink-soft)" }}>
-          {item.registeredCount} জন রেজিস্টার করেছে
-        </Typography.Text>
+        <div className="ex-livecard-meta">{bnNum(item.registeredCount)} জন রেজিস্টার করেছে</div>
       )}
       {!item.registered && item.listingId && isFree && (
-        <Button size="small" ghost loading={register.isPending} onClick={onRegister}>
-          রেজিস্টার
-        </Button>
+        <PillButton
+          className="ex-livecard-cta"
+          variant="tonal"
+          size="sm"
+          disabled={register.isPending}
+          onClick={onRegister}
+        >
+          {register.isPending ? "রেজিস্টার হচ্ছে…" : "রেজিস্টার"}
+        </PillButton>
       )}
       {!item.registered && item.listingId && isPaid && (
-        <Button
-          size="small"
-          type="primary"
-          onClick={(e) => {
-            e.stopPropagation();
-            goToLobby();
-          }}
-        >
-          ৳{item.priceBdt}
-        </Button>
+        // Stays a real button, not a PriceChip: this is the paywall's tap target into
+        // the lobby, and the price is its label. (`!` — isPaid is the null check, but
+        // it's an aliased boolean, which TS doesn't carry into the narrowing here.)
+        <PillButton className="ex-livecard-cta" variant="primary" size="sm" onClick={open}>
+          ৳{bnNum(item.priceBdt!)}
+        </PillButton>
       )}
     </div>
   );
 }
 
 export function LiveRail({ items }: { items: HomeLiveItem[] }) {
+  const navigate = useNavigate();
   if (items.length === 0) {
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 8,
-          padding: "24px 16px",
-          borderRadius: 12,
-          border: "1px solid var(--ex-line)",
-          background: "var(--ex-card)",
-        }}
-      >
-        <Illustration name="empty" />
-        <Typography.Text style={{ color: "var(--ex-ink-soft)", textAlign: "center" }}>
-          এই ট্র্যাকে এখন কোনো লাইভ পরীক্ষা নেই
-        </Typography.Text>
-        <Link to="/student/tests" style={{ color: "var(--ex-teal-ink)", fontWeight: 500 }}>
-          মডেল টেস্ট দেখুন
-        </Link>
-      </div>
+      <EmptyState
+        variant="empty"
+        message="এই ট্র্যাকে এখন কোনো লাইভ পরীক্ষা নেই"
+        actionLabel="মডেল টেস্ট দেখুন"
+        onAction={() => navigate("/student/tests")}
+      />
     );
   }
   return (
-    <div style={{ display: "flex", overflowX: "auto", gap: 12, paddingBottom: 4 }}>
+    <div className="ex-rail">
       {items.map((item) => (
         <LiveCard key={`${item.kind}-${item.id}`} item={item} />
       ))}
