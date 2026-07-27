@@ -1,5 +1,7 @@
-import { Button, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
+import { bnNum } from "../../lib/bn";
+import { MeterBar } from "../../ui/MeterBar";
+import { PillButton } from "../../ui/PillButton";
 import type { HomeContinue } from "../../api/types";
 
 // resume attempts always live on an exam lobby; "next" can be either kind.
@@ -16,30 +18,28 @@ export function ContinueCard({ card }: { card: HomeContinue | null }) {
 
   const isResume = card.type === "resume";
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        padding: 16,
-        borderRadius: 12,
-        border: "1px solid var(--ex-teal-tint-2)",
-        background: "var(--ex-teal-tint)",
-      }}
-    >
-      <Typography.Text style={{ fontSize: 13, fontWeight: 600, color: "var(--ex-teal-ink)" }}>
-        {isResume ? "চালিয়ে যাও" : "পরের টেস্ট"}
-      </Typography.Text>
-      <Typography.Text strong ellipsis style={{ fontSize: 16, color: "var(--ex-ink)" }}>
-        {card.title}
-      </Typography.Text>
-      <Button
-        type="primary"
-        style={{ alignSelf: "flex-start", marginTop: 4 }}
+    <div className="ex-card ex-continuecard">
+      {/* Not «চালিয়ে যান» — the SectionHeader directly above already says that. */}
+      <div className="ex-continuecard-eyebrow">{isResume ? "অসমাপ্ত পরীক্ষা" : "পরের টেস্ট"}</div>
+      <div className="ex-continuecard-title">{card.title}</div>
+      {/* Both counts are null unless type === "resume", and MeterBar's
+          Math.max/Math.min clamp PROPAGATES NaN: a NaN width is an invalid declaration
+          the browser drops, which leaves .ex-meter-fill filling the whole track — a
+          0%-progress state would read as complete, with aria-valuenow="NaN". So the bar
+          renders only on a real, positive denominator. */}
+      {card.answeredCount != null && card.questionCount != null && card.questionCount > 0 && (
+        <MeterBar
+          percent={(card.answeredCount / card.questionCount) * 100}
+          trailing={`${bnNum(card.answeredCount)}/${bnNum(card.questionCount)}`}
+        />
+      )}
+      <PillButton
+        className="ex-continuecard-cta"
+        variant="primary"
         onClick={() => navigate(lobbyPath(card))}
       >
-        {isResume ? "আবার শুরু" : "শুরু করি"}
-      </Button>
+        {isResume ? "চালান" : "শুরু করি"}
+      </PillButton>
     </div>
   );
 }

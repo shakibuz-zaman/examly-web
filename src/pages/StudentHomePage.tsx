@@ -1,4 +1,4 @@
-import { Alert, Button, Skeleton, Typography, message } from "antd";
+import { Alert, Button, message } from "antd";
 import { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
@@ -7,9 +7,12 @@ import { useStartPractice } from "../api/practice";
 import { useActiveTrack } from "../features/tracks/TrackContext";
 import { LiveRail } from "../features/home/LiveRail";
 import { ContinueCard } from "../features/home/ContinueCard";
-import { StreakStrip } from "../features/home/StreakStrip";
+import { StreakCard } from "../features/home/StreakCard";
 import { PracticeCard } from "../features/home/PracticeCard";
+import { HeroBand } from "../ui/HeroBand";
 import { PageContainer } from "../ui/PageContainer";
+import { SectionHeader } from "../ui/SectionHeader";
+import { SkeletonCard } from "../ui/Skeletons";
 
 export function StudentHomePage() {
   const { user } = useAuth();
@@ -64,49 +67,79 @@ export function StudentHomePage() {
   const loading = activeTrackId == null || home.isLoading;
 
   return (
-    <PageContainer>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <Typography.Title level={3} style={{ margin: 0, color: "var(--ex-ink)" }}>
-          {greeting}
-        </Typography.Title>
-
+    <>
+      <HeroBand
+        title={greeting}
+        // The goal line is the band's one job on হোম: it states today's target, or
+        // retires it once the daily set is done. Until home.data lands it can say
+        // NEITHER — the false branch would open every load by setting a goal the
+        // student may have finished an hour ago. "—" is the placeholder মডেল টেস্ট and
+        // ভুলের খাতা already use, and it has to be non-empty: HeroBand renders
+        // `{subtitle && …}`, so undefined would drop the line and jump the band height.
+        subtitle={
+          home.data
+            ? home.data.practice?.todayDone
+              ? "আজকের লক্ষ্য অর্জিত ✓"
+              : "আজকের লক্ষ্য: ১টি প্র্যাকটিস সেশন"
+            : "—"
+        }
+        overlap
+      />
+      <PageContainer banded>
+        {/* Every branch opens with .ex-band-overlap so the band's extra bottom room is
+            always filled — otherwise loading and error would leave a teal gap where the
+            streak card floats. */}
         {loading ? (
-          <>
-            <Skeleton active />
-            <Skeleton active />
-            <Skeleton active />
-          </>
+          <div
+            className="ex-band-overlap"
+            style={{ display: "flex", flexDirection: "column", gap: 12 }}
+          >
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         ) : home.isError ? (
-          <Alert
-            type="error"
-            showIcon
-            title="হোম লোড করা যায়নি"
-            action={
-              <Button size="small" onClick={() => home.refetch()}>
-                আবার চেষ্টা করুন
-              </Button>
-            }
-          />
+          <div className="ex-band-overlap">
+            <Alert
+              type="error"
+              showIcon
+              title="হোম লোড করা যায়নি"
+              action={
+                <Button size="small" onClick={() => home.refetch()}>
+                  আবার চেষ্টা করুন
+                </Button>
+              }
+            />
+          </div>
         ) : (
           <>
-            <StreakStrip
-              streak={home.data?.streak ?? null}
-              onRepair={startRepairPractice}
-              repairing={start.isPending}
-            />
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <Typography.Title level={5} style={{ margin: 0, color: "var(--ex-ink)" }}>
-                আসন্ন লাইভ
-              </Typography.Title>
-              <LiveRail items={home.data?.liveRail ?? []} />
+            <div className="ex-band-overlap">
+              <StreakCard
+                streak={home.data?.streak ?? null}
+                onRepair={startRepairPractice}
+                repairing={start.isPending}
+              />
             </div>
 
-            <ContinueCard card={home.data?.continueCard ?? null} />
-            <PracticeCard practice={home.data?.practice ?? null} />
+            <SectionHeader label="🔴 আসন্ন লাইভ" />
+            <LiveRail items={home.data?.liveRail ?? []} />
+
+            {/* Header and card ship together: a «চালিয়ে যান» rule over nothing would
+                promise a resume the student doesn't have. */}
+            {home.data?.continueCard && (
+              <>
+                <SectionHeader label="চালিয়ে যান" />
+                <ContinueCard card={home.data.continueCard} />
+              </>
+            )}
+
+            {/* The callout closes the page and carries no SectionHeader of its own. */}
+            <div style={{ marginTop: 16 }}>
+              <PracticeCard practice={home.data?.practice ?? null} />
+            </div>
           </>
         )}
-      </div>
-    </PageContainer>
+      </PageContainer>
+    </>
   );
 }

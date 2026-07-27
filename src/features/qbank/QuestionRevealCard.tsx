@@ -7,21 +7,26 @@ import type { QbankOption } from "../../api/types";
 const BN_LETTERS = ["ক", "খ", "গ", "ঘ", "ঙ", "চ", "ছ", "জ"];
 
 type Props = {
-  stemHtml: string;
+  // Optional (7d): a host that already prints the stem in its own head — the notebook's
+  // collapsed entry card — passes none, so the question is not shown twice.
+  stemHtml?: string;
   multipleCorrect: boolean;
   options: QbankOption[];
   explanationHtml: string | null;
   takeawayText: string | null;
   header?: React.ReactNode;
   footer?: React.ReactNode;
+  // 7d: drop the outer shell (border/background/padding) so the reveal flow can live
+  // inside another card's body. Default false keeps every standalone usage unchanged.
+  bare?: boolean;
 };
 
-export function QuestionRevealCard({ stemHtml, multipleCorrect, options, explanationHtml, takeawayText, header, footer }: Props) {
+export function QuestionRevealCard({ stemHtml, multipleCorrect, options, explanationHtml, takeawayText, header, footer, bare = false }: Props) {
   const [revealed, setRevealed] = useState(false);
   return (
-    <div style={{ border: "1px solid var(--ex-line)", borderRadius: 12, background: "var(--ex-card)", padding: 16 }}>
+    <div style={bare ? undefined : { border: "1px solid var(--ex-line)", borderRadius: 12, background: "var(--ex-card)", padding: 16 }}>
       {header}
-      <QuestionContentView html={stemHtml} />
+      {stemHtml && <QuestionContentView html={stemHtml} />}
       {revealed ? (
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
