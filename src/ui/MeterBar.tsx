@@ -3,36 +3,39 @@ import { useId, type ReactNode } from "react";
 // Labeled meter (§8): continue-card progress, weak-topic bars (7e). Width is the only
 // inline style (dynamic value); everything else is classed and tokened.
 //
-// A progressbar with no accessible name is announced as a bare percentage, so a bar either
-// shows a visible `label` (pointed at with aria-labelledby, so the two can never drift
-// apart) or it names itself with `name`. `trailing` cannot stand in as the name: the value
-// row is gated on label/trailing and a trailing-only bar (the চালিয়ে যান card: «৩/১০» and
-// nothing else) leaves no text saying WHAT is progressing.
-//
-// The union only rules out passing NEITHER prop. It canNOT guarantee a label exists, and
-// must not be read as if it did: ReactNode admits null/undefined/""/boolean, so
+// A progressbar with no accessible name is announced as a bare percentage, so `name` is
+// REQUIRED and is the floor. It cannot be expressed away by a type: an earlier union tried
+// to make "label OR name" safe, but ReactNode admits null/undefined/""/boolean, so
 // `label={row.topicName?.bn}` off a `BilingualText | null` (the 7e weak-topic rows) type-
-// checks and arrives null. `hasLabel` below is therefore the real gate — it drives BOTH
-// the label element and the aria-labelledby that points at it, so the attribute can never
-// outlive its target. A null label with no `name` falls back to an unnamed bar, which is
-// merely uninformative; aria-labelledby dangling at an unmounted id is that PLUS a broken
-// IDREF (axe aria-valid-attr-value), i.e. strictly worse.
+// checked, arrived null, and left the bar nameless. A required string cannot.
+//
+// When a visible label DOES mount, aria-labelledby points at it, so the announced name is
+// literally the on-screen text and the two cannot drift; `name` is then the fallback for
+// the run where that label resolves to null. Exactly one of the two attributes is ever
+// emitted, and aria-labelledby only when its target mounted, so it cannot dangle.
+//
+// `trailing` cannot stand in as the name: a trailing-only bar (the চালিয়ে যান card: «৩/১০»
+// and nothing else) says how far but not how far through WHAT.
 type MeterBarProps = {
   percent: number;
   tone?: "teal" | "coral" | "amber" | "green";
+  // What the eye reads. Purely visual, and may legitimately arrive null — see above.
+  label?: ReactNode;
   trailing?: ReactNode;
-  // What the eye reads. aria-valuenow is a number and is spoken in ASCII digits ("30
-  // percent"), so a Bengali-numeral value row would otherwise be announced as a different
-  // number than the one on screen; aria-valuetext replaces the percentage in the
-  // announcement. valuenow stays for the machine-readable semantics.
+  // aria-valuenow is a number and is spoken in ASCII digits ("30 percent"), so a Bengali-
+  // numeral value row would otherwise be announced as a different number than the one on
+  // screen; aria-valuetext replaces the percentage in the announcement. valuenow stays for
+  // the machine-readable semantics.
   valueText?: string;
-} & ({ label: ReactNode; name?: string } | { label?: undefined; name: string });
+  name: string;
+};
 
 export function MeterBar({ percent, tone = "teal", label, trailing, name, valueText }: MeterBarProps) {
   const labelId = useId();
-  // != null, not truthiness: a defined-but-falsy label (0, "") still renders and is still
-  // a legitimate name target.
-  const hasLabel = label != null;
+  // != null, not truthiness: a defined-but-falsy label (0) still renders and is still a
+  // legitimate name target. "" is excluded because an empty span RESOLVES its IDREF while
+  // computing an empty name — a named-looking bar with no name, worse than falling back.
+  const hasLabel = label != null && label !== "";
   // Number.isFinite first: the clamp alone PROPAGATES NaN (Math.max/Math.min of NaN is
   // NaN, from a 0/0 upstream), and `width: "NaN%"` is an invalid declaration the browser
   // drops — which leaves .ex-meter-fill at its `width: auto` default, i.e. a FULL bar
@@ -51,11 +54,10 @@ export function MeterBar({ percent, tone = "teal", label, trailing, name, valueT
       <div
         className="ex-meter-track"
         role="progressbar"
-        // `name` wins when both are given — an explicit name beats the derived one.
-        aria-label={name}
-        // hasLabel, not just `name == null`: see the note above — the label element is the
-        // only thing this id can resolve to, so the two conditions have to be the same one.
-        aria-labelledby={name == null && hasLabel ? labelId : undefined}
+        // The visible label wins when it mounted, so the announced name IS the on-screen
+        // text; `name` covers the run where it didn't. One or the other, never both.
+        aria-label={hasLabel ? undefined : name}
+        aria-labelledby={hasLabel ? labelId : undefined}
         aria-valuenow={Math.round(width)}
         aria-valuetext={valueText}
         aria-valuemin={0}
