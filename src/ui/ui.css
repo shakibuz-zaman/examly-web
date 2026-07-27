@@ -188,10 +188,13 @@
 .ex-chipstat--owned { background: var(--ex-purple-tint); color: var(--ex-purple); }
 
 /* ---- pill buttons (§3.5) ---- */
+/* Also dresses an <a> (EmptyState's cross-link CTA), hence the underline reset — every
+   link class in this file kills the UA underline the same way. */
 .ex-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 36px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer;
   font-family: var(--ex-font); font-size: 14px; font-weight: 600; white-space: nowrap;
+  text-decoration: none;
   transition: background .15s ease-out, box-shadow .15s ease-out, transform .1s ease-out;
 }
 .ex-btn:active { transform: scale(.97); }

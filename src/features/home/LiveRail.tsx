@@ -98,14 +98,13 @@ function LiveCard({ item }: { item: HomeLiveItem }) {
 }
 
 export function LiveRail({ items }: { items: HomeLiveItem[] }) {
-  const navigate = useNavigate();
   if (items.length === 0) {
     return (
       <EmptyState
         variant="empty"
         message="এই ট্র্যাকে এখন কোনো লাইভ পরীক্ষা নেই"
         actionLabel="মডেল টেস্ট দেখুন"
-        onAction={() => navigate("/student/tests")}
+        actionTo="/student/tests"
       />
     );
   }

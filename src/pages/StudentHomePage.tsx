@@ -63,8 +63,16 @@ export function StudentHomePage() {
       },
     );
 
-  // activeTrackId null = tracks still resolving; query is disabled, so show skeletons.
-  const loading = activeTrackId == null || home.isLoading;
+  // isPending, NOT isLoading: v5's isLoading is `isPending && isFetching`, so a query that
+  // has no data but is not fetching *at this instant* reports false and the page takes its
+  // loaded branch — an illustrated empty হোম standing in for a load that never finished.
+  // That instant is not hypothetical: on networkMode "online" an offline fetch is PAUSED,
+  // not failed (fetchStatus "paused" ⇒ isFetching false), so it lasts as long as the student
+  // is off the network — verified by hopping to হোম offline, which held «এই ট্র্যাকে এখন কোনো
+  // লাইভ পরীক্ষা নেই» indefinitely instead of skeletons.
+  // activeTrackId null = tracks still resolving; the query is disabled then, and a disabled
+  // query stays pending forever — the clause is what makes that read as "still resolving".
+  const loading = activeTrackId == null || home.isPending;
 
   return (
     <>
