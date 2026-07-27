@@ -6,6 +6,12 @@ export const palette = {
   bg: "#F4F2EC", stage: "#EDEAE1", card: "#FFFFFF", card2: "#FBFAF6",
   ink: "#1C201D", inkSoft: "#565C56", inkFaint: "#8A908A",
   line: "#E6E3DA", lineStrong: "#D6D2C6",
+  // Rail behind a meter fill / an inactive streak bar. NOT --ex-stage (1.20:1 light,
+  // 1.07:1 dark on a card): at 0% the fill is zero-width, so the track IS the whole
+  // graphic and it vanished. Clears WCAG 1.4.11's 3:1 graphical-object floor on both
+  // --ex-card and --ex-card-2. Its own token rather than --ex-ink-faint (same value
+  // today) so re-tuning an *ink* can never silently break a *surface*.
+  track: "#8A908A", // 3.26:1 on card, 3.12:1 on card-2
   // coral/purple/amber/green double as tint-chip inks: values must hold 4.5:1
   // (WCAG AA, spec §10) against their tints AND against white (ghost button).
   // The ended chip meets AA by using inkSoft, not inkFaint (ui.css).
@@ -29,6 +35,7 @@ export const paletteDark: Palette = {
   bg: "#151714", stage: "#1B1E1A", card: "#20241F", card2: "#1D211C",
   ink: "#E9E7DF", inkSoft: "#A9AFA7", inkFaint: "#787E76",
   line: "#33372F", lineStrong: "#42463D",
+  track: "#787E76", // 3.78:1 on card, 3.92:1 on card-2 — see the light palette's note
   coral: "#E07A5F", coralTint: "#3A241D",
   purple: "#A487E4", purpleTint: "#2C2440", // 5.0:1 on tint (was 4.43)
   amber: "#D89A3D", amberTint: "#3A2F19",

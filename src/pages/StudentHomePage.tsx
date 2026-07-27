@@ -71,11 +71,17 @@ export function StudentHomePage() {
       <HeroBand
         title={greeting}
         // The goal line is the band's one job on হোম: it states today's target, or
-        // retires it once the daily set is done.
+        // retires it once the daily set is done. Until home.data lands it can say
+        // NEITHER — the false branch would open every load by setting a goal the
+        // student may have finished an hour ago. "—" is the placeholder মডেল টেস্ট and
+        // ভুলের খাতা already use, and it has to be non-empty: HeroBand renders
+        // `{subtitle && …}`, so undefined would drop the line and jump the band height.
         subtitle={
-          home.data?.practice?.todayDone
-            ? "আজকের লক্ষ্য অর্জিত ✓"
-            : "আজকের লক্ষ্য: ১টি প্র্যাকটিস সেশন"
+          home.data
+            ? home.data.practice?.todayDone
+              ? "আজকের লক্ষ্য অর্জিত ✓"
+              : "আজকের লক্ষ্য: ১টি প্র্যাকটিস সেশন"
+            : "—"
         }
         overlap
       />

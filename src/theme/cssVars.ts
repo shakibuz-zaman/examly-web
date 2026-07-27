@@ -15,7 +15,7 @@ export function applyCssVars(mode: ThemeMode): void {
     "--ex-teal-tint": p.tealTint, "--ex-teal-tint-2": p.tealTint2, "--ex-teal-ink": p.tealInk,
     "--ex-bg": p.bg, "--ex-stage": p.stage, "--ex-card": p.card, "--ex-card-2": p.card2,
     "--ex-ink": p.ink, "--ex-ink-soft": p.inkSoft, "--ex-ink-faint": p.inkFaint,
-    "--ex-line": p.line, "--ex-line-strong": p.lineStrong,
+    "--ex-line": p.line, "--ex-line-strong": p.lineStrong, "--ex-track": p.track,
     "--ex-coral": p.coral, "--ex-coral-tint": p.coralTint,
     "--ex-purple": p.purple, "--ex-purple-tint": p.purpleTint,
     "--ex-amber": p.amber, "--ex-amber-tint": p.amberTint,
