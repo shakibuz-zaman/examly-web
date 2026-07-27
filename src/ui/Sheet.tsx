@@ -4,8 +4,9 @@ import type { TooltipPlacement } from "antd/es/tooltip";
 
 // §8 Sheet: the responsive container — Popover on desktop, bottom Drawer on mobile.
 // FilterSheet's split, lifted; FilterSheet itself is not migrated onto it (D12).
-// The caller owns both the open state and the trigger element, so Sheet only clones
-// the trigger: aria-expanded in both branches, plus the open handler on mobile.
+// The caller owns the open state and supplies the trigger element, but Sheet owns the
+// trigger's onClick on both branches — the open handler on mobile, cleared on desktop.
+// Trigger side effects belong in onOpenChange; an onClick on the trigger is dropped.
 export function Sheet({
   open,
   onOpenChange,
@@ -27,11 +28,12 @@ export function Sheet({
   const anchor = trigger as ReactElement<HTMLAttributes<HTMLElement>>;
 
   if (isDesktop) {
-    // Desktop: antd's controlled Popover commits the new open value before the cloned
-    // child's onClick runs, so a functional toggle on the trigger would invert it
+    // Desktop: antd's Popover (via @rc-component/trigger) commits the new open value and
+    // only then calls the cloned child's own onClick, so a caller's toggle would invert it
     // straight back (net no-op — the sheet reads as stuck closed). onOpenChange owns
-    // desktop state, which is why the clone below adds no onClick and callers must not
-    // wire one either. Mobile has no such wiring and needs the handler below.
+    // desktop state, so the clone *clears* onClick rather than trusting callers not to
+    // wire one; React 19's cloneElement writes the undefined through, and the Popover's
+    // own click handling is untouched. Mobile drops it too, supplying its own below.
     return (
       <Popover
         open={open}
@@ -40,7 +42,7 @@ export function Sheet({
         placement={desktopPlacement}
         content={children}
       >
-        {cloneElement(anchor, { "aria-expanded": open })}
+        {cloneElement(anchor, { "aria-expanded": open, onClick: undefined })}
       </Popover>
     );
   }
