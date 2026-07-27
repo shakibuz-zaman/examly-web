@@ -158,16 +158,31 @@ export function StudentNotebookPage() {
     </div>
   );
 
-  // The band reserves its extra bottom room only on the active tab (the রিভিশন card is
-  // what floats into it), so the pull-up class must follow the same condition — the
-  // store page's conditional-overlap pattern.
-  const overlapping = status === "active";
+  // The band reserves its extra bottom room only where something actually floats into it,
+  // and the pull-up class must follow the SAME flag or the reserved 44px shows as an empty
+  // teal gap (the store page's conditional-overlap pattern). Two conditions:
+  //   • the active tab only — সমাধান হয়েছে has nothing to practise, so the card goes;
+  //   • and only once we know the notebook is non-empty. On an empty active notebook the
+  //     card would be a dead CTA sitting on top of «কোনো ভুল জমা নেই — চালিয়ে যান!».
+  // `loading ||` keeps the room (and its skeleton) while the count is still unknown, so the
+  // card resolves in place instead of popping in and shoving the page down.
+  const overlapping = status === "active" && (loading || activeCount > 0);
 
   const revisionCard = (
     <div className="ex-card ex-nb-revision">
       <div className="ex-nb-revision-main">
         <div className="ex-nb-revision-title">আজকের রিভিশন</div>
-        <div className="ex-nb-revision-sub">{bnNum(dueCount)}টি ডিউ প্রশ্ন দিয়ে প্র্যাকটিস</div>
+        {/* The CTA below starts a `source: "notebook"` session, and the server builds that
+            from the ACTIVE entries (sorted by next-due date, so the due ones lead) — not
+            from the due ones alone. So the line counts what the session draws from, which
+            is also the number the button's own disabled condition keys on. `থেকে` (from a
+            pool), never `দিয়ে` (using all of them): the server caps the session at 20.
+            The due count is not repeated here — the band subtitle one line above already
+            carries it, and quoting it beside this CTA is what made the old copy read as a
+            promise of a due-only session. */}
+        <div className="ex-nb-revision-sub">
+          জমে থাকা {bnNum(activeCount)}টি প্রশ্ন থেকে প্র্যাকটিস
+        </div>
       </div>
       <PillButton
         variant="primary"
@@ -276,8 +291,10 @@ export function StudentNotebookPage() {
           </div>
         ) : (
           <>
-            {/* The revision funnel is the active tab's job — সমাধান হয়েছে has nothing
-                due to practice, so the card (and the band room it floats into) goes. */}
+            {/* Same `overlapping` flag as the band's `overlap` and as the error branch's
+                wrapper above — the card and the room it floats into are never out of step.
+                Note the interlock with the sub-line: the card itself renders only when
+                `!loading && activeCount > 0`, so it can never print «০টি». */}
             {overlapping && (
               <div className="ex-band-overlap">{loading ? <SkeletonRow /> : revisionCard}</div>
             )}
