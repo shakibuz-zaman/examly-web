@@ -562,6 +562,25 @@
 }
 .ex-callout-cta { margin-top: 10px; }
 
+/* ---- ভুলের খাতা রিভিশন card (floats over the band; §8) ----
+   Pairs with .ex-card and MUST stay after it in source order: both selectors are one
+   class, so this is where shadow-2 (a floating surface) beats the card default — the
+   same rule as .ex-streakcard. */
+.ex-nb-revision { display: flex; align-items: center; gap: 12px; padding: 12px 16px; box-shadow: var(--ex-shadow-2); }
+.ex-nb-revision-main { flex: 1; min-width: 0; }
+.ex-nb-revision-title { font-size: 14px; font-weight: 700; color: var(--ex-ink); }
+/* ink-soft, not ink-faint: small meta on a card surface must hold AA (§10). */
+.ex-nb-revision-sub { margin-top: 2px; font-size: 12.5px; color: var(--ex-ink-soft); }
+
+/* ---- ভুলের খাতা entry card (the qbank .ex-qcard shell + notebook meta) ---- */
+/* Badge + caret ride together at the head's trailing edge; the Tag's own trailing
+   margin is the gap between them, so no antd internals are overridden. */
+.ex-nb-headside { flex: 0 0 auto; display: inline-flex; align-items: center; }
+.ex-nb-meta { margin-top: 4px; font-size: 12.5px; color: var(--ex-ink-soft); }
+/* amber holds AA on card in both modes (5.3:1 light, 6.5:1 dark); the weight carries
+   the urgency without relying on color alone — the «আজ ডিউ» words say it too. */
+.ex-nb-due { color: var(--ex-amber); font-weight: 600; }
+
 /* ---- reduced motion kills all of the above ---- */
 @media (prefers-reduced-motion: reduce) {
   .ex-fade-up, .ex-skeleton::after { animation: none; }

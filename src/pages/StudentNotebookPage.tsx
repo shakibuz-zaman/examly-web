@@ -1,22 +1,27 @@
-import { useState } from "react";
-import { Alert, Button, Pagination, Segmented, Skeleton, Space, Tag, Typography, message } from "antd";
+import { useMemo, useState } from "react";
+import { Alert, Button, message } from "antd";
 import { useNavigate } from "react-router-dom";
-import { NOTEBOOK_PAGE_SIZE, useNotebook } from "../api/notebook";
+import { NOTEBOOK_PAGE_SIZE, useInfiniteNotebook } from "../api/notebook";
 import { useStartPractice } from "../api/practice";
 import { useActiveTrack } from "../features/tracks/TrackContext";
-import { QuestionRevealCard } from "../features/qbank/QuestionRevealCard";
-import { Chip } from "../components/Chip";
-import { Illustration } from "../components/Illustration";
+import { NotebookEntryCard } from "../features/notebook/NotebookEntryCard";
 import { bnNum } from "../lib/bn";
-import type { NotebookEntry } from "../api/types";
+import { useInfiniteSentinel } from "../lib/useInfiniteSentinel";
+import { HeroBand } from "../ui/HeroBand";
 import { PageContainer } from "../ui/PageContainer";
+import { FilterChips, type FilterChipItem } from "../ui/FilterChips";
+import { SectionHeader } from "../ui/SectionHeader";
+import { EmptyState } from "../ui/EmptyState";
+import { SkeletonRow } from "../ui/Skeletons";
+import { PillButton } from "../ui/PillButton";
+import type { NotebookEntry } from "../api/types";
 
 type SubjectChip = { id: string; label: string };
 
 // Distinct subjects across the loaded entries, first-seen order. Chips are built
-// client-side (spec): entries carry subjectName inline, and deriving chips from the
-// loaded set means the whole status bucket loads at once so the chip row stays stable
-// regardless of which subject is selected.
+// client-side (D6): entries carry subjectName inline, and since 7d the derivation sees
+// ALL loaded pages rather than one — the old one-page-chips caveat is gone. Chips still
+// only describe what is loaded, which is honest: the list itself is what they narrow.
 function distinctSubjects(entries: NotebookEntry[]): SubjectChip[] {
   const seen = new Map<string, SubjectChip>();
   for (const e of entries) {
@@ -41,190 +46,254 @@ function groupByTopic(entries: NotebookEntry[]): { key: string; label: string; e
   return [...groups.entries()].map(([key, g]) => ({ key, ...g }));
 }
 
-function EntryHeader({ entry }: { entry: NotebookEntry }) {
-  const subjectLabel = entry.subjectName?.bn || entry.subjectName?.en;
-  return (
-    <Space size={8} wrap style={{ marginBottom: 8 }}>
-      {/* Manual qbank saves are neutral (WrongCount 0) — no red badge for them. */}
-      {entry.wrongCount > 0 && <Tag color="red">{bnNum(entry.wrongCount)} বার ভুল</Tag>}
-      {entry.due && <Tag color="gold">ডিউ</Tag>}
-      {subjectLabel && <Typography.Text type="secondary">{subjectLabel}</Typography.Text>}
-    </Space>
-  );
-}
-
 export function StudentNotebookPage() {
   const navigate = useNavigate();
   const { activeTrackId } = useActiveTrack();
   const start = useStartPractice();
   const [status, setStatus] = useState<"active" | "resolved">("active");
   const [subjectId, setSubjectId] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const [dueOnly, setDueOnly] = useState(false);
 
-  // Server now paginates (20/page); subject narrowing stays client-side (subjectId not
-  // sent to the server) but only sees the current page's entries — see the grouping note.
-  const { data, isLoading, isError, refetch } = useNotebook({
+  // One infinite query per status tab; the ডিউ and subject chips are client-side (D6),
+  // so they are deliberately NOT query parameters — picking one must not refetch or
+  // reset the scroll budget.
+  const query = useInfiniteNotebook({
     status,
-    subjectId: null,
     trackId: activeTrackId,
-    page,
+    pageSize: NOTEBOOK_PAGE_SIZE,
   });
 
-  // activeTrackId null = tracks still resolving; the query is disabled, so show a skeleton.
-  const loading = activeTrackId == null || isLoading;
+  const entries: NotebookEntry[] = useMemo(
+    () => query.data?.pages.flatMap((p) => p.entries) ?? [],
+    [query.data],
+  );
+  // Band counts ride page 1 and are tab-agnostic on the server (whole-track summary),
+  // so the subtitle holds still across a tab flip — keepPreviousData keeps page 1 on
+  // screen while the new tab loads, so it never blanks either.
+  const first = query.data?.pages[0];
+  const activeCount = first?.activeCount ?? 0;
+  const dueCount = first?.dueCount ?? 0;
 
-  const activeCount = data?.activeCount ?? 0;
-  const dueCount = data?.dueCount ?? 0;
-  const total = data?.total ?? 0;
-  const entries = data?.entries ?? [];
-  const subjects = distinctSubjects(entries);
+  // activeTrackId null = tracks still resolving; the query is disabled, so show skeletons.
+  const loading = activeTrackId == null || query.isLoading;
 
-  // A stale subject selection (after toggling status) falls back to all rather than
-  // filtering everything away.
+  const subjects = useMemo(() => distinctSubjects(entries), [entries]);
+  // A stale subject selection (its entries no longer loaded) falls back to all rather
+  // than filtering everything away.
   const activeSubject = subjectId && subjects.some((s) => s.id === subjectId) ? subjectId : null;
-  const filtered = activeSubject ? entries.filter((e) => e.subjectId === activeSubject) : entries;
-  const groups = groupByTopic(filtered);
+  const filtered = useMemo(
+    () =>
+      entries.filter(
+        (e) => (!dueOnly || e.due) && (activeSubject === null || e.subjectId === activeSubject),
+      ),
+    [entries, dueOnly, activeSubject],
+  );
+  const groups = useMemo(() => groupByTopic(filtered), [filtered]);
+
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isPlaceholderData } = query;
+  const sentinelRef = useInfiniteSentinel({
+    // Chips are client-side and must NOT reset the scroll budget — only the tab and the
+    // track change what the server is paging through. hasNextPage is undefined during the
+    // placeholder window, so `?? false` (plus the hook's own isPlaceholderData guard)
+    // keeps a tab flip from paging the outgoing tab's list.
+    queryIdentity: JSON.stringify([status, activeTrackId]),
+    hasNextPage: hasNextPage ?? false,
+    isFetchingNextPage,
+    isPlaceholderData,
+    fetchNextPage,
+  });
+
+  const resetChips = () => {
+    setSubjectId(null);
+    setDueOnly(false);
+  };
+
+  const selectStatus = (next: "active" | "resolved") => {
+    if (next === status) return;
+    setStatus(next);
+    resetChips(); // handlers, not effects (react-hooks/set-state-in-effect)
+    // keepPreviousData on an INFINITE query keeps the outgoing tab's whole accumulated
+    // page list on screen until the new page 1 lands, then collapses it to one page. A
+    // reader parked deep in that list would have the ground pulled out from under them,
+    // so a tab switch explicitly goes back to the top — which is also where a freshly
+    // chosen tab should start.
+    window.scrollTo(0, 0);
+  };
+
+  const chipItems: FilterChipItem[] = [
+    {
+      key: "all",
+      label: "সব",
+      selected: !dueOnly && activeSubject === null,
+      onClick: resetChips,
+    },
+    // Resolved entries are never due (the server computes due as active ∧ past its next
+    // date), so the chip only exists where it can match something.
+    ...(status === "active"
+      ? [
+          {
+            key: "due",
+            label: "ডিউ",
+            selected: dueOnly,
+            onClick: () => setDueOnly((v) => !v),
+          },
+        ]
+      : []),
+    ...subjects.map((s) => ({
+      key: s.id,
+      label: s.label,
+      selected: activeSubject === s.id,
+      // Re-picking the selected chip clears it — the chips are aria-pressed toggles, and
+      // with two independent filter dimensions «সব» is the only other way back.
+      onClick: () => setSubjectId(activeSubject === s.id ? null : s.id),
+    })),
+  ];
+
+  const skeletonList = (
+    <div className="ex-qcard-list" style={{ marginTop: 16 }}>
+      <SkeletonRow />
+      <SkeletonRow />
+      <SkeletonRow />
+      <SkeletonRow />
+    </div>
+  );
+
+  // The band reserves its extra bottom room only on the active tab (the রিভিশন card is
+  // what floats into it), so the pull-up class must follow the same condition — the
+  // store page's conditional-overlap pattern.
+  const overlapping = status === "active";
+
+  const revisionCard = (
+    <div className="ex-card ex-nb-revision">
+      <div className="ex-nb-revision-main">
+        <div className="ex-nb-revision-title">আজকের রিভিশন</div>
+        <div className="ex-nb-revision-sub">{bnNum(dueCount)}টি ডিউ প্রশ্ন দিয়ে প্র্যাকটিস</div>
+      </div>
+      <PillButton
+        variant="primary"
+        // The old header button's antd `loading` both spun and blocked the second click;
+        // PillButton has no loading state, so the pending flag joins the disabled set
+        // (the label carries the progress) — the plan's two conditions are untouched.
+        disabled={start.isPending || activeCount === 0 || !activeTrackId}
+        onClick={() =>
+          start.mutate(
+            { source: "notebook", trackId: activeTrackId! },
+            {
+              onSuccess: (s) => navigate(`/student/practice/${s.id}`),
+              onError: () => message.error("প্র্যাকটিস শুরু করা যায়নি"),
+            },
+          )
+        }
+      >
+        {start.isPending ? "শুরু হচ্ছে…" : "শুরু করুন"}
+      </PillButton>
+    </div>
+  );
+
+  const list = loading ? (
+    skeletonList
+  ) : entries.length === 0 ? (
+    // An empty *stale* result (the outgoing tab was empty too) must not flash an empty
+    // state at the incoming one — wait for the settled answer.
+    isPlaceholderData ? (
+      skeletonList
+    ) : status === "active" ? (
+      <EmptyState variant="empty" message="কোনো ভুল জমা নেই — চালিয়ে যান!" />
+    ) : (
+      <EmptyState variant="empty" message="এখনো কিছু সমাধান হয়নি" />
+    )
+  ) : filtered.length === 0 ? (
+    <EmptyState
+      variant="filtered"
+      message="এই ফিল্টারে কিছু নেই"
+      actionLabel="সব দেখুন"
+      onAction={resetChips}
+    />
+  ) : (
+    // While the other tab's query is in flight the rows on screen are the PREVIOUS
+    // result set (keepPreviousData) — dim them so they read as stale rather than as the
+    // answer to the tab that was just pressed.
+    <div className={isPlaceholderData ? "ex-results is-stale" : "ex-results"} aria-busy={isPlaceholderData}>
+      {groups.map((group) => (
+        <div key={group.key}>
+          <SectionHeader label={group.label} trailing={`${bnNum(group.entries.length)}টি`} />
+          <div className="ex-qcard-list">
+            {group.entries.map((entry) => (
+              <NotebookEntryCard key={entry.id} entry={entry} />
+            ))}
+          </div>
+        </div>
+      ))}
+      {isFetchingNextPage && (
+        <div className="ex-qcard-list" style={{ marginTop: 12 }}>
+          <SkeletonRow />
+          <SkeletonRow />
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <PageContainer>
-      <div style={{ paddingBottom: 24 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <Typography.Title level={3} style={{ marginBottom: 0, color: "var(--ex-ink)" }}>
-              ভুলের খাতা
-            </Typography.Title>
-            {dueCount > 0 && (
-              <Typography.Text type="secondary">{bnNum(dueCount)}টি প্রশ্ন ডিউ</Typography.Text>
-            )}
-          </div>
-          <Button
-            type="primary"
-            loading={start.isPending}
-            disabled={activeCount === 0 || !activeTrackId}
-            onClick={() =>
-              start.mutate(
-                { source: "notebook", trackId: activeTrackId! },
-                {
-                  onSuccess: (s) => navigate(`/student/practice/${s.id}`),
-                  onError: () => message.error("প্র্যাকটিস শুরু করা যায়নি"),
-                },
-              )
-            }
-          >
-            এগুলো প্র্যাকটিস করি
-          </Button>
-        </div>
-
-        <Segmented
-          style={{ margin: "12px 0" }}
-          value={status}
-          onChange={(v) => {
-            setStatus(v as "active" | "resolved");
-            setPage(1); // new bucket → back to the first page
-          }}
-          options={[
-            { label: "সক্রিয়", value: "active" },
-            { label: "সমাধান হয়েছে", value: "resolved" },
-          ]}
-        />
-
-        {subjects.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              overflowX: "auto",
-              paddingBottom: 8,
-              marginBottom: 8,
-            }}
-          >
-            <Chip
-              label="সব"
-              selected={activeSubject === null}
-              onClick={() => {
-                setSubjectId(null);
-                setPage(1); // new subject filter → back to the first page
-              }}
+    <>
+      <HeroBand
+        title="ভুলের খাতা ✎"
+        subtitle={first ? `${bnNum(activeCount)}টি প্রশ্ন · ${bnNum(dueCount)}টি আজ ডিউ` : "—"}
+        overlap={overlapping}
+        tabs={
+          <>
+            <button
+              type="button"
+              className={status === "active" ? "ex-bandtab is-active" : "ex-bandtab"}
+              aria-pressed={status === "active"}
+              onClick={() => selectStatus("active")}
+            >
+              সক্রিয়
+            </button>
+            <button
+              type="button"
+              className={status === "resolved" ? "ex-bandtab is-active" : "ex-bandtab"}
+              aria-pressed={status === "resolved"}
+              onClick={() => selectStatus("resolved")}
+            >
+              সমাধান হয়েছে
+            </button>
+          </>
+        }
+      />
+      <PageContainer banded>
+        {query.isError ? (
+          <div className={overlapping ? "ex-band-overlap" : undefined}>
+            <Alert
+              type="error"
+              showIcon
+              title="ভুলের খাতা লোড করা যায়নি"
+              action={
+                <Button size="small" onClick={() => void query.refetch()}>
+                  আবার চেষ্টা করুন
+                </Button>
+              }
             />
-            {subjects.map((s) => (
-              <Chip
-                key={s.id}
-                label={s.label}
-                selected={activeSubject === s.id}
-                onClick={() => {
-                  setSubjectId(s.id);
-                  setPage(1); // new subject filter → back to the first page
-                }}
-              />
-            ))}
-          </div>
-        )}
-
-        {loading ? (
-          <Skeleton active paragraph={{ rows: 6 }} />
-        ) : isError ? (
-          <Alert
-            type="error"
-            showIcon
-            title="ভুলের খাতা লোড করা যায়নি"
-            action={
-              <Button size="small" onClick={() => refetch()}>
-                আবার চেষ্টা করুন
-              </Button>
-            }
-          />
-        ) : entries.length === 0 ? (
-          <div style={{ padding: "32px 0", textAlign: "center" }}>
-            <Illustration name={status === "active" ? "success" : "empty"} />
-            <Typography.Paragraph style={{ marginTop: 12, color: "var(--ex-ink-soft)" }}>
-              {status === "active" ? "কোনো ভুল জমা নেই — চালিয়ে যান!" : "এখনো কিছু সমাধান হয়নি"}
-            </Typography.Paragraph>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {groups.map((group) => (
-              <div key={group.key}>
-                <Typography.Title level={5} style={{ marginTop: 0, color: "var(--ex-ink)" }}>
-                  {group.label}
-                </Typography.Title>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {group.entries.map((entry) => (
-                    <QuestionRevealCard
-                      key={entry.id}
-                      stemHtml={entry.stemHtml}
-                      multipleCorrect={entry.multipleCorrect}
-                      options={entry.options}
-                      explanationHtml={entry.explanationHtml}
-                      takeawayText={entry.takeawayText}
-                      header={<EntryHeader entry={entry} />}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+          <>
+            {/* The revision funnel is the active tab's job — সমাধান হয়েছে has nothing
+                due to practice, so the card (and the band room it floats into) goes. */}
+            {overlapping && (
+              <div className="ex-band-overlap">{loading ? <SkeletonRow /> : revisionCard}</div>
+            )}
 
-        {!loading && !isError && total > NOTEBOOK_PAGE_SIZE && (
-          <Pagination
-            style={{ marginTop: 20, textAlign: "center" }}
-            align="center"
-            current={page}
-            pageSize={NOTEBOOK_PAGE_SIZE}
-            total={total}
-            showSizeChanger={false}
-            onChange={(p) => setPage(p)}
-          />
+            {/* Kept mounted while a filter matches nothing, so «সব» stays reachable. */}
+            {entries.length > 0 && (
+              <div className="ex-filterrow">
+                <FilterChips items={chipItems} />
+              </div>
+            )}
+
+            {list}
+            <div ref={sentinelRef} aria-hidden />
+          </>
         )}
-      </div>
-    </PageContainer>
+      </PageContainer>
+    </>
   );
 }
