@@ -456,6 +456,25 @@
 .ex-filterrow { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
 .ex-filterrow > .ex-scroll-x { flex: 1; min-width: 0; }
 
+/* ---- meter (§8: progress/accuracy bars) ---- */
+.ex-meter-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.ex-meter-label { font-size: 12.5px; color: var(--ex-ink); }
+.ex-meter-trailing { font-size: 12px; color: var(--ex-ink-soft); font-variant-numeric: tabular-nums; }
+.ex-meter-track { height: 5px; border-radius: 999px; background: var(--ex-stage); overflow: hidden; }
+.ex-meter-fill { height: 100%; border-radius: 999px; transition: width .25s ease-out; }
+.ex-meter--teal { background: var(--ex-teal); }
+.ex-meter--coral { background: var(--ex-coral); }
+.ex-meter--amber { background: var(--ex-amber); }
+.ex-meter--green { background: var(--ex-green); }
+
+/* ---- horizontal card rail (§8 হোম live rail) ---- */
+.ex-rail {
+  display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px;
+  scrollbar-width: none; scroll-snap-type: x proximity;
+}
+.ex-rail::-webkit-scrollbar { display: none; }
+.ex-rail > * { scroll-snap-align: start; }
+
 /* ---- reduced motion kills all of the above ---- */
 @media (prefers-reduced-motion: reduce) {
   .ex-fade-up, .ex-skeleton::after { animation: none; }
@@ -464,4 +483,5 @@
   .ex-btn, .ex-btn:active { transition: none; transform: none; }
   .ex-appbar-inner { transition: none; }
   .ex-qcard, .ex-qcard-body, .ex-qcard-caret, .ex-qcard-bodyinner { transition: none; }
+  .ex-meter-fill { transition: none; }
 }
