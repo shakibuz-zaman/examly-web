@@ -20,24 +20,39 @@ export function StreakCard({
   // dayjs()/Date.now() in render, so it renders identically for a given prop.
   const repairable = streak.repairable;
 
+  const coveredCount = streak.last7.filter((s) => s === "covered").length;
+  const activeCount = streak.last7.filter((s) => s === "active").length;
+
   return (
     <div className="ex-card ex-streakcard">
       <span aria-hidden style={{ fontSize: 18 }}>🔥</span>
       <div className="ex-streakcard-main">
         <div className="ex-streakcard-title">{bnNum(streak.current)} দিনের স্ট্রিক</div>
         {/* role="img" is what makes the label reachable: on a bare <div> (role=generic)
-            aria-label is dropped, and the seven bars are empty <span>s with no text, so
-            the row would be invisible to AT. The bars stay decorative either way — the
-            streak length itself is spoken by the title line above. */}
-        <div className="ex-streakbars" role="img" aria-label="গত ৭ দিনের অ্যাক্টিভিটি">
+            aria-label is dropped, and the seven bars are empty <span>s with no text.
+            The label now carries the covered days too — the bars distinguish three states
+            by pattern, and nothing else on the card says how many days were held rather
+            than earned. */}
+        <div
+          className="ex-streakbars"
+          role="img"
+          aria-label={
+            coveredCount > 0
+              ? `গত ৭ দিনে ${bnNum(activeCount)} দিন সক্রিয়, ${bnNum(coveredCount)} দিন ফ্রিজে ঢাকা`
+              : `গত ৭ দিনে ${bnNum(activeCount)} দিন সক্রিয়`
+          }
+        >
           {/* last7 is always exactly 7 entries, oldest→newest (API contract), and never
-              reorders — the index is a stable identity here.
-              STUB (7e Task 5): last7 became a "active"|"covered"|"missed" union, which the
-              old truthiness read would have rendered as seven active bars (every non-empty
-              string is truthy — no type error). The === guard holds the pre-7e rendering;
-              Task 7 gives "covered" its own bar treatment. */}
-          {streak.last7.map((day, i) => (
-            <span key={i} className={day === "active" ? "ex-streakbar is-active" : "ex-streakbar"} />
+              reorders — the index is a stable identity here. */}
+          {streak.last7.map((state, i) => (
+            <span
+              key={i}
+              className={
+                state === "active" ? "ex-streakbar is-active"
+                  : state === "covered" ? "ex-streakbar is-covered"
+                  : "ex-streakbar"
+              }
+            />
           ))}
         </div>
         {repairable && (
