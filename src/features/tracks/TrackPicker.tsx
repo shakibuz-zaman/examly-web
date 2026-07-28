@@ -55,10 +55,12 @@ const subStyle: CSSProperties = {
 };
 
 export function TrackPicker({ value, onChange }: TrackPickerProps) {
-  const { data, isLoading } = useExamCategories();
+  const { data, isPending } = useExamCategories();
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
 
-  if (isLoading) return <Spin style={{ display: "block", margin: "32px auto" }} />;
+  // isPending, not isLoading: a paused (offline) fetch reports isLoading false with no
+  // data, which would render the picker as an empty track list rather than a spinner.
+  if (isPending) return <Spin style={{ display: "block", margin: "32px auto" }} />;
 
   const roots = buildCategoryTree(data ?? []);
   const selected = new Set(value);

@@ -604,6 +604,19 @@
    the urgency without relying on color alone — the «আজ ডিউ» words say it too. */
 .ex-nb-due { color: var(--ex-amber); font-weight: 600; }
 
+/* Revealed body of that card (QuestionRevealCard, D21). Type scale mirrors the qbank
+   browse card — .ex-qcard-why is 13px and .ex-qcard-takeaway 12.5px — so the two question
+   bodies read the same. What it does NOT mirror is qbank's tinted .ex-qcard-why box: the
+   notebook already prints the stem in the same card, and a box inside that card would be a
+   surface inside a surface. The label alone separates the explanation. */
+.ex-reveal-explain { font-size: 13px; font-weight: 700; color: var(--ex-ink); }
+/* teal-ink, not the qbank card's amber: amber there marks a 💡 aside, while this line is
+   the revision's own conclusion. Same pairing as .ex-continuecard-eyebrow (teal-ink on
+   card, AA in both modes) and the same colour this line already shipped with. */
+.ex-reveal-takeaway {
+  margin-top: 8px; font-size: 12.5px; font-weight: 600; color: var(--ex-teal-ink);
+}
+
 /* প্রোগ্রেস stat tiles — 2-col mobile, 4-col desktop (§8). The top margin is the "grid
    supplies its own" half of .ex-filterrow's 4px bottom margin: the two collapse to 12px,
    the page's rhythm below (.ex-progress-stack). Set here rather than on .ex-filterrow,

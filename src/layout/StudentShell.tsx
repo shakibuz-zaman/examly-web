@@ -24,7 +24,11 @@ export function StudentShell() {
   if (onOnboarding || onTakeRoute) return <Outlet />;
 
   // Wait for the subscription list before deciding — never redirect on a stale/empty load.
-  if (myTracks.isLoading) return centeredSpin;
+  // isPending, NOT isLoading (= isPending && isFetching): on a cold start with no
+  // connectivity the query is born PAUSED, so isLoading is false with no data — and this
+  // guard would fall through to the empty-subscription redirect below. The query has no
+  // enable gate, so pending only ever means "still loading".
+  if (myTracks.isPending) return centeredSpin;
   // A failed load must NOT be read as "no tracks" (that would bounce a subscribed
   // student to onboarding). Surface the error with a retry instead.
   if (myTracks.isError) {
