@@ -40,6 +40,17 @@ export function formatDhakaShortBn(iso: string): string {
   return `${bnNum(d.getUTCDate())} ${MONTHS_BN[d.getUTCMonth()]}, ${bnNum(h)}:${bnNum(mm)} ${ampm}`;
 }
 
+// Dhaka-pinned (+06:00 fixed) date-only label in Bengali digits: «২৫ জুলাই».
+// Chart X-axis ticks want ~6 characters. The datetime above runs 17–23, which at
+// fontSize 11 on a 375px chart makes recharts drop all but one or two ticks — and it
+// carries a Latin AM/PM that has no business on an axis. Prose keeps the full form.
+export function formatDhakaDayMonthBn(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  const d = new Date(t + 6 * 3_600_000);
+  return `${bnNum(d.getUTCDate())} ${MONTHS_BN[d.getUTCMonth()]}`;
+}
+
 // Bengali-numeral duration for card meta (§3.1 — prose counts use bnNum).
 export function formatDurationBn(minutes: number): string {
   const h = Math.floor(minutes / 60);

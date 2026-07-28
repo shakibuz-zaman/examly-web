@@ -1,19 +1,14 @@
 import { Card, Skeleton, Tag, Typography } from "antd";
 import { useState } from "react";
 import { useStrength, useSubjectStrength, type StrengthRow } from "../../api/analytics";
-import type { BilingualText } from "../../api/types";
+import { bnNum } from "../../lib/bn";
+import { bilingualLabel } from "../../lib/labels";
 import type { AnalyticsFilters } from "./filters";
 import { useChartColors } from "./chartTheme";
 
-// nodeLabel + StrengthBarRow are shared helpers reused by Tasks 17–18; exporting
-// them alongside components trips fast-refresh's component-only rule (cf. routes.tsx).
-// eslint-disable-next-line react-refresh/only-export-components
-export function nodeLabel(row: { name: BilingualText | null }): string {
-  if (!row.name) return "Uncategorized";
-  return row.name.bn && row.name.en ? `${row.name.en} · ${row.name.bn}` : row.name.en ?? row.name.bn ?? "?";
-}
-
-// One accuracy row: name, bar with peer tick, value. Reused by the drill and Task 17.
+// One accuracy row: name, bar with peer tick, value. Reused by the drill below and by the
+// examiner's attempt breakdown (the only external consumer) — it is a component, so
+// exporting it beside StrengthMap needs no fast-refresh suppression.
 export function StrengthBarRow({
   row, indent = 0, onClick,
 }: { row: StrengthRow; indent?: number; onClick?: () => void }) {
@@ -28,9 +23,9 @@ export function StrengthBarRow({
       }}
     >
       <div style={{ fontSize: 13, lineHeight: 1.3 }}>
-        {nodeLabel(row)}
-        {row.lowSample && <Tag style={{ marginLeft: 6, fontSize: 10 }}>needs more attempts</Tag>}
-        <div style={{ fontSize: 11, color: "#8c8c8c" }}>{row.attempted} questions</div>
+        {bilingualLabel(row.name)}
+        {row.lowSample && <Tag style={{ marginLeft: 6, fontSize: 10 }}>আরও প্রশ্ন দরকার</Tag>}
+        <div style={{ fontSize: 11, color: "#8c8c8c" }}>{bnNum(row.attempted)}টি প্রশ্ন</div>
       </div>
       <div style={{ position: "relative", height: 10, background: "#f5f5f5", borderRadius: "0 5px 5px 0" }}>
         <div style={{
@@ -45,9 +40,9 @@ export function StrengthBarRow({
         )}
       </div>
       <div style={{ textAlign: "right", fontSize: 13, fontWeight: 600 }}>
-        {row.accuracy}%
+        {bnNum(row.accuracy)}%
         {row.peerAccuracy !== null && (
-          <div style={{ fontSize: 10, fontWeight: 400, color: "#8c8c8c" }}>peer {row.peerAccuracy}</div>
+          <div style={{ fontSize: 10, fontWeight: 400, color: "#8c8c8c" }}>সহপাঠী {bnNum(row.peerAccuracy)}%</div>
         )}
       </div>
     </div>
@@ -60,11 +55,11 @@ export function StrengthMap({ filters }: { filters: AnalyticsFilters }) {
   const drill = useSubjectStrength(filters, openSubject);
 
   return (
-    <Card title="Accuracy by subject">
+    <Card title="বিষয়ভিত্তিক সঠিকতা">
       {strength.isLoading ? (
         <Skeleton active />
       ) : (strength.data ?? []).length === 0 ? (
-        <Typography.Text type="secondary">No answered questions in this slice yet.</Typography.Text>
+        <Typography.Text type="secondary">এই ফিল্টারে এখনো উত্তর দেওয়া কোনো প্রশ্ন নেই।</Typography.Text>
       ) : (
         <>
           {(strength.data ?? []).map((row) => (
@@ -90,7 +85,7 @@ export function StrengthMap({ filters }: { filters: AnalyticsFilters }) {
             </div>
           ))}
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            ▐ tick = peer average on the same questions. Tap a subject to drill into topics.
+            ▐ দাগ = একই প্রশ্নে সহপাঠীদের গড়। টপিক দেখতে বিষয়ে ট্যাপ করুন।
           </Typography.Text>
         </>
       )}

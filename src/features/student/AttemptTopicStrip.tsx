@@ -1,7 +1,7 @@
 import { Progress, Skeleton, Tag, Typography } from "antd";
 import { useAttemptTopics } from "../../api/student";
 import type { StrengthRow } from "../../api/analytics";
-import { nodeLabel } from "../analytics/StrengthMap";
+import { bilingualLabel } from "../../lib/labels";
 
 function TopicRow({ row, indent = 0 }: { row: StrengthRow; indent?: number }) {
   return (
@@ -16,7 +16,7 @@ function TopicRow({ row, indent = 0 }: { row: StrengthRow; indent?: number }) {
       }}
     >
       <div style={{ fontSize: 13, lineHeight: 1.3 }}>
-        {nodeLabel(row)}
+        {bilingualLabel(row.name)}
         {row.lowSample && <Tag style={{ marginLeft: 6, fontSize: 10 }}>কম নমুনা</Tag>}
         {row.peerAccuracy !== null && (
           <div style={{ fontSize: 11, color: "var(--ex-ink-faint)" }}>

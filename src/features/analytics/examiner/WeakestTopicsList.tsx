@@ -2,7 +2,7 @@ import { Card, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Link } from "react-router-dom";
 import type { WeakTopic } from "../../../api/examinerAnalytics";
-import { nodeLabel } from "../StrengthMap";
+import { bilingualLabel } from "../../../lib/labels";
 
 const columns: ColumnsType<WeakTopic> = [
   {
@@ -12,10 +12,10 @@ const columns: ColumnsType<WeakTopic> = [
       <>
         {r.subjectName && (
           <Typography.Text type="secondary">
-            {nodeLabel({ name: r.subjectName })} →{" "}
+            {bilingualLabel(r.subjectName)} →{" "}
           </Typography.Text>
         )}
-        {nodeLabel(r)}
+        {bilingualLabel(r.name)}
       </>
     ),
   },

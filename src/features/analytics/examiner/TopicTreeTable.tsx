@@ -1,7 +1,7 @@
 import { Card, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { ExamTopicRow } from "../../../api/examinerAnalytics";
-import { nodeLabel } from "../StrengthMap";
+import { bilingualLabel } from "../../../lib/labels";
 
 // antd renders an expand icon whenever the childrenColumnName key is present —
 // even for an empty array — so leaf rows must carry undefined, not [].
@@ -18,7 +18,7 @@ const columns: ColumnsType<TreeRow> = [
     key: "node",
     render: (_, r) => (
       <>
-        {nodeLabel(r)}
+        {bilingualLabel(r.name)}
         {r.nodeId === null && <Tag style={{ marginLeft: 6, fontSize: 10 }}>untagged</Tag>}
       </>
     ),
