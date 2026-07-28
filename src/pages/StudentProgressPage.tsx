@@ -1,6 +1,7 @@
 import { Card, Col, InputNumber, Row, Segmented, Select, Skeleton, Space, Statistic, Typography } from "antd";
 import { useAnalyticsOverview } from "../api/analytics";
 import { categoryLabel, useExamCategories } from "../api/categories";
+import { bilingualLabel } from "../lib/labels";
 import { useAnalyticsFilters } from "../features/analytics/filters";
 import { TrendChart } from "../features/analytics/TrendChart";
 import { PositionCard } from "../features/analytics/PositionCard";
@@ -74,7 +75,16 @@ export function StudentProgressPage() {
                   suffix={overview.data.avgPercentile !== null ? "th" : undefined} /></Card>
               </Col>
               <Col xs={12} md={6}>
-                <Card size="small"><Statistic title="Focus area" value={overview.data.focusAreaLabel ?? "—"}
+                {/* STUB (7e Task 5): the server dropped focusAreaLabel for the (subject,
+                    node) pair. This reproduces the old "Subject → Node" join client-side —
+                    Bengali-first now, and "—" where the server used a "?" sentinel — purely
+                    to keep the tree compiling. Task 8 rebuilds this card, and its brief
+                    specifies this same "→" join — so the separator carries over rather than
+                    being a stub choice Task 8 has to re-decide. */}
+                <Card size="small"><Statistic title="Focus area"
+                  value={overview.data.focusArea
+                    ? `${bilingualLabel(overview.data.focusArea.subject)} → ${bilingualLabel(overview.data.focusArea.node)}`
+                    : "—"}
                   styles={{ content: { fontSize: 16 } }} /></Card>
               </Col>
             </Row>

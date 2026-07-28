@@ -1,4 +1,5 @@
 import { Layout, Typography, Button, Space, ConfigProvider } from "antd";
+import bnBD from "antd/locale/bn_BD";
 import { MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { Link, Outlet } from "react-router-dom";
 import { SidebarNav } from "./SidebarNav";
@@ -13,7 +14,7 @@ export function AppShell() {
   const { mode, toggle } = useThemeMode();
 
   return (
-    <ConfigProvider theme={buildTheme("examiner", mode)}>
+    <ConfigProvider locale={bnBD} theme={buildTheme("examiner", mode)}>
       <Layout style={{ minHeight: "100vh" }}>
         <Header style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link to="/dashboard" style={{ fontWeight: 700, color: "var(--ex-teal-ink)" }}>

@@ -31,9 +31,13 @@ export function StreakCard({
             streak length itself is spoken by the title line above. */}
         <div className="ex-streakbars" role="img" aria-label="গত ৭ দিনের অ্যাক্টিভিটি">
           {/* last7 is always exactly 7 entries, oldest→newest (API contract), and never
-              reorders — the index is a stable identity here. */}
-          {streak.last7.map((active, i) => (
-            <span key={i} className={active ? "ex-streakbar is-active" : "ex-streakbar"} />
+              reorders — the index is a stable identity here.
+              STUB (7e Task 5): last7 became a "active"|"covered"|"missed" union, which the
+              old truthiness read would have rendered as seven active bars (every non-empty
+              string is truthy — no type error). The === guard holds the pre-7e rendering;
+              Task 7 gives "covered" its own bar treatment. */}
+          {streak.last7.map((day, i) => (
+            <span key={i} className={day === "active" ? "ex-streakbar is-active" : "ex-streakbar"} />
           ))}
         </div>
         {repairable && (
