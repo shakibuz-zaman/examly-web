@@ -18,6 +18,10 @@
   border-radius: var(--ex-radius-card);
   box-shadow: var(--ex-shadow-1);
 }
+/* Shared card heading — the in-card title row for surfaces that carry no antd Card header
+   (.ex-weakcard is the first). Generic on purpose: it belongs to .ex-card, not to any one
+   page, so a new card gets its head from here rather than growing a page-scoped twin. */
+.ex-cardhead { font-size: 14px; font-weight: 700; color: var(--ex-ink); }
 .ex-hover-lift { transition: transform .15s ease-out, box-shadow .15s ease-out; }
 .ex-hover-lift:hover { transform: translateY(-2px); box-shadow: var(--ex-shadow-2); }
 .ex-hover-lift:active { transform: scale(.97); }
@@ -600,8 +604,11 @@
    the urgency without relying on color alone — the «আজ ডিউ» words say it too. */
 .ex-nb-due { color: var(--ex-amber); font-weight: 600; }
 
-/* প্রোগ্রেস stat tiles — 2-col mobile, 4-col desktop (§8). */
-.ex-stattiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+/* প্রোগ্রেস stat tiles — 2-col mobile, 4-col desktop (§8). The top margin is the "grid
+   supplies its own" half of .ex-filterrow's 4px bottom margin: the two collapse to 12px,
+   the page's rhythm below (.ex-progress-stack). Set here rather than on .ex-filterrow,
+   which স্টোর, প্রশ্নব্যাংক and ভুলের খাতা all share. */
+.ex-stattiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
 .ex-stattile { background: var(--ex-card); border-radius: var(--ex-radius-card); box-shadow: var(--ex-shadow-1); padding: 14px 16px; }
 .ex-stattile-label { font-size: 11px; font-weight: 700; letter-spacing: .09em; color: var(--ex-ink-soft); }
 .ex-stattile-value { font-size: 24px; font-weight: 700; line-height: 1.2; margin-top: 4px; }
@@ -610,6 +617,20 @@
 .ex-stattile-delta.is-up { color: var(--ex-green); }
 .ex-stattile-delta.is-down { color: var(--ex-coral); }
 @media (min-width: 768px) { .ex-stattiles { grid-template-columns: repeat(4, 1fr); } }
+
+/* প্রোগ্রেস card stack — the rhythm the page's old antd flex wrapper used to supply. The
+   analytics cards under the tiles are still antd Cards and carry no margin of their own,
+   so consecutive cards would touch; same job as .ex-home-callout, i.e. spacing where no
+   SectionHeader sits between blocks. */
+.ex-progress-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+
+/* প্রোগ্রেস দুর্বল জায়গা card (§8 weak-topic bars).
+   Pairs with .ex-card, which ships no padding of its own — every surface supplies its own,
+   the same as .ex-continuecard. The gap is what separates head, bars and CTA. */
+.ex-weakcard { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+/* align-self or the inline-flex pill stretches to the card's full width — the column's
+   default align-items is stretch (the .ex-continuecard-cta rule, for the same reason). */
+.ex-weakcard-cta { align-self: flex-start; margin-top: 2px; }
 
 /* লবি facts card — label/value rows (§5.2). */
 .ex-facts { display: grid; gap: 0; }

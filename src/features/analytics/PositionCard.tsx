@@ -1,31 +1,20 @@
-import { Card, Segmented, Skeleton, Typography } from "antd";
-import { useState } from "react";
+import { Card, Skeleton, Typography } from "antd";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { usePosition } from "../../api/analytics";
-import type { AnalyticsMode } from "./filters";
+import type { AnalyticsFilters } from "./filters";
 import { useChartColors } from "./chartTheme";
 
-export function PositionCard({ categoryId }: { categoryId: string | null }) {
+export function PositionCard({ filters }: { filters: AnalyticsFilters }) {
   const chartColors = useChartColors();
-  const [mode, setMode] = useState<AnalyticsMode>("live"); // spec: position defaults to live
-  const position = usePosition(categoryId, mode);
+  // D8: one mode control per page. The card used to own a second Segmented with identical
+  // vocabulary, so the page and the card could disagree on screen. P2: this also changes
+  // the card's default from "live" to the page default "all" — accepted; the caption still
+  // explains that live is the everyone-at-once cohort.
+  const position = usePosition(filters.categoryId, filters.mode);
   const p = position.data;
 
   return (
-    <Card
-      title="Your position"
-      extra={
-        <Segmented
-          value={mode}
-          options={[
-            { label: "All", value: "all" },
-            { label: "Live only", value: "live" },
-            { label: "Open only", value: "open" },
-          ]}
-          onChange={(v) => setMode(v as AnalyticsMode)}
-        />
-      }
-    >
+    <Card title="Your position">
       {position.isLoading || !p ? (
         <Skeleton active paragraph={{ rows: 2 }} />
       ) : p.participants === 0 || p.yourAvgPercentile === null ? (
