@@ -12,9 +12,10 @@ export type StrategyCard = {
   examTitle: string; wrong: number; marksLost: number;
   score: number; scoreIfWrongsSkipped: number; ranksGained: number;
 };
+export type FocusArea = { subject: BilingualText; node: BilingualText };
 export type OverviewResponse = {
   examsTaken: number; practiceRetakes: number; overallAccuracy: number;
-  avgPercentile: number | null; focusAreaLabel: string | null;
+  avgPercentile: number | null; focusArea: FocusArea | null;
   trend: TrendPoint[]; difficulty: DifficultyRow[]; strategy: StrategyCard | null;
 };
 export type StrengthRow = {

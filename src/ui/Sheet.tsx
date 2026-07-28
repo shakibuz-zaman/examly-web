@@ -3,7 +3,7 @@ import { Drawer, Grid, Popover } from "antd";
 import type { TooltipPlacement } from "antd/es/tooltip";
 
 // §8 Sheet: the responsive container — Popover on desktop, bottom Drawer on mobile.
-// FilterSheet's split, lifted; FilterSheet itself is not migrated onto it (D12).
+// FilterSheet's split, lifted; FilterSheet migrated onto it in 7e, closing D12's duplication.
 // The caller owns the open state and supplies the trigger element, but Sheet owns the
 // trigger's onClick on both branches — the open handler on mobile, cleared on desktop.
 // Trigger side effects belong in onOpenChange; an onClick on the trigger is dropped.
@@ -30,10 +30,10 @@ export function Sheet({
   // separate popup surface. "dialog" over "menu"/"listbox" on both branches: what opens
   // is a titled container of ordinary controls — no menu keyboard model to honour — and
   // the value must match on desktop and mobile or the same button announces two things.
-  // True on mobile (antd's Drawer renders role="dialog"); ASPIRATIONAL on desktop, where
-  // antd's Popover renders a plain div and the hint promises a dialog that isn't there.
-  // Harmless only because nothing reaches the desktop branch yet — give the Popover
-  // content role="dialog" + aria-modal before the first caller does.
+  // True on BOTH branches since 7e. Mobile: antd's Drawer renders role="dialog" itself.
+  // Desktop: the promise was ASPIRATIONAL — antd's Popover renders a plain div — until 7e
+  // brought the first desktop caller; the content now declares the role, with aria-modal
+  // "false" as the honest value for a surface that does not trap focus (see below).
   const popupHint = { "aria-haspopup": "dialog", "aria-expanded": open } as const;
 
   if (isDesktop) {
@@ -49,7 +49,11 @@ export function Sheet({
         onOpenChange={onOpenChange}
         trigger="click"
         placement={desktopPlacement}
-        content={children}
+        // The trigger announces a dialog on both branches; antd's Popover renders a plain
+        // div, so the promise only becomes true here. aria-modal is FALSE deliberately:
+        // Popover has no focus trap, and claiming a modal that does not trap focus strands
+        // a screen-reader user worse than not claiming one.
+        content={<div role="dialog" aria-modal="false" aria-label={title}>{children}</div>}
       >
         {cloneElement(anchor, { ...popupHint, onClick: undefined })}
       </Popover>

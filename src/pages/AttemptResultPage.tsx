@@ -8,7 +8,8 @@ import { useAttemptReview, useAttemptStatus, useLeaderboard } from "../api/stude
 import { QuestionContentView } from "../features/questions/QuestionContentView";
 import { AttemptTopicStrip } from "../features/student/AttemptTopicStrip";
 import { OptionRow } from "../components/OptionRow";
-import { formatClock, formatDateTime } from "../lib/format";
+import { formatClock, formatDhakaShortBn } from "../lib/format";
+import { bnNum } from "../lib/bn";
 import type { LeaderboardRow, ReviewQuestion } from "../api/types";
 import { PageContainer } from "../ui/PageContainer";
 
@@ -53,7 +54,7 @@ function ReviewQuestionCard({ question, number }: { question: ReviewQuestion; nu
               items={[
                 {
                   key: "explanation",
-                  label: "Explanation",
+                  label: "ব্যাখ্যা",
                   children: <QuestionContentView html={question.explanationHtml} />,
                 },
               ]}
@@ -91,7 +92,7 @@ export function AttemptResultPage() {
   if (statusQuery.isError || !status) {
     return (
       <PageContainer>
-        <Typography.Text type="danger">This attempt is not available.</Typography.Text>
+        <Typography.Text type="danger">এই অ্যাটেম্পট পাওয়া যাচ্ছে না।</Typography.Text>
       </PageContainer>
     );
   }
@@ -100,9 +101,9 @@ export function AttemptResultPage() {
     return (
       <PageContainer>
         <Card>
-          <Typography.Paragraph>This attempt is still in progress.</Typography.Paragraph>
+          <Typography.Paragraph>এই অ্যাটেম্পট এখনো চলমান।</Typography.Paragraph>
           <Button type="primary" onClick={() => navigate(`/student/exams/${status.examId}/take`)}>
-            Resume exam
+            চালিয়ে যান
           </Button>
         </Card>
       </PageContainer>
@@ -117,8 +118,15 @@ export function AttemptResultPage() {
           <Alert
             type="info"
             showIcon
-            title="Submitted"
-            description={`Score, correct answers, and the leaderboard unlock at ${formatDateTime(status.revealAtUtc)}.`}
+            title="জমা হয়েছে"
+            // formatDhakaShortBn renders "" for a null time, which would leave «-এ দেখা
+            // যাবে» hanging off nothing. The null branch names the wait instead — the same
+            // «অপেক্ষ…» vocabulary the আমার পরীক্ষা list and the lobby already use.
+            description={
+              status.revealAtUtc
+                ? `স্কোর, সঠিক উত্তর ও লিডারবোর্ড ${formatDhakaShortBn(status.revealAtUtc)}-এ দেখা যাবে।`
+                : "স্কোর, সঠিক উত্তর ও লিডারবোর্ড প্রকাশের অপেক্ষায়।"
+            }
           />
         </Card>
       </PageContainer>
@@ -132,17 +140,17 @@ export function AttemptResultPage() {
   const leaderboardColumns: ColumnsType<LeaderboardRow> = [
     { title: "#", dataIndex: "rank", width: 60 },
     {
-      title: "Student",
+      title: "শিক্ষার্থী",
       dataIndex: "studentName",
       render: (name: string, row) => (
         <span>
-          {name} {row.isMe && <Tag color="blue">you</Tag>}
+          {name} {row.isMe && <Tag color="blue">আপনি</Tag>}
         </span>
       ),
     },
-    { title: "Score", dataIndex: "score", width: 90 },
+    { title: "স্কোর", dataIndex: "score", width: 90 },
     {
-      title: "Time",
+      title: "সময়",
       dataIndex: "timeTakenSeconds",
       width: 90,
       render: (s: number) => formatClock(s),
@@ -156,9 +164,9 @@ export function AttemptResultPage() {
           {status.examTitle}
         </Typography.Title>
         <Typography.Text type="secondary">
-          Attempt #{status.attemptNumber}
-          {status.status === "expired" ? " · time expired (auto-submitted)" : ""}
-          {status.attemptNumber > 1 ? " · practice attempts don't rank" : ""}
+          অ্যাটেম্পট #{status.attemptNumber}
+          {status.status === "expired" ? " · সময় শেষ (স্বয়ংক্রিয় জমা)" : ""}
+          {status.attemptNumber > 1 ? " · প্র্যাকটিস র‍্যাঙ্ক হয় না" : ""}
         </Typography.Text>
 
         <Tabs
@@ -186,7 +194,7 @@ export function AttemptResultPage() {
                     )}
                     <Row gutter={[16, 16]}>
                       <Col xs={12} md={6}>
-                        <Statistic title="Score" value={`${status.score} / ${status.maxScore}`} />
+                        <Statistic title="স্কোর" value={`${status.score} / ${status.maxScore}`} />
                       </Col>
                       {board && (
                         <Col xs={12} md={6}>
@@ -194,7 +202,7 @@ export function AttemptResultPage() {
                         </Col>
                       )}
                       <Col xs={12} md={6}>
-                        <Statistic title="Correct · Wrong · Blank"
+                        <Statistic title="সঠিক · ভুল · খালি"
                           value={`${status.correct} · ${status.wrong} · ${status.unanswered}`} />
                       </Col>
                     </Row>
@@ -218,7 +226,7 @@ export function AttemptResultPage() {
                       <div key={sIndex} style={{ marginBottom: 16 }}>
                         {(section.title || review.sections.length > 1) && (
                           <Typography.Title level={5}>
-                            {section.title ?? `Section ${sIndex + 1}`}
+                            {section.title ?? `সেকশন ${bnNum(sIndex + 1)}`}
                           </Typography.Title>
                         )}
                         {section.questions.map((question, qIndex) => (
@@ -233,7 +241,7 @@ export function AttemptResultPage() {
                   })}
                 </div>
               ) : (
-                <Typography.Text type="secondary">Review unavailable.</Typography.Text>
+                <Typography.Text type="secondary">রিভিউ পাওয়া যাচ্ছে না।</Typography.Text>
               ),
             },
             {
@@ -261,8 +269,8 @@ export function AttemptResultPage() {
         />
 
         <Space style={{ marginTop: 16 }} wrap>
-          <Link to="/student/me">← My exams</Link>
-          <Button onClick={() => navigate("/student/progress")}>See your progress</Button>
+          <Link to="/student/me">← আমার অ্যাটেম্পট</Link>
+          <Button onClick={() => navigate("/student/progress")}>প্রোগ্রেস দেখুন</Button>
         </Space>
       </div>
     </PageContainer>

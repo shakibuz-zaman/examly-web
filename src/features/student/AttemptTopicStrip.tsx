@@ -1,7 +1,7 @@
 import { Progress, Skeleton, Tag, Typography } from "antd";
 import { useAttemptTopics } from "../../api/student";
 import type { StrengthRow } from "../../api/analytics";
-import { nodeLabel } from "../analytics/StrengthMap";
+import { bilingualLabel } from "../../lib/labels";
 
 function TopicRow({ row, indent = 0 }: { row: StrengthRow; indent?: number }) {
   return (
@@ -16,7 +16,7 @@ function TopicRow({ row, indent = 0 }: { row: StrengthRow; indent?: number }) {
       }}
     >
       <div style={{ fontSize: 13, lineHeight: 1.3 }}>
-        {nodeLabel(row)}
+        {bilingualLabel(row.name)}
         {row.lowSample && <Tag style={{ marginLeft: 6, fontSize: 10 }}>কম নমুনা</Tag>}
         {row.peerAccuracy !== null && (
           <div style={{ fontSize: 11, color: "var(--ex-ink-faint)" }}>
@@ -41,7 +41,11 @@ export function AttemptTopicStrip({
 }) {
   const query = useAttemptTopics(attemptId, enabled);
 
-  if (query.isLoading) return <Skeleton active paragraph={{ rows: 4 }} />;
+  // isPending, not isLoading: a paused (offline) fetch reports isLoading false with no
+  // data and would fall through to the null below, hiding the strip for good. Safe against
+  // the `enabled` gate because the only caller renders this after the reveal check, where
+  // `enabled` is always true — a disabled query is pending forever.
+  if (query.isPending) return <Skeleton active paragraph={{ rows: 4 }} />;
   // Hide the strip entirely on error (404 foreign / 409 pre-reveal — the enabled
   // gate means pre-reveal never fetches) or when there is nothing to show.
   if (query.isError || !query.data || query.data.length === 0) return null;

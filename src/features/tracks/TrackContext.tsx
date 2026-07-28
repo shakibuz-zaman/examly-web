@@ -59,9 +59,13 @@ export function TrackProvider({ children }: { children: React.ReactNode }) {
       activeTrackId,
       setActiveTrackId,
       collections,
-      isLoading: categories.isLoading || myTracks.isLoading,
+      // isPending, not isLoading: a paused (offline) fetch reports isLoading false with no
+      // data, so consumers would treat an empty tracks list as settled truth. Neither query
+      // has an enable gate, so pending only ever means "still loading". The context field
+      // keeps its `isLoading` name — that is its consumers' contract, not a query flag.
+      isLoading: categories.isPending || myTracks.isPending,
     }),
-    [tracks, activeTrackId, setActiveTrackId, collections, categories.isLoading, myTracks.isLoading],
+    [tracks, activeTrackId, setActiveTrackId, collections, categories.isPending, myTracks.isPending],
   );
 
   return <TrackContext.Provider value={value}>{children}</TrackContext.Provider>;

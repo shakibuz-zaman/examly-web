@@ -125,7 +125,10 @@ export function AppHeader() {
 
   const menuItems = [
     { key: "profile", label: "প্রোফাইল" },
-    { key: "me", label: "আমার পরীক্ষা" },
+    // «আমার অ্যাটেম্পট», not «আমার পরীক্ষা»: that name belongs to the স্টোর tab's owned-exam
+    // list, and these two render near-identical rows, so sharing a name made them
+    // indistinguishable. This entry is the attempt history.
+    { key: "me", label: "আমার অ্যাটেম্পট" },
     // Mobile keeps the top bar minimal — theme toggle lives in this menu there.
     ...(isDesktop ? [] : [{ key: "theme", label: mode === "dark" ? "লাইট মোড" : "ডার্ক মোড" }]),
     { type: "divider" as const },

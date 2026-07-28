@@ -371,6 +371,8 @@ export type StudentBundleExam = {
   myAttemptId: string | null;
   myScore: number | null;
   myMaxScore: number | null;
+  myPercentile: number | null;   // set only when myScore is (same reveal gate)
+  myDeadlineUtc: string | null;  // in-progress only
 };
 
 export type StudentModelTest = {
@@ -622,6 +624,10 @@ export type HomeContinue = {
   questionCount: number | null;
 };
 
+// oldest→newest, exactly 7 Dhaka days ending today. A union, not string[]: "covered" is
+// the whole point of the 7e change and a typo must not typecheck into a silent "missed".
+export type StreakDayState = "active" | "covered" | "missed";
+
 // Server always sends this block in 7b; the type stays nullable for the frozen seam.
 export type HomeStreak = {
   current: number;
@@ -629,7 +635,7 @@ export type HomeStreak = {
   freezesBanked: number;
   repairableUntilUtc: string | null;
   repairable: boolean;
-  last7: boolean[]; // oldest→newest, exactly 7 Dhaka days ending today; true = any activity
+  last7: StreakDayState[];
 };
 
 // Server always sends this block in 7b; the type stays nullable for the frozen seam.

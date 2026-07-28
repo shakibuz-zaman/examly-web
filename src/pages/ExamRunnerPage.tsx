@@ -105,7 +105,7 @@ function ExamRunner({ id }: { id: string | undefined }) {
         resync(t.remainingSeconds);
       })
       .catch((e) => {
-        message.error(serverError(e, "Could not start the exam"));
+        message.error(serverError(e, "পরীক্ষা শুরু করা যায়নি"));
         navigate(`/student/exams/${id}`, { replace: true });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,7 +118,7 @@ function ExamRunner({ id }: { id: string | undefined }) {
       await autosave.flushNow(); // best effort — the server scores saved answers anyway
       const status = await submitMutation.mutateAsync(take.attemptId);
       submittedRef.current = true;
-      if (!auto) message.success("Submitted");
+      if (!auto) message.success("জমা হয়েছে");
       goToResult(status.id);
     } catch (e) {
       const code = (e as AxiosError).response?.status;
@@ -128,7 +128,7 @@ function ExamRunner({ id }: { id: string | undefined }) {
         goToResult(take.attemptId);
         return;
       }
-      message.error(serverError(e, "Submit failed — check your connection"));
+      message.error(serverError(e, "জমা হয়নি — ইন্টারনেট সংযোগ দেখুন"));
       setSubmitting(false);
     }
   }
@@ -427,7 +427,7 @@ function RunnerView({
               style={{ marginBottom: 12 }}
               type="warning"
               showIcon
-              title="Connection lost — your answers are kept locally and will retry automatically."
+              title="সংযোগ বিচ্ছিন্ন — উত্তর আপনার ডিভাইসে রাখা আছে, সংযোগ ফিরলে নিজেই সেভ হবে।"
             />
           )}
           {currentSection && (currentSection.title || take.sections.length > 1) && (

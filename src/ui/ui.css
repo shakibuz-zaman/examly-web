@@ -18,6 +18,10 @@
   border-radius: var(--ex-radius-card);
   box-shadow: var(--ex-shadow-1);
 }
+/* Shared card heading — the in-card title row for surfaces that carry no antd Card header
+   (.ex-weakcard is the first). Generic on purpose: it belongs to .ex-card, not to any one
+   page, so a new card gets its head from here rather than growing a page-scoped twin. */
+.ex-cardhead { font-size: 14px; font-weight: 700; color: var(--ex-ink); }
 .ex-hover-lift { transition: transform .15s ease-out, box-shadow .15s ease-out; }
 .ex-hover-lift:hover { transform: translateY(-2px); box-shadow: var(--ex-shadow-2); }
 .ex-hover-lift:active { transform: scale(.97); }
@@ -495,9 +499,17 @@
 .ex-streakcard { display: flex; align-items: center; gap: 12px; padding: 12px 16px; box-shadow: var(--ex-shadow-2); }
 .ex-streakcard-main { flex: 1; min-width: 0; }
 .ex-streakcard-title { font-size: 14px; font-weight: 700; color: var(--ex-ink); }
+/* Streak bars: 8px tall so the covered hatch is legible (5px could not carry a pattern).
+   Covered = the run survived without activity (freeze-consumed or repair-bridged). It is a
+   PATTERN, not a lighter teal: hatching already means "nothing behind this cell" in the
+   examiner heatmap, and a pattern survives greyscale and colour-blind rendering. */
 .ex-streakbars { display: flex; gap: 3px; margin-top: 4px; }
-.ex-streakbar { width: 16px; height: 5px; border-radius: 999px; background: var(--ex-track); }
+.ex-streakbar { width: 16px; height: 8px; border-radius: 999px; background: var(--ex-track); }
 .ex-streakbar.is-active { background: var(--ex-teal); }
+.ex-streakbar.is-covered {
+  background: repeating-linear-gradient(
+    45deg, var(--ex-teal) 0 2px, var(--ex-teal-tint-2) 2px 4px);
+}
 .ex-streakcard-hint { margin-top: 4px; font-size: 12.5px; color: var(--ex-ink-soft); }
 /* Repairable is the widest state — freeze chip AND repair CTA beside the bars, both
    white-space:nowrap. Wrapping alone does nothing here: `flex: 1` is `1 1 0%`, so the
@@ -591,6 +603,64 @@
 /* amber holds AA on card in both modes (5.3:1 light, 6.5:1 dark); the weight carries
    the urgency without relying on color alone — the «আজ ডিউ» words say it too. */
 .ex-nb-due { color: var(--ex-amber); font-weight: 600; }
+
+/* Revealed body of that card (QuestionRevealCard, D21). Type scale mirrors the qbank
+   browse card — .ex-qcard-why is 13px and .ex-qcard-takeaway 12.5px — so the two question
+   bodies read the same. What it does NOT mirror is qbank's tinted .ex-qcard-why box: the
+   notebook already prints the stem in the same card, and a box inside that card would be a
+   surface inside a surface. The label alone separates the explanation. */
+.ex-reveal-explain { font-size: 13px; font-weight: 700; color: var(--ex-ink); }
+/* teal-ink, not the qbank card's amber: amber there marks a 💡 aside, while this line is
+   the revision's own conclusion. Same pairing as .ex-continuecard-eyebrow (teal-ink on
+   card, AA in both modes) and the same colour this line already shipped with. */
+.ex-reveal-takeaway {
+  margin-top: 8px; font-size: 12.5px; font-weight: 600; color: var(--ex-teal-ink);
+}
+
+/* প্রোগ্রেস stat tiles — 2-col mobile, 4-col desktop (§8). The top margin is the "grid
+   supplies its own" half of .ex-filterrow's 4px bottom margin: the two collapse to 12px,
+   the page's rhythm below (.ex-progress-stack). Set here rather than on .ex-filterrow,
+   which স্টোর, প্রশ্নব্যাংক and ভুলের খাতা all share. */
+.ex-stattiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
+.ex-stattile { background: var(--ex-card); border-radius: var(--ex-radius-card); box-shadow: var(--ex-shadow-1); padding: 14px 16px; }
+.ex-stattile-label { font-size: 11px; font-weight: 700; letter-spacing: .09em; color: var(--ex-ink-soft); }
+.ex-stattile-value { font-size: 24px; font-weight: 700; line-height: 1.2; margin-top: 4px; }
+.ex-stattile-suffix { font-size: 14px; font-weight: 600; margin-left: 2px; color: var(--ex-ink-soft); }
+.ex-stattile-delta { font-size: 12.5px; margin-top: 2px; color: var(--ex-ink-soft); }
+.ex-stattile-delta.is-up { color: var(--ex-green); }
+.ex-stattile-delta.is-down { color: var(--ex-coral); }
+@media (min-width: 768px) { .ex-stattiles { grid-template-columns: repeat(4, 1fr); } }
+
+/* প্রোগ্রেস card stack — the rhythm the page's old antd flex wrapper used to supply. The
+   analytics cards under the tiles are still antd Cards and carry no margin of their own,
+   so consecutive cards would touch; same job as .ex-home-callout, i.e. spacing where no
+   SectionHeader sits between blocks. */
+.ex-progress-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+
+/* প্রোগ্রেস দুর্বল জায়গা card (§8 weak-topic bars).
+   Pairs with .ex-card, which ships no padding of its own — every surface supplies its own,
+   the same as .ex-continuecard. The gap is what separates head, bars and CTA. */
+.ex-weakcard { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+/* align-self or the inline-flex pill stretches to the card's full width — the column's
+   default align-items is stretch (the .ex-continuecard-cta rule, for the same reason). */
+.ex-weakcard-cta { align-self: flex-start; margin-top: 2px; }
+
+/* লবি facts card — label/value rows (§5.2). */
+.ex-facts { display: grid; gap: 0; }
+.ex-facts-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--ex-line); }
+.ex-facts-row:last-child { border-bottom: 0; }
+.ex-facts-label { font-size: 13.5px; color: var(--ex-ink-soft); }
+.ex-facts-value { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+
+/* Exam step row — bundle members and lobby attempts (§5.1). */
+.ex-steprow { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--ex-line); }
+.ex-steprow:last-child { border-bottom: 0; }
+.ex-steprow-mark { flex: none; width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center; font-size: 12px; background: var(--ex-stage); color: var(--ex-ink-soft); }
+.ex-steprow-mark.is-done { background: var(--ex-green-tint); color: var(--ex-green); }
+.ex-steprow-mark.is-running { background: var(--ex-amber-tint); color: var(--ex-amber); }
+.ex-steprow-main { flex: 1; min-width: 0; }
+.ex-steprow-title { font-size: 15.5px; font-weight: 700; line-height: 1.35; }
+.ex-steprow-meta { font-size: 12.5px; color: var(--ex-ink-soft); margin-top: 2px; }
 
 /* ---- reduced motion kills all of the above ---- */
 @media (prefers-reduced-motion: reduce) {

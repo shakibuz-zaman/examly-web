@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, List, Space, Tag, Typography } from "antd";
 import { Link } from "react-router-dom";
 import { useMyAttempts } from "../api/student";
-import { formatDateTime } from "../lib/format";
+import { formatDhakaShortBn } from "../lib/format";
+import { ATTEMPT_STATUS } from "../lib/labels";
 import { ATTEMPT_STATUS_COLORS } from "../theme/status";
 import { PageContainer } from "../ui/PageContainer";
 
@@ -15,7 +16,7 @@ export function MyAttemptsPage() {
   return (
     <PageContainer>
       <div>
-        <Typography.Title level={3}>My exams</Typography.Title>
+        <Typography.Title level={3}>আমার অ্যাটেম্পট</Typography.Title>
         <List
           loading={isLoading}
           dataSource={data?.items ?? []}
@@ -33,27 +34,32 @@ export function MyAttemptsPage() {
                   <Space wrap>
                     <Typography.Text strong>{item.examTitle}</Typography.Text>
                     <Tag color={ATTEMPT_STATUS_COLORS[item.status] ?? "default"}>
-                      {item.status.replace("_", " ")}
+                      {ATTEMPT_STATUS[item.status]}
                     </Tag>
-                    {item.attemptNumber > 1 && <Tag>practice #{item.attemptNumber}</Tag>}
+                    {item.attemptNumber > 1 && <Tag>প্র্যাকটিস #{item.attemptNumber}</Tag>}
                   </Space>
                   <Typography.Text type="secondary">
                     {item.orgName ? `${item.orgName} · ` : ""}
-                    started {formatDateTime(item.startedAt)}
+                    শুরু {formatDhakaShortBn(item.startedAt)}
                   </Typography.Text>
                   <Space wrap>
                     {item.status === "in_progress" ? (
-                      <Link to={`/student/exams/${item.examId}/take`}>Resume</Link>
+                      <Link to={`/student/exams/${item.examId}/take`}>চালিয়ে যান</Link>
                     ) : item.revealed && item.score !== null ? (
                       <>
                         <Typography.Text strong>
                           {item.score} / {item.maxScore}
                         </Typography.Text>
-                        <Link to={`/student/attempts/${item.attemptId}/result`}>Result</Link>
+                        <Link to={`/student/attempts/${item.attemptId}/result`}>ফলাফল</Link>
                       </>
                     ) : (
+                      // Same expression as the স্টোর → আমার পরীক্ষা list (MyExamsList:93): a null
+                      // reveal time names the wait rather than printing «ফলাফল » with a
+                      // blank after it, which is what formatDhakaShortBn(null) would give.
                       <Typography.Text type="secondary">
-                        Results at {formatDateTime(item.revealAtUtc)}
+                        {item.revealAtUtc
+                          ? `ফলাফল ${formatDhakaShortBn(item.revealAtUtc)}`
+                          : "ফলাফল অপেক্ষমাণ"}
                       </Typography.Text>
                     )}
                   </Space>

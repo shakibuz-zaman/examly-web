@@ -11,18 +11,19 @@ import { HeroBand } from "../ui/HeroBand";
 import { PageContainer } from "../ui/PageContainer";
 import { SearchBar } from "../ui/SearchBar";
 import { FilterChips, type FilterChipItem } from "../ui/FilterChips";
-import {
-  FilterSheet,
-  DEFAULT_STORE_FILTERS,
-  activeFilterCount,
-  type StoreFilters,
-} from "../ui/FilterSheet";
+import { FilterSheet } from "../ui/FilterSheet";
 import { SectionHeader } from "../ui/SectionHeader";
 import { TestCard } from "../ui/TestCard";
 import { EmptyState } from "../ui/EmptyState";
 import { SkeletonCard } from "../ui/Skeletons";
 import { PillButton } from "../ui/PillButton";
 import { MyExamsList } from "./student/MyExamsList";
+import {
+  DEFAULT_STORE_FILTERS,
+  activeFilterCount,
+  StoreFilterSheetBody,
+  type StoreFilters,
+} from "./student/StoreFilterSheet";
 import type { CatalogItem } from "../api/types";
 
 const PAGE_SIZE = 20;
@@ -271,7 +272,9 @@ export function StudentCatalogPage() {
 
             <div className="ex-filterrow">
               <FilterChips items={chipItems} />
-              <FilterSheet value={filters} onChange={applyFilters} />
+              <FilterSheet count={activeFilterCount(filters)}>
+                <StoreFilterSheetBody value={filters} onChange={applyFilters} />
+              </FilterSheet>
             </div>
 
             {query.isError ? (

@@ -22,10 +22,17 @@ export function analyticsQueryString(
 // URL-backed so links are shareable (spec §7).
 export function useAnalyticsFilters() {
   const [params, setParams] = useSearchParams();
+  // Number("abc") is NaN and NaN !== null, so without the isFinite guard a junk ?lastN counts
+  // as an active filter and paints a «শেষ NaN» ✕-chip. The presence check stays in front of
+  // it: Number(null) and Number("") are 0, which IS finite, and the clamp would turn an
+  // absent param into 1. Any finite value still clamps into 1–200, so D10 holds — a
+  // bookmarked ?lastN=37 applies and shows as its own chip.
+  const rawLastN = Number(params.get("lastN"));
   const filters: AnalyticsFilters = {
     categoryId: params.get("category"),
     mode: (["all", "live", "open"] as const).find((m) => m === params.get("mode")) ?? "all",
-    lastN: params.get("lastN") ? Math.max(1, Math.min(200, Number(params.get("lastN")))) : null,
+    lastN: params.get("lastN") && Number.isFinite(rawLastN)
+      ? Math.max(1, Math.min(200, rawLastN)) : null,
   };
   function update(patch: Partial<AnalyticsFilters>) {
     const next = new URLSearchParams(params);

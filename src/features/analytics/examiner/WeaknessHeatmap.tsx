@@ -1,6 +1,6 @@
 import { Card, Tooltip, Typography } from "antd";
 import type { HeatmapExam, HeatmapRow } from "../../../api/examinerAnalytics";
-import { nodeLabel } from "../StrengthMap";
+import { bilingualLabel } from "../../../lib/labels";
 import { useChartColors } from "../chartTheme";
 
 // Linear interpolation between two #rrggbb colors, t clamped to [0,1].
@@ -70,7 +70,7 @@ export function WeaknessHeatmap({ exams, rows }: { exams: HeatmapExam[]; rows: H
           {rows.map((row) => (
             <div key={row.nodeId ?? "uncategorized"} style={{ display: "contents" }}>
               <Typography.Text ellipsis style={{ fontSize: 12, alignSelf: "center" }}>
-                {nodeLabel(row)}
+                {bilingualLabel(row.name)}
               </Typography.Text>
               {row.cells.map((cell, i) => {
                 const fill = cell ? heatColor(cell.errorRate, heatLow, heatHigh) : undefined;

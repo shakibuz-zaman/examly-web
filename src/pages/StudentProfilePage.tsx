@@ -20,7 +20,7 @@ import { useMyTracks, useSaveMyTracks } from "../api/me";
 import { useMyOrders } from "../api/commerce";
 import { useThemeMode } from "../theme/ThemeContext";
 import { TrackPicker } from "../features/tracks/TrackPicker";
-import { formatDateTime } from "../lib/format";
+import { formatDhakaShortBn } from "../lib/format";
 import type { ThemeMode } from "../theme/tokens";
 import { PageContainer } from "../ui/PageContainer";
 
@@ -53,7 +53,7 @@ function OrdersHistory() {
               </Space>
               <Space wrap>
                 <Typography.Text>৳{o.amountBdt}</Typography.Text>
-                <Typography.Text type="secondary">{formatDateTime(o.createdAt)}</Typography.Text>
+                <Typography.Text type="secondary">{formatDhakaShortBn(o.createdAt)}</Typography.Text>
               </Space>
             </Space>
           </List.Item>
