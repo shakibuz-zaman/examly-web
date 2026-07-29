@@ -6,7 +6,7 @@ Backend lives in the sibling `../examly-api` repository (same workspace folder, 
 
 ## Local development
 
-Prerequisites: Node 22+, the Examly API running locally (default `http://localhost:5050`).
+Prerequisites: Node 22+, the Examly API running locally (default `http://localhost:5001`).
 
 ```bash
 npm install
@@ -14,7 +14,7 @@ cp .env.example .env.local   # adjust VITE_API_BASE_URL if your API is elsewhere
 npm run dev
 ```
 
-Open `http://localhost:5173`. Use the dev-login form (issues a stub JWT via the API's `/api/v1/dev/issue-token`) to land on the dashboard.
+Open `http://localhost:5051`. Use the dev-login form (issues a stub JWT via the API's `/api/v1/dev/issue-token`) to land on the dashboard.
 
 ## Stack
 

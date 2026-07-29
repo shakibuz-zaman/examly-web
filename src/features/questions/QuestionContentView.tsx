@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { env } from "../../lib/env";
 
 // Storage keeps media srcs relative (/api/v1/media/{id}); the API may be on a
-// different origin than the web app (5050 vs 5173 in dev), so rewrite for display.
+// different origin than the web app (5001 vs 5051 in dev), so rewrite for display.
 function withAbsoluteMediaUrls(html: string): string {
   const base = env.apiBaseUrl.endsWith("/") ? env.apiBaseUrl.slice(0, -1) : env.apiBaseUrl;
   return html.replaceAll('src="/api/v1/media/', `src="${base}/api/v1/media/`);
