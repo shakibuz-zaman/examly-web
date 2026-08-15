@@ -237,7 +237,8 @@
    primary/tonal collapse on the band. The band-cta trio is opaque, not the band-pill wash:
    the wash measures 1.35:1 as a shape and 3.87:1 under its label at the titlerow's end of
    the gradient. band-cta clears 3:1 (1.4.11) and 4.5:1 (1.4.3) at BOTH gradient endpoints
-   in both modes, and its hover is a real step up rather than the wash's fade-on-hover. */
+   in both modes, and its hover is a real state change (brighter in dark, tint-ward in light —
+   both measured over AA) rather than the wash's fade-on-hover. */
 .ex-btn--band { background: var(--ex-band-cta); color: var(--ex-band-cta-ink); }
 .ex-btn--band:not(:disabled):hover { background: var(--ex-band-cta-hover); }
 /* .ex-btn's default teal ring is invisible on the teal band, and the band's white-ring rule

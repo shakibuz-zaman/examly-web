@@ -26,7 +26,9 @@ export const palette = {
   // On-band CTA/chip surface. NOT bandPill: a 16% white wash sits at 1.35:1 against the
   // gradient, so the pill *shape* fails 1.4.11's 3:1 and its white label lands at 3.87:1 —
   // under AA — at the titlerow's end of the ramp. An opaque surface clears both at either
-  // gradient endpoint, and unlike bandPill/bandPillHover the hover is *stronger* than rest.
+  // gradient endpoint. Hover is a real state change in both modes, but its direction differs:
+  // dark brightens toward white; light recedes toward tint (5.44:1 at the element — measured,
+  // still comfortably over AA). Do not read "hover" here as "stronger" unqualified.
   bandCta: "#FFFFFF", bandCtaInk: "#0A5C50", bandCtaHover: "#E4F1EE",
   shadow1: "0 2px 10px rgba(28,32,29,.07)", shadow2: "0 4px 18px rgba(28,32,29,.12)",
   onSolid: "#FFFFFF", // text/glyphs sitting on saturated solid fills (same both modes)
