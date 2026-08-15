@@ -55,7 +55,18 @@ export function StrengthMap({ filters }: { filters: AnalyticsFilters }) {
   const drill = useSubjectStrength(filters, openSubject);
 
   return (
-    <Card title="বিষয়ভিত্তিক সঠিকতা">
+    // The cue belongs to useStrength, the query that owns these bars — NOT to the page's
+    // overview. The two are independent requests behind one চিপ tap, so a shared cue drops
+    // when the faster one lands and leaves these bars showing the previous slice looking
+    // settled. Same reason the drill above waits on its own placeholder flag.
+    <Card
+      title="বিষয়ভিত্তিক সঠিকতা"
+      aria-busy={strength.isPlaceholderData}
+      style={{
+        filter: strength.isPlaceholderData ? "saturate(0.35)" : undefined,
+        transition: "filter .2s",
+      }}
+    >
       {strength.isLoading ? (
         <Skeleton active />
       ) : (strength.data ?? []).length === 0 ? (
@@ -71,8 +82,15 @@ export function StrengthMap({ filters }: { filters: AnalyticsFilters }) {
               />
               {row.nodeId !== null && openSubject === row.nodeId && (
                 <div style={{ borderLeft: "2px solid #f0f0f0", marginLeft: 8 }}>
-                  {drill.isLoading && <Skeleton active paragraph={{ rows: 2 }} />}
-                  {(drill.data ?? []).map((topic) => (
+                  {/* isPlaceholderData, not just isLoading: useSubjectStrength now keeps the
+                      previous data, and this drill is keyed on the OPEN SUBJECT — so on a
+                      subject switch the held rows would render nested under a different
+                      subject's bar, which the left rule presents as that subject's topics.
+                      Stale-but-elsewhere is fine; stale-under-the-wrong-parent is a wrong
+                      answer, so the drill waits instead of wearing the saturate cue. */}
+                  {drill.isPending || drill.isPlaceholderData ? (
+                    <Skeleton active paragraph={{ rows: 2 }} />
+                  ) : (drill.data ?? []).map((topic) => (
                     <div key={topic.nodeId ?? "uncat"}>
                       <StrengthBarRow row={topic} indent={1} />
                       {topic.subtopics.map((sub) => (

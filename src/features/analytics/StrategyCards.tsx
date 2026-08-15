@@ -82,7 +82,18 @@ export function StrengthsFocusCard({ filters }: { filters: AnalyticsFilters }) {
   );
 
   return (
-    <Card title="শক্তি ও দুর্বলতা" size="small">
+    // Cued off `subjects` (useStrength) — the query that owns these rows. The page cannot do
+    // it: its overview query is a separate request behind the same চিপ tap, and whichever
+    // lands first would clear a shared cue over data that is still the previous slice.
+    <Card
+      title="শক্তি ও দুর্বলতা"
+      size="small"
+      aria-busy={subjects.isPlaceholderData}
+      style={{
+        filter: subjects.isPlaceholderData ? "saturate(0.35)" : undefined,
+        transition: "filter .2s",
+      }}
+    >
       <Row gutter={16}>
         <Col xs={24} md={12}>
           <Typography.Text strong type="success">শক্তির জায়গা</Typography.Text>

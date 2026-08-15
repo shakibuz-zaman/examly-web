@@ -1,4 +1,5 @@
 import { Alert, Button } from "antd";
+import type { ReactNode } from "react";
 import { useAnalyticsOverview } from "../api/analytics";
 import { useExamCategories } from "../api/categories";
 import { useAnalyticsFilters } from "../features/analytics/filters";
@@ -16,6 +17,21 @@ import { EmptyState } from "../ui/EmptyState";
 import { SkeletonCard } from "../ui/Skeletons";
 import { bnNum } from "../lib/bn";
 import { bilingualLabel } from "../lib/labels";
+
+// The house stale cue (saturate, never opacity) for children that hold data belonging to a
+// query they do not run themselves — here, the three cards fed from useAnalyticsOverview. Cards
+// that own their query wear the cue internally instead, so that exactly one cue sits over any
+// pixel: nested cues multiply their filters and stop reading as "stale".
+function StaleCue({ stale, children }: { stale: boolean; children: ReactNode }) {
+  return (
+    <div
+      aria-busy={stale}
+      style={{ filter: stale ? "saturate(0.35)" : undefined, transition: "filter .2s" }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export function StudentProgressPage() {
   const { filters, update } = useAnalyticsFilters();
@@ -59,10 +75,11 @@ export function StudentProgressPage() {
             ABOVE the overlap card: .ex-filterrow's 4px bottom margin collapses with
             .ex-band-overlap's -26px top margin (max positive + min negative = -22px) and the
             floating card would land on top of the chips. Outside the branch is the part that
-            fixes the bug — useAnalyticsOverview keys on `filters` and sets no placeholderData,
-            so every chip tap flips isPending, and a row that lives inside a branch vanishes
-            exactly when it is needed: for a blink on each tap, and for good on a slice with no
-            attempts, where the empty state used to be the only thing left on the page. */}
+            fixes the bug — the row must survive every state of the query, and one that lives
+            inside a branch vanishes exactly when it is needed: on a slice with no attempts the
+            empty state would be the only thing left on the page, with no way back. (The other
+            half of that bug was the tap-blink itself; useAnalyticsOverview now sets
+            placeholderData, so isPending fires on first load only.) */}
         <div className="ex-band-overlap">
           {overview.isPending ? (
             <SkeletonCard />
@@ -90,7 +107,23 @@ export function StudentProgressPage() {
 
         {overview.isPending || overview.isError ? null : d && d.examsTaken > 0 ? (
           <>
-            <div className="ex-stattiles">
+            {/* House stale cue (saturate, never opacity — .ex-results.is-stale is the same
+                filter), inline rather than that class because these containers carry their own
+                layout and .ex-results would drag its grid in with the filter.
+                One চিপ tap starts SEVERAL independent requests, so a cue may only be keyed on
+                the query that owns the pixels beneath it and may only wrap those pixels: these
+                tiles are overview's, and the সময়কাল/মোড cards below own theirs. A stack-wide
+                cue off one query looks tidier and is wrong twice — it clears when its own query
+                lands while its neighbours are still on the previous slice, and it multiplies
+                with the cards' own cues (.35 × .35 ≈ .12, which reads as broken, not stale). */}
+            <div
+              className="ex-stattiles"
+              aria-busy={overview.isPlaceholderData}
+              style={{
+                filter: overview.isPlaceholderData ? "saturate(0.35)" : undefined,
+                transition: "filter .2s",
+              }}
+            >
               <StatTile label="পরীক্ষা" value={bnNum(d.examsTaken)}
                 suffix={d.practiceRetakes > 0 ? `+${bnNum(d.practiceRetakes)} প্র্যাকটিস` : undefined} />
               <StatTile label="সঠিকতা" value={bnNum(d.overallAccuracy)} suffix="%" />
@@ -104,17 +137,32 @@ export function StudentProgressPage() {
 
             {/* The stack owns the rhythm the old antd flex wrapper supplied: the analytics
                 cards below are still antd Cards (Task 9) and carry no margin of their own,
-                so consecutive cards would otherwise touch. */}
+                so consecutive cards would otherwise touch. It carries NO cue of its own —
+                see the tiles above. The three cards taking overview data as props are cued
+                here because the data is the page's; the four that run their own queries are
+                cued inside themselves, each off the query it reads. */}
             <div className="ex-progress-stack">
               <WeakTopicsCard filters={filters} />
-              <TrendChart points={d.trend} />
+              <StaleCue stale={overview.isPlaceholderData}><TrendChart points={d.trend} /></StaleCue>
               <StrengthMap filters={filters} />
               <TopicProgressCard filters={filters} />
               <StrengthsFocusCard filters={filters} />
-              <DifficultyCard rows={d.difficulty} />
-              {d.strategy && <NegativeMarkingCard strategy={d.strategy} />}
+              <StaleCue stale={overview.isPlaceholderData}><DifficultyCard rows={d.difficulty} /></StaleCue>
+              {d.strategy && (
+                <StaleCue stale={overview.isPlaceholderData}>
+                  <NegativeMarkingCard strategy={d.strategy} />
+                </StaleCue>
+              )}
             </div>
           </>
+        ) : overview.isPlaceholderData ? (
+          // The one place placeholder data would turn into a lie, so it gets the প্রশ্নব্যাংক
+          // list's guard: `d.examsTaken === 0` describes the PREVIOUS slice while
+          // `filtersActive` already describes the tapped one. Clearing filters off an empty
+          // slice would therefore flash «এখনো কোনো প্রকাশিত ফলাফল নেই» — plus a "go take an
+          // exam" CTA — at a student who has results and is one fetch away from seeing them.
+          // Cards stay stale-but-true; an empty state cannot, so it waits.
+          <SkeletonCard />
         ) : filtersActive ? (
           // Not «এখনো কোনো ফলাফল নেই»: this student HAS results, just none in this slice, and
           // telling them otherwise under a filter they set is a lie with a CTA on it. The

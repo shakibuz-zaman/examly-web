@@ -25,7 +25,17 @@ export function WeakTopicsCard({ filters }: { filters: AnalyticsFilters }) {
   if (rows.length === 0) return null;
 
   return (
-    <div className="ex-card ex-weakcard">
+    // Cued off useStrength, the query these bars come from, rather than off the page: overview
+    // and strength are two requests behind one চিপ tap and they do not land together, so a
+    // page-level cue would clear while these rows still showed the previous slice.
+    <div
+      className="ex-card ex-weakcard"
+      aria-busy={strength.isPlaceholderData}
+      style={{
+        filter: strength.isPlaceholderData ? "saturate(0.35)" : undefined,
+        transition: "filter .2s",
+      }}
+    >
       <div className="ex-cardhead">দুর্বল জায়গা</div>
       {rows.map((r) => {
         const topic = `${r.subject} → ${bilingualLabel(r.name)}`;
