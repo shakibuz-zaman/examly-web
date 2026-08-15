@@ -775,9 +775,93 @@
 .ex-sidenav--collapsed .ex-sidenav-item.active::before { left: -4px; }
 .ex-sidenav--collapsed .ex-sidenav-foot { justify-content: center; padding: 12px 4px; }
 
+/* ---- examiner header (7f: 48px strip above the page body) ----
+   Same surface story as the rail: `--ex-card` is the surface token, there is no
+   `--ex-surface`. z-index sits below the sidebar's 30 — the rail is full-height and
+   overlaps nothing, the header must not paint over its border. */
+.ex-exhead {
+  position: sticky; top: 0; z-index: 20;
+  flex: none; display: flex; align-items: center; gap: 8px;
+  height: 48px; padding: 0 12px 0 8px;
+  background: var(--ex-card);
+  border-bottom: 1px solid var(--ex-line);
+}
+.ex-exhead-spacer { flex: 1; }
+.ex-exhead-iconbtn {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 8px; border: 0; cursor: pointer;
+  background: transparent; color: var(--ex-ink-soft);
+  transition: background .15s, color .15s;
+}
+.ex-exhead-iconbtn:hover { background: var(--ex-stage); color: var(--ex-ink); }
+.ex-exhead-crumbs { min-width: 0; font-size: 12.5px; color: var(--ex-ink-soft); }
+.ex-exhead-crumbs ol {
+  display: flex; align-items: center; gap: 6px;
+  margin: 0; padding: 0; list-style: none;
+}
+.ex-exhead-crumbs li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ex-exhead-sep { color: var(--ex-ink-faint); }
+/* line-height 1.4 for the same reason as the rail's labels: Bengali matras ride high */
+.ex-exhead-crumb { line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-exhead-crumb.is-current { color: var(--ex-ink); font-weight: 600; }
+.ex-exhead-search {
+  flex: none; display: inline-flex; align-items: center; gap: 8px;
+  height: 30px; padding: 0 8px; cursor: pointer;
+  border: 1px solid var(--ex-line); border-radius: 8px;
+  background: var(--ex-stage); color: var(--ex-ink-soft);
+  font-family: var(--ex-font); font-size: 12.5px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.ex-exhead-search:hover { background: var(--ex-card); border-color: var(--ex-line-strong); color: var(--ex-ink); }
+.ex-exhead-kbd {
+  padding: 1px 5px; border-radius: 5px;
+  border: 1px solid var(--ex-line); background: var(--ex-card);
+  font-size: 11px; font-weight: 600; line-height: 1.5;
+}
+.ex-exhead-user {
+  flex: none; display: inline-flex; align-items: center; gap: 4px;
+  height: 30px; padding: 0 6px 0 3px; cursor: pointer;
+  border: 0; border-radius: 999px; background: transparent; color: var(--ex-ink-soft);
+  font-family: var(--ex-font); font-size: 12px;
+  transition: background .15s;
+}
+.ex-exhead-user:hover { background: var(--ex-stage); }
+.ex-exhead-disc {
+  flex: none; display: grid; place-items: center;
+  width: 24px; height: 24px; border-radius: 999px;
+  background: var(--ex-teal); color: var(--ex-on-solid);
+  font-size: 12px; font-weight: 700;
+}
+.ex-exhead button:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: 2px; }
+/* dropdown body — rendered in antd's portal, so it is styled by class, not by descent */
+.ex-usermenu-id { display: flex; flex-direction: column; gap: 1px; max-width: 200px; }
+.ex-usermenu-email {
+  font-size: 12.5px; font-weight: 600; color: var(--ex-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ex-usermenu-role { font-size: 11.5px; color: var(--ex-ink-soft); }
+
+/* ---- ⌘K palette (nav-only, D5) ---- */
+.ex-cmdk-head { padding: 4px 8px; border-bottom: 1px solid var(--ex-line); }
+.ex-cmdk-list { max-height: 320px; overflow-y: auto; padding: 6px; }
+.ex-cmdk-row {
+  display: flex; align-items: center; gap: 10px;
+  height: 36px; padding: 0 10px; border-radius: 8px; cursor: pointer;
+  font-size: 13.5px; line-height: 1.4; color: var(--ex-ink-soft);
+}
+.ex-cmdk-row.is-active { background: var(--ex-teal-tint); color: var(--ex-teal-ink); }
+.ex-cmdk-row svg { flex: none; }
+.ex-cmdk-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ink-soft, not ink-faint: the route hint is real (readable) information at 11.5px, and
+   faint-on-card is 3.24:1 — the same AA trap tokens.ts records for the ended chip. */
+.ex-cmdk-path { flex: none; font-size: 11.5px; color: var(--ex-ink-soft); }
+.ex-cmdk-row.is-active .ex-cmdk-path { color: var(--ex-teal-ink); }
+.ex-cmdk-empty { padding: 20px 16px; text-align: center; font-size: 13px; color: var(--ex-ink-soft); }
+
 /* ---- reduced motion kills all of the above ---- */
 @media (prefers-reduced-motion: reduce) {
   .ex-sidenav-item { transition: none; }
+  .ex-exhead-iconbtn, .ex-exhead-search, .ex-exhead-user { transition: none; }
   .ex-fade-up, .ex-skeleton::after { animation: none; }
   .ex-hover-lift, .ex-hover-lift:hover, .ex-hover-lift:active,
   .ex-tabbar-link, .ex-tabbar-link:active { transition: none; transform: none; }

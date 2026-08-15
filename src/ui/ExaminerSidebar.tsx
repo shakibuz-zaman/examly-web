@@ -1,14 +1,12 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { NavLink } from "react-router-dom";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { EXAMINER_NAV } from "./examinerNav";
+import { EXAMINER_NAV, ROLE_LABEL, isVisibleToRole } from "./examinerNav";
 import { useAuth } from "../auth/useAuth";
 import { useMyOrg } from "../api/me";
 import { bnNum } from "../lib/bn";
 import type { QuestionListResponse } from "../api/types";
 import type { WalletResponse } from "../api/commerce";
-
-const ROLE_LABEL: Record<string, string> = { examiner: "পরীক্ষক", platform_admin: "অ্যাডমিন" };
 
 // D6: badges read whatever the pages already put in the cache and NEVER fetch — no
 // useQuery, no observer, no queryFn. Prefix-match because both source keys carry page
@@ -68,7 +66,7 @@ export function ExaminerSidebar({
   const questionsBadge = useCachedBadge(readQuestionsBadge);
   const walletBadge = useCachedBadge(readWalletBadge);
 
-  const groups = EXAMINER_NAV.filter((g) => !g.roles || g.roles.includes(role));
+  const groups = EXAMINER_NAV.filter((g) => isVisibleToRole(g, role));
   const roleLabel = ROLE_LABEL[role] ?? role;
   // Admins are org-less; collapsed with no org the footer would be an empty strip.
   const showFoot = !!org || !collapsed;
