@@ -686,6 +686,17 @@
 .ex-stattile-delta.is-up { color: var(--ex-green); }
 .ex-stattile-delta.is-down { color: var(--ex-coral); }
 @media (min-width: 768px) { .ex-stattiles { grid-template-columns: repeat(4, 1fr); } }
+/* Three-tile rows (the examiner ড্যাশবোর্ড KPI row) opt into a 3-track grid. The base grid is
+   built for four: with three tiles the fourth column stays reserved and empty, which reads as
+   a tile that failed to load rather than as a row of three. Same defect at 2-col mobile, where
+   the odd tile sits in the left half with a hole beside it — so below 768px the third tile
+   spans instead. The modifier only ever ADDS rules to .ex-stattiles; four-tile callers
+   (প্রোগ্রেস) never carry it and are untouched. */
+.ex-stattiles--3 > :nth-child(3) { grid-column: span 2; }
+@media (min-width: 768px) {
+  .ex-stattiles--3 { grid-template-columns: repeat(3, 1fr); }
+  .ex-stattiles--3 > :nth-child(3) { grid-column: auto; }
+}
 
 /* প্রোগ্রেস card stack — the rhythm the page's old antd flex wrapper used to supply. The
    analytics cards under the tiles are still antd Cards and carry no margin of their own,

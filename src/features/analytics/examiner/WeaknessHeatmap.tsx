@@ -1,6 +1,8 @@
-import { Card, Tooltip, Typography } from "antd";
+import { Card, Skeleton, Tooltip, Typography } from "antd";
 import type { HeatmapExam, HeatmapRow } from "../../../api/examinerAnalytics";
+import { bnNum } from "../../../lib/bn";
 import { bilingualLabel } from "../../../lib/labels";
+import { palette } from "../../../theme/tokens";
 import { useChartColors } from "../chartTheme";
 
 // Linear interpolation between two #rrggbb colors, t clamped to [0,1].
@@ -12,11 +14,17 @@ function mix(a: string, b: string, t: number): string {
   return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
-// Text that stays legible on the interpolated cell fill (contrast, not theme).
+// Text that stays legible on the interpolated cell fill — picked from the FILL's luminance,
+// not from the theme. A heat cell paints its own background in both modes, so `paletteFor(mode)`
+// would be the wrong source here: dark's ink is near-white and would vanish on the pale end of
+// the ramp. The two ends still come from the token module rather than a local hex — `onSolid`
+// is mode-independent by definition, and the light palette's `ink` IS the dark-ink constant
+// (paletteDark re-tints ink for a dark surface, which is not what a light cell fill is). A
+// palette re-tune therefore reaches these cells too.
 function readableText(bg: string): string {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(bg.slice(i, i + 2), 16) / 255);
   const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.55 ? "#1C201D" : "#FFFFFF";
+  return lum > 0.55 ? palette.ink : palette.onSolid;
 }
 
 // heatColor is a pure exported helper (Task 8 contract); it interpolates the
@@ -31,13 +39,26 @@ export function heatColor(errorRate: number, low: string, high: string): string 
 const HATCH =
   "repeating-linear-gradient(45deg, var(--ex-card), var(--ex-card) 4px, var(--ex-line) 4px, var(--ex-line) 8px)";
 
-export function WeaknessHeatmap({ exams, rows }: { exams: HeatmapExam[]; rows: HeatmapRow[] }) {
+// `stale` = the org query is serving keepPreviousData. It gates the EMPTY branch only: an
+// empty grid is a claim about the filters on screen, but held data belongs to the filters
+// BEFORE the change, and the empty copy is achromatic so the page's saturate() cue cannot
+// mark it. Emptiness therefore waits for the real answer behind a skeleton, while a
+// non-empty grid is free to render stale-and-desaturated. (Same guard as TopicProgressCard.)
+export function WeaknessHeatmap({
+  exams, rows, stale,
+}: { exams: HeatmapExam[]; rows: HeatmapRow[]; stale: boolean }) {
   const { heatLow, heatHigh } = useChartColors();
 
   if (exams.length === 0 || rows.length === 0) {
     return (
-      <Card title="Topic weakness by exam">
-        <Typography.Text type="secondary">No ranked attempts in this window yet.</Typography.Text>
+      <Card title="পরীক্ষাভিত্তিক টপিক দুর্বলতা">
+        {stale ? (
+          <Skeleton active paragraph={{ rows: 4 }} />
+        ) : (
+          <Typography.Text type="secondary">
+            এই সময়সীমায় এখনো কোনো র‍্যাঙ্কড অ্যাটেম্পট নেই।
+          </Typography.Text>
+        )}
       </Card>
     );
   }
@@ -45,7 +66,7 @@ export function WeaknessHeatmap({ exams, rows }: { exams: HeatmapExam[]; rows: H
   const legend = [0, 20, 40, 60, 80, 100].map((r) => heatColor(r, heatLow, heatHigh));
 
   return (
-    <Card title="Topic weakness by exam">
+    <Card title="পরীক্ষাভিত্তিক টপিক দুর্বলতা">
       <div style={{ overflowX: "auto" }}>
         <div
           style={{
@@ -57,7 +78,7 @@ export function WeaknessHeatmap({ exams, rows }: { exams: HeatmapExam[]; rows: H
         >
           <div />
           {exams.map((e) => (
-            <Tooltip key={e.examId} title={e.archived ? `${e.title} (archived)` : e.title}>
+            <Tooltip key={e.examId} title={e.archived ? `${e.title} (আর্কাইভড)` : e.title}>
               <Typography.Text
                 ellipsis
                 type={e.archived ? "secondary" : undefined}
@@ -79,8 +100,8 @@ export function WeaknessHeatmap({ exams, rows }: { exams: HeatmapExam[]; rows: H
                     key={exams[i].examId}
                     title={
                       cell
-                        ? `${cell.answers} answers · ${cell.errorRate}% wrong or skipped`
-                        : "Not in this exam"
+                        ? `${bnNum(cell.answers)}টি উত্তর · ${bnNum(cell.errorRate)}% ভুল বা খালি`
+                        : "এই পরীক্ষায় নেই"
                     }
                   >
                     <div
@@ -96,7 +117,11 @@ export function WeaknessHeatmap({ exams, rows }: { exams: HeatmapExam[]; rows: H
                         fontSize: 11,
                       }}
                     >
-                      {cell ? `${cell.errorRate}` : ""}
+                      {/* Bengali digits, matching the ramp legend right under this grid
+                          («ভুলের হার ০% … ১০০%»). This is chart data with a colour scale, not
+                          a table column, so D8's Western-digit rule does not reach it — the
+                          same 7f ruling that put Bengali ticks on the chart axes. */}
+                      {cell ? bnNum(cell.errorRate) : ""}
                     </div>
                   </Tooltip>
                 );
@@ -106,13 +131,13 @@ export function WeaknessHeatmap({ exams, rows }: { exams: HeatmapExam[]; rows: H
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
-        <Typography.Text type="secondary" style={{ fontSize: 11 }}>error rate 0%</Typography.Text>
+        <Typography.Text type="secondary" style={{ fontSize: 11 }}>ভুলের হার ০%</Typography.Text>
         {legend.map((c, i) => (
           <div key={i} style={{ width: 22, height: 10, background: c, borderRadius: 2 }} />
         ))}
-        <Typography.Text type="secondary" style={{ fontSize: 11 }}>100%</Typography.Text>
+        <Typography.Text type="secondary" style={{ fontSize: 11 }}>১০০%</Typography.Text>
         <div style={{ width: 22, height: 10, backgroundImage: HATCH, borderRadius: 2, marginLeft: 10 }} />
-        <Typography.Text type="secondary" style={{ fontSize: 11 }}>not in exam</Typography.Text>
+        <Typography.Text type="secondary" style={{ fontSize: 11 }}>পরীক্ষায় নেই</Typography.Text>
       </div>
     </Card>
   );

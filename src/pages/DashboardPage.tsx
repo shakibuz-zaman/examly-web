@@ -9,7 +9,20 @@ const OrgDashboard = lazy(() =>
 
 export function DashboardPage() {
   return (
-    <Suspense fallback={<Spin style={{ display: "block", margin: "48px auto" }} />}>
+    // The chunk spinner is the one thing on this route that renders before OrgDashboard
+    // exists, so it carries its own Bengali label — a bare <Spin/> announces nothing. The
+    // label is a sibling, not Spin's `tip`: antd only honours `tip` in the nest pattern
+    // (Spin wrapping children) and warns to the console otherwise.
+    <Suspense
+      fallback={
+        <div role="status" style={{ textAlign: "center", margin: "48px auto" }}>
+          <Spin />
+          <div style={{ marginTop: 8, fontSize: 13, color: "var(--ex-ink-soft)" }}>
+            ড্যাশবোর্ড লোড হচ্ছে…
+          </div>
+        </div>
+      }
+    >
       <OrgDashboard />
     </Suspense>
   );

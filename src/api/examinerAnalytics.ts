@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiClient } from "./client";
 import type { BilingualText } from "./types";
 import type { StrengthRow } from "./analytics";
@@ -71,9 +71,17 @@ export function useAttemptBreakdown(examId: string | undefined, attemptId: strin
   });
 }
 
+// Keys on the whole filter object, so every ক্যাটাগরি / মডেল টেস্ট / মোড / তারিখ change is a NEW
+// query key rather than a refetch: without placeholderData the dashboard collapsed to a
+// full-page skeleton on each filter touch — KPI tiles, chart and heatmap all unmounting, a
+// ~600px jump. keepPreviousData holds the previous slice on screen; the consumer marks it with
+// the house saturate(.35) cue (never opacity) off `isPlaceholderData` and pairs it with
+// aria-busy, and must not read an emptiness off placeholder data as if it described the
+// current filters (the heatmap/weakest empty copy is a claim about the CURRENT window).
 export function useOrgAnalytics(f: OrgAnalyticsFilters) {
   return useQuery<OrgAnalyticsResponse>({
     queryKey: ["examiner-analytics", "org", f],
+    placeholderData: keepPreviousData,
     staleTime: STALE,
     queryFn: async () => {
       const p = new URLSearchParams();
