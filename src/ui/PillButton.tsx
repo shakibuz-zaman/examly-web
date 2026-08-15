@@ -1,7 +1,9 @@
 import type { ButtonHTMLAttributes } from "react";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "tonal" | "outline" | "ghost";
+  // "band": the only variant legible ON the hero band — primary/tonal both collapse into
+  // the gradient (--ex-teal IS --ex-band-from in light, --ex-teal-tint in dark).
+  variant?: "primary" | "tonal" | "outline" | "ghost" | "band";
   size?: "md" | "sm";
 };
 

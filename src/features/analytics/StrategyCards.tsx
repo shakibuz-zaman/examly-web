@@ -20,9 +20,12 @@ export function DifficultyCard({ rows }: { rows: DifficultyRow[] }) {
               is ugly but legible, which is what the old code showed. */}
           <div style={{ fontSize: 13 }}>
             {DIFFICULTY[r.difficulty] ?? r.difficulty}
-            <div style={{ fontSize: 11, color: "#8c8c8c" }}>{bnNum(r.attempted)}টি প্রশ্ন</div>
+            {/* --ex-ink-soft, not --ex-ink-faint: 11px is small text and faint misses AA —
+                same swap as StrengthMap's count line, which this row mirrors. */}
+            <div style={{ fontSize: 11, color: "var(--ex-ink-soft)" }}>{bnNum(r.attempted)}টি প্রশ্ন</div>
           </div>
-          <div style={{ height: 10, background: "#f5f5f5", borderRadius: "0 5px 5px 0", position: "relative" }}>
+          {/* --ex-track: the rail is the entire graphic at 0%, so it must survive both modes. */}
+          <div style={{ height: 10, background: "var(--ex-track)", borderRadius: "0 5px 5px 0", position: "relative" }}>
             <div style={{ position: "absolute", inset: "0 auto 0 0", width: `${r.accuracy}%`, background: chartColors.you, borderRadius: "0 4px 4px 0" }} />
           </div>
           <div style={{ textAlign: "right", fontWeight: 600 }}>{bnNum(r.accuracy)}%</div>
@@ -76,13 +79,24 @@ export function StrengthsFocusCard({ filters }: { filters: AnalyticsFilters }) {
       <Tag color={good ? "green" : "orange"} style={{ margin: 0 }}>{bnNum(r.accuracy)}%</Tag>
       <div style={{ fontSize: 13 }}>
         {r.subject} → {bilingualLabel(r.name)}
-        <div style={{ fontSize: 11, color: "#8c8c8c" }}>{bnNum(r.attempted)}টি প্রশ্ন</div>
+        <div style={{ fontSize: 11, color: "var(--ex-ink-soft)" }}>{bnNum(r.attempted)}টি প্রশ্ন</div>
       </div>
     </div>
   );
 
   return (
-    <Card title="শক্তি ও দুর্বলতা" size="small">
+    // Cued off `subjects` (useStrength) — the query that owns these rows. The page cannot do
+    // it: its overview query is a separate request behind the same চিপ tap, and whichever
+    // lands first would clear a shared cue over data that is still the previous slice.
+    <Card
+      title="শক্তি ও দুর্বলতা"
+      size="small"
+      aria-busy={subjects.isPlaceholderData}
+      style={{
+        filter: subjects.isPlaceholderData ? "saturate(0.35)" : undefined,
+        transition: "filter .2s",
+      }}
+    >
       <Row gutter={16}>
         <Col xs={24} md={12}>
           <Typography.Text strong type="success">শক্তির জায়গা</Typography.Text>

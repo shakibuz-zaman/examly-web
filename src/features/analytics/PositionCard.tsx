@@ -16,8 +16,20 @@ export function PositionCard({ filters }: { filters: AnalyticsFilters }) {
 
   return (
     <Card title="আপনার অবস্থান">
-      {position.isLoading || !p ? (
+      {/* Three states, not two. The old head was `position.isLoading || !p`, so once the
+          retries were exhausted `isLoading` went false while `p` stayed undefined forever and
+          the card sat on a live-looking skeleton with no error and no way out. isPending is
+          the real pending state (placeholderData now keeps the previous slice on screen), and
+          failure gets its own branch — the empty-state text below is a claim about the cohort
+          and must never stand in for a failed request.
+          `|| !p` rides WITH the failure branch, not with the skeleton, because "settled and
+          still dataless" IS the hang: a skeleton there promises an arrival that is not coming.
+          Every no-data path therefore ends somewhere the student can read, whether or not the
+          query bothered to call itself an error. */}
+      {position.isPending ? (
         <Skeleton active paragraph={{ rows: 2 }} />
+      ) : position.isError || !p ? (
+        <Typography.Text type="secondary">ডেটা আনা যায়নি — একটু পরে আবার চেষ্টা করুন।</Typography.Text>
       ) : p.participants === 0 || p.yourAvgPercentile === null ? (
         <Typography.Text type="secondary">
           এখনো কোনো র‍্যাঙ্কড অ্যাটেম্পট নেই।
@@ -30,7 +42,15 @@ export function PositionCard({ filters }: { filters: AnalyticsFilters }) {
           <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
             {bnNum(p.examCount)}টি পরীক্ষার গড়
           </Typography.Paragraph>
-          <div role="img" aria-label="পার্সেন্টাইল বিতরণ — প্রতি ধাপে কতজন শিক্ষার্থী">
+          <div
+            role="img"
+            aria-label="পার্সেন্টাইল বিতরণ — প্রতি ধাপে কতজন শিক্ষার্থী"
+            aria-busy={position.isPlaceholderData}
+            style={{
+              filter: position.isPlaceholderData ? "saturate(0.35)" : undefined,
+              transition: "filter .2s",
+            }}
+          >
             <ResponsiveContainer width="100%" height={110}>
               <BarChart data={p.buckets.map((count, i) => ({ bucket: `${i * 10}`, count }))}>
                 <XAxis dataKey="bucket" tickFormatter={(v) => bnNum(v)}
@@ -41,7 +61,7 @@ export function PositionCard({ filters }: { filters: AnalyticsFilters }) {
                 />
                 <Bar dataKey="count" isAnimationActive={false}>
                   {p.buckets.map((_, i) => (
-                    <Cell key={i} fill={i === p.yourBucket ? chartColors.you : "#b7d3f6"} />
+                    <Cell key={i} fill={i === p.yourBucket ? chartColors.you : chartColors.bucket} />
                   ))}
                 </Bar>
               </BarChart>

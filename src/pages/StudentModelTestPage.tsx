@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useStudentModelTest } from "../api/student";
 import { CheckoutSheet } from "../components/CheckoutSheet";
 import { ExamStepRow, type StepState } from "../features/student/ExamStepRow";
-import { BuyCta, ProductBand } from "../features/student/ProductBand";
+import { ProductBand } from "../features/student/ProductBand";
 import { bnNum } from "../lib/bn";
 import { formatDhakaShortBn, formatDurationBn } from "../lib/format";
 import { ATTEMPT_STATUS } from "../lib/labels";
@@ -129,18 +129,13 @@ export function StudentModelTestPage() {
         org={bundle.orgName}
         count={`${bnNum(bundle.exams.length)}টি পরীক্ষা`}
         listing={listing}
+        buy={listing.canBuy ? { priceBdt: listing.priceBdt, onClick: () => setBuyOpen(true) } : undefined}
       />
       <PageContainer banded>
         {bundle.description && (
           <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--ex-ink-soft)" }}>
             {bundle.description}
           </p>
-        )}
-
-        {listing.canBuy && (
-          <div style={{ marginTop: 12 }}>
-            <BuyCta priceBdt={listing.priceBdt} onClick={() => setBuyOpen(true)} />
-          </div>
         )}
 
         <CheckoutSheet

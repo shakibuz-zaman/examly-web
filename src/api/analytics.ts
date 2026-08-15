@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiClient } from "./client";
 import type { BilingualText } from "./types";
 import { analyticsQueryString, type AnalyticsFilters, type AnalyticsMode } from "../features/analytics/filters";
@@ -34,9 +34,17 @@ export type PositionResponse = {
 
 const STALE = 60_000; // analytics tolerate 60s staleness (spec §7)
 
+// Every hook below keys on the filter object, so a চিপ tap is a NEW query key, not a refetch:
+// without placeholderData the whole প্রোগ্রেস page collapsed to skeletons on each tap (a ~170px
+// jump). keepPreviousData holds the previous slice on screen while the new one loads; consumers
+// mark it stale with the house saturate cue (never opacity) off `isPlaceholderData`, and must
+// not read a count/emptiness off placeholder data as if it described the current filters.
+// The `enabled`-gated hooks take it too: a disabled→enabled flip has no previous data, so they
+// render pending exactly as they do today.
 export function useAnalyticsOverview(f: AnalyticsFilters) {
   return useQuery<OverviewResponse>({
     queryKey: ["analytics", "overview", f],
+    placeholderData: keepPreviousData,
     staleTime: STALE,
     queryFn: async () =>
       (await apiClient.get<OverviewResponse>(
@@ -47,6 +55,7 @@ export function useAnalyticsOverview(f: AnalyticsFilters) {
 export function useStrength(f: AnalyticsFilters) {
   return useQuery<StrengthRow[]>({
     queryKey: ["analytics", "strength", f],
+    placeholderData: keepPreviousData,
     staleTime: STALE,
     queryFn: async () =>
       (await apiClient.get<StrengthRow[]>(
@@ -58,6 +67,7 @@ export function useSubjectStrength(f: AnalyticsFilters, subjectId: string | null
   return useQuery<StrengthRow[]>({
     queryKey: ["analytics", "strength", subjectId, f],
     enabled: !!subjectId,
+    placeholderData: keepPreviousData,
     staleTime: STALE,
     queryFn: async () =>
       (await apiClient.get<StrengthRow[]>(
@@ -71,6 +81,7 @@ export function useTopicTrend(f: AnalyticsFilters, node: TrendNode | null) {
   return useQuery<TopicTrendPoint[]>({
     queryKey: ["analytics", "topic-trend", node, f],
     enabled: node !== null,
+    placeholderData: keepPreviousData,
     staleTime: STALE,
     queryFn: async () => {
       const base = analyticsQueryString(f);
@@ -86,6 +97,7 @@ export function useTopicTrend(f: AnalyticsFilters, node: TrendNode | null) {
 export function usePosition(categoryId: string | null, mode: AnalyticsMode) {
   return useQuery<PositionResponse>({
     queryKey: ["analytics", "position", categoryId, mode],
+    placeholderData: keepPreviousData,
     staleTime: STALE,
     queryFn: async () => {
       const p = new URLSearchParams();

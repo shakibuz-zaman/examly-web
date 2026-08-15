@@ -25,6 +25,8 @@ export function applyCssVars(mode: ThemeMode): void {
     "--ex-band-from": p.bandFrom, "--ex-band-to": p.bandTo,
     "--ex-band-ink": p.bandInk, "--ex-band-ink-soft": p.bandInkSoft,
     "--ex-band-pill": p.bandPill, "--ex-band-pill-hover": p.bandPillHover,
+    "--ex-band-cta": p.bandCta, "--ex-band-cta-ink": p.bandCtaInk,
+    "--ex-band-cta-hover": p.bandCtaHover,
     "--ex-shadow-1": p.shadow1, "--ex-shadow-2": p.shadow2,
     "--ex-radius-card": `${radii.card}px`,
   };

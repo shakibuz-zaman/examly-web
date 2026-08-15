@@ -133,11 +133,20 @@
 }
 .ex-heroband-back:hover { color: var(--ex-band-ink); }
 .ex-heroband-titlerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* Below the desktop breakpoint the actions wrap to their own line: a 375px band holding a
+   nowrap CTA + a long Bengali title left the title ~144px wide, and an unbreakable title
+   token pushed the row past the viewport. min-width:0 lets the h1 actually shrink (flex
+   items floor at min-content otherwise) and overflow-wrap breaks the pathological token. */
+@media (max-width: 767.98px) { .ex-heroband-titlerow { flex-wrap: wrap; } }
 .ex-heroband-title {
   margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.015em;
   color: var(--ex-band-ink); line-height: 1.35;
+  min-width: 0; overflow-wrap: anywhere;
 }
 @media (min-width: 768px) { .ex-heroband-title { font-size: 26px; } }
+/* The titlerow is space-between, so two loose action children would drift apart instead of
+   sitting together at the end — the actions slot keeps them as one group. */
+.ex-heroband-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .ex-heroband-subtitle { margin-top: 2px; font-size: 13.5px; color: var(--ex-band-ink-soft); }
 .ex-heroband-tabs { display: flex; gap: 6px; margin-top: 10px; }
 .ex-heroband a:focus-visible { outline: 2px solid var(--ex-band-ink); outline-offset: 2px; }
@@ -190,6 +199,19 @@
   border: 1px solid var(--ex-line-strong); font-weight: 700;
 }
 .ex-chipstat--owned { background: var(--ex-purple-tint); color: var(--ex-purple); }
+/* On the band the tint surfaces (purple/green) sit at 1.07–1.31:1 in dark — the chip shape
+   vanishes while the text survives. The band-cta pair is the surface engineered for the
+   band (see .ex-btn--band); one ink, because on the band legibility beats the card tints'
+   colour vocabulary. border-color goes transparent for --price, whose 1px --ex-line-strong
+   hairline belongs to the stage surface and only muddies the edge here. */
+.ex-heroband .ex-chipstat {
+  background: var(--ex-band-cta); color: var(--ex-band-cta-ink); border-color: transparent;
+}
+.ex-heroband .ex-chipstat--free,
+.ex-heroband .ex-chipstat--price,
+.ex-heroband .ex-chipstat--owned {
+  background: var(--ex-band-cta); color: var(--ex-band-cta-ink); border-color: transparent;
+}
 
 /* ---- pill buttons (§3.5) ---- */
 /* Also dresses an <a> (EmptyState's cross-link CTA), hence the underline reset — every
@@ -211,6 +233,17 @@
 .ex-btn--primary:not(:disabled):hover { background: var(--ex-teal-hover); }
 .ex-btn--tonal { background: var(--ex-teal-tint); color: var(--ex-teal-ink); }
 .ex-btn--tonal:not(:disabled):hover { background: var(--ex-teal-tint-2); }
+/* Band-safe CTA: --ex-teal IS --ex-band-from in light (and --ex-teal-tint is in dark), so
+   primary/tonal collapse on the band. The band-cta trio is opaque, not the band-pill wash:
+   the wash measures 1.35:1 as a shape and 3.87:1 under its label at the titlerow's end of
+   the gradient. band-cta clears 3:1 (1.4.11) and 4.5:1 (1.4.3) at BOTH gradient endpoints
+   in both modes, and its hover is a real state change (brighter in dark, tint-ward in light —
+   both measured over AA) rather than the wash's fade-on-hover. */
+.ex-btn--band { background: var(--ex-band-cta); color: var(--ex-band-cta-ink); }
+.ex-btn--band:not(:disabled):hover { background: var(--ex-band-cta-hover); }
+/* .ex-btn's default teal ring is invisible on the teal band, and the band's white-ring rule
+   covers links only (.ex-heroband a) — the band variant carries its own. */
+.ex-btn--band:focus-visible { outline-color: var(--ex-band-ink); }
 .ex-btn--outline { background: transparent; border: 1.5px solid var(--ex-line-strong); color: var(--ex-ink); }
 .ex-btn--outline:not(:disabled):hover { border-color: var(--ex-teal); color: var(--ex-teal-ink); }
 .ex-btn--ghost { background: transparent; color: var(--ex-coral); }
