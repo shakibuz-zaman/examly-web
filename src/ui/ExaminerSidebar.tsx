@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { EXAMINER_NAV, ROLE_LABEL, isVisibleToRole } from "./examinerNav";
+import { EXAMINER_NAV, ROLE_LABEL, SIDENAV_ID, isVisibleToRole } from "./examinerNav";
 import { useAuth } from "../auth/useAuth";
 import { useMyOrg } from "../api/me";
 import { bnNum } from "../lib/bn";
@@ -75,6 +75,7 @@ export function ExaminerSidebar({
 
   return (
     <nav
+      id={SIDENAV_ID}
       className={`ex-sidenav${collapsed ? " ex-sidenav--collapsed" : ""}`}
       aria-label="মূল নেভিগেশন"
     >

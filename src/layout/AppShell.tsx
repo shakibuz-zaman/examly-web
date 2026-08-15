@@ -32,7 +32,10 @@ export function AppShell() {
       <div className={`ex-exshell${collapsed ? " ex-exshell--collapsed" : ""}`}>
         <ExaminerSidebar collapsed={collapsed} />
         <div className="ex-exshell-main">
-          <ExaminerHeader onToggleSidebar={() => setCollapsed((c) => !c)} />
+          <ExaminerHeader
+            collapsed={collapsed}
+            onToggleSidebar={() => setCollapsed((c) => !c)}
+          />
           <main className="ex-exshell-content">
             <Outlet />
           </main>

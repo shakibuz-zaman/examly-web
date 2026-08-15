@@ -4,14 +4,20 @@ import { LogOut, Moon, PanelLeft, Search, Sun } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { useThemeMode } from "../theme/ThemeContext";
-import { BREADCRUMB_LABELS, ROLE_LABEL } from "./examinerNav";
+import { BREADCRUMB_LABELS, ROLE_LABEL, SIDENAV_ID } from "./examinerNav";
 import { CommandPalette } from "./CommandPalette";
 
 // Mac gets ⌘, everything else Ctrl. userAgent (not the deprecated navigator.platform);
 // wrong only for the rare spoofed UA, and the shortcut itself accepts either modifier.
 const IS_MAC = typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent);
 
-export function ExaminerHeader({ onToggleSidebar }: { onToggleSidebar: () => void }) {
+export function ExaminerHeader({
+  collapsed,
+  onToggleSidebar,
+}: {
+  collapsed: boolean;
+  onToggleSidebar: () => void;
+}) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -74,10 +80,16 @@ export function ExaminerHeader({ onToggleSidebar }: { onToggleSidebar: () => voi
 
   return (
     <header className="ex-exhead">
+      {/* The rail is never removed — collapsed is a 56px icon rail — but `aria-expanded`
+          is still the right state here: it is the disclosure state of the labelled nav the
+          button controls, and without it a screen-reader user gets a toggle that announces
+          nothing changed. `aria-controls` points at the rail's own id (examinerNav.ts). */}
       <button
         type="button"
         className="ex-exhead-iconbtn"
         onClick={onToggleSidebar}
+        aria-expanded={!collapsed}
+        aria-controls={SIDENAV_ID}
         aria-label="সাইডবার দেখান বা লুকান"
       >
         <PanelLeft size={17} strokeWidth={1.75} aria-hidden />

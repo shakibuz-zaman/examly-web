@@ -9,6 +9,11 @@ import {
 export type NavItem = { to: string; label: string; Icon: LucideIcon; badge?: "questions" | "wallet" };
 export type NavGroup = { label: string; roles?: string[]; items: NavItem[] };
 
+// The rail's DOM id, shared so the header's toggle can point `aria-controls` at the element
+// it actually expands and collapses. A document-unique id is only safe because AppShell
+// mounts exactly one ExaminerSidebar; a second instance would need this parameterised.
+export const SIDENAV_ID = "ex-sidenav";
+
 // One place for the JWT role claim → Bengali label mapping: the sidebar footer and the
 // header's user menu both print it, and two copies would drift.
 export const ROLE_LABEL: Record<string, string> = { examiner: "পরীক্ষক", platform_admin: "অ্যাডমিন" };
