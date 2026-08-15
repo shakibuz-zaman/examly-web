@@ -16,7 +16,7 @@ export function ExamStepRow({
   meta: ReactNode;
   action?: ReactNode;
 }) {
-  const mark = { done: "✓", running: "▶", pending: "⏳", todo: "○" }[state];
+  const mark = { done: "✓", running: "▶", pending: "⏳︎", todo: "○" }[state];
   const markClass = state === "done" ? "is-done" : state === "running" ? "is-running" : "";
   return (
     <div className="ex-steprow">

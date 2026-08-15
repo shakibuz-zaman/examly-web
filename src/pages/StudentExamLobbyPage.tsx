@@ -5,7 +5,7 @@ import { useStudentExam } from "../api/student";
 import { CheckoutSheet } from "../components/CheckoutSheet";
 import { Illustration } from "../components/Illustration";
 import { ExamStepRow, type StepState } from "../features/student/ExamStepRow";
-import { BuyCta, ProductBand } from "../features/student/ProductBand";
+import { ProductBand } from "../features/student/ProductBand";
 import { bnNum } from "../lib/bn";
 import { formatDhakaShortBn, formatDurationBn } from "../lib/format";
 import { ATTEMPT_STATUS } from "../lib/labels";
@@ -114,6 +114,7 @@ export function StudentExamLobbyPage() {
         org={exam.orgName}
         count={`${bnNum(exam.questionCount)}টি প্রশ্ন`}
         listing={listing}
+        buy={listing.canBuy ? { priceBdt: listing.priceBdt, onClick: () => setBuyOpen(true) } : undefined}
       />
       <PageContainer banded>
         {exam.description && (
@@ -142,10 +143,10 @@ export function StudentExamLobbyPage() {
           <Fact label="রিটেক" value={exam.allowRetakes ? "একাধিকবার (প্রথমটি র‍্যাঙ্ক হয়)" : "একবারই"} />
         </div>
 
-        <div style={{ marginTop: 16 }}>
-          {listing.canBuy ? (
-            <BuyCta priceBdt={listing.priceBdt} onClick={() => setBuyOpen(true)} />
-          ) : (
+        {/* Buy moved to the band (ProductBand's `buy`), so the content column is the start
+            control alone — and the whole block, margin included, drops while buyable. */}
+        {!listing.canBuy && (
+          <div style={{ marginTop: 16 }}>
             <PillButton
               variant="primary"
               disabled={!exam.canStart}
@@ -153,14 +154,14 @@ export function StudentExamLobbyPage() {
             >
               {resumable ? "চালিয়ে যান" : "পরীক্ষা শুরু করুন"}
             </PillButton>
-          )}
-          {/* Rendered as-is: the reason is Bengali at the source. No «শুরু {date}» line
-              under it — the facts card above already carries সময়সীমা, and the reason is
-              also set for blocks that have nothing to do with the window. */}
-          {!listing.canBuy && !exam.canStart && exam.cannotStartReason && (
-            <Alert style={{ marginTop: 8 }} type="info" showIcon title={exam.cannotStartReason} />
-          )}
-        </div>
+            {/* Rendered as-is: the reason is Bengali at the source. No «শুরু {date}» line
+                under it — the facts card above already carries সময়সীমা, and the reason is
+                also set for blocks that have nothing to do with the window. */}
+            {!exam.canStart && exam.cannotStartReason && (
+              <Alert style={{ marginTop: 8 }} type="info" showIcon title={exam.cannotStartReason} />
+            )}
+          </div>
+        )}
 
         <CheckoutSheet
           open={buyOpen}
