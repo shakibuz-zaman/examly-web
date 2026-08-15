@@ -695,8 +695,89 @@
 .ex-steprow-title { font-size: 15.5px; font-weight: 700; line-height: 1.35; }
 .ex-steprow-meta { font-size: 12.5px; color: var(--ex-ink-soft); margin-top: 2px; }
 
+/* ---- examiner sidebar (7f: the token-built replacement for the antd Menu rail) ----
+   One markup path for both widths: collapsed is the same tree with labels, group
+   overlines, badges and footer text dropped, so nothing can drift between the two.
+   `--ex-card` is the surface token here — there is no `--ex-surface`. */
+.ex-sidenav {
+  position: sticky; top: 0; z-index: 30;
+  flex: none; display: flex; flex-direction: column;
+  width: 220px; height: 100vh;
+  background: var(--ex-card);
+  border-right: 1px solid var(--ex-line);
+}
+/* the rail scrolls on its own so a long admin group never drags the page with it */
+.ex-sidenav-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 8px; }
+.ex-sidenav-group { display: flex; flex-direction: column; gap: 2px; }
+.ex-sidenav-group + .ex-sidenav-group { margin-top: 16px; }
+/* same overline recipe as .ex-secheader-label */
+.ex-sidenav-overline {
+  padding: 0 8px; margin-bottom: 6px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .09em; color: var(--ex-ink-faint); white-space: nowrap;
+}
+.ex-sidenav-item {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  height: 34px; padding: 0 8px; border-radius: 8px;
+  font-size: 13.5px; line-height: 1; white-space: nowrap;
+  color: var(--ex-ink-soft); text-decoration: none;
+  transition: background .15s, color .15s;
+}
+.ex-sidenav-item:hover { background: var(--ex-stage); color: var(--ex-ink); }
+.ex-sidenav-item.active { background: var(--ex-teal-tint); color: var(--ex-teal-ink); font-weight: 600; }
+/* §9 accent bar. left:-8px lands it exactly on the scroller's padding edge — outside the
+   row's radius, still inside the padding box, so the rail's own overflow never clips it. */
+.ex-sidenav-item.active::before {
+  content: ""; position: absolute; left: -8px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 18px; border-radius: 2px; background: var(--ex-teal);
+}
+.ex-sidenav-item:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: 2px; }
+.ex-sidenav-item svg { flex: none; }
+/* line-height 1.4, not the row's 1: Bengali matras and conjuncts (প্রতিষ্ঠান, উত্তোলন) ride
+   above the em box, and a 1.0 line box + overflow:hidden shears ~2px of ink off the top.
+   align-items:center absorbs the taller line box, so the 34px row height is unchanged. */
+.ex-sidenav-label {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;
+}
+.ex-sidenav-badge {
+  flex: none; padding: 1px 6px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+  background: var(--ex-stage); color: var(--ex-ink-soft);
+}
+/* on the active row the stage-grey pill vanishes into the teal tint — lift it to card */
+.ex-sidenav-item.active .ex-sidenav-badge { background: var(--ex-card); color: var(--ex-teal-ink); }
+.ex-sidenav-foot {
+  flex: none; display: flex; align-items: center; gap: 8px;
+  padding: 12px; border-top: 1px solid var(--ex-line);
+}
+.ex-sidenav-disc {
+  flex: none; display: grid; place-items: center;
+  width: 28px; height: 28px; border-radius: 999px;
+  background: var(--ex-teal); color: var(--ex-on-solid);
+  font-size: 13px; font-weight: 700;
+}
+.ex-sidenav-foottext { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ex-sidenav-orgname {
+  font-size: 13px; font-weight: 600; color: var(--ex-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ex-sidenav-role { font-size: 11.5px; color: var(--ex-ink-soft); }
+
+/* collapsed: 56px icon rail. Gutters shrink to 4px, so the accent bar follows. */
+.ex-sidenav--collapsed { width: 56px; }
+.ex-sidenav--collapsed .ex-sidenav-overline,
+.ex-sidenav--collapsed .ex-sidenav-label,
+.ex-sidenav--collapsed .ex-sidenav-badge,
+.ex-sidenav--collapsed .ex-sidenav-foottext { display: none; }
+.ex-sidenav--collapsed .ex-sidenav-scroll { padding: 12px 4px; }
+.ex-sidenav--collapsed .ex-sidenav-item { justify-content: center; padding: 0; }
+.ex-sidenav--collapsed .ex-sidenav-item.active::before { left: -4px; }
+.ex-sidenav--collapsed .ex-sidenav-foot { justify-content: center; padding: 12px 4px; }
+
 /* ---- reduced motion kills all of the above ---- */
 @media (prefers-reduced-motion: reduce) {
+  .ex-sidenav-item { transition: none; }
   .ex-fade-up, .ex-skeleton::after { animation: none; }
   .ex-hover-lift, .ex-hover-lift:hover, .ex-hover-lift:active,
   .ex-tabbar-link, .ex-tabbar-link:active { transition: none; transform: none; }
