@@ -695,6 +695,23 @@
 .ex-steprow-title { font-size: 15.5px; font-weight: 700; line-height: 1.35; }
 .ex-steprow-meta { font-size: 12.5px; color: var(--ex-ink-soft); margin-top: 2px; }
 
+/* ---- examiner shell (7f: replaces the antd Layout/Sider/Header nesting) ----
+   Grid, not flex: the two tracks are declared once here, so collapsing is a single
+   grid-template-columns swap and the rail's own width stays in agreement with it.
+   min-height (not height) 100vh keeps the document the scroller — the rail is sticky and
+   the header is sticky, so nothing needs an inner overflow container and there is exactly
+   one scrollbar on the page. */
+.ex-exshell {
+  display: grid; grid-template-columns: 220px 1fr;
+  min-height: 100vh; background: var(--ex-stage);
+}
+.ex-exshell--collapsed { grid-template-columns: 56px 1fr; }
+/* min-width:0 defeats the auto minimum of a 1fr track: without it a wide examiner table
+   (results, orders) would widen the column and push the whole page into a horizontal
+   scroll instead of scrolling inside its own container. */
+.ex-exshell-main { min-width: 0; display: flex; flex-direction: column; }
+.ex-exshell-content { padding: 20px 24px; max-width: 1400px; }
+
 /* ---- examiner sidebar (7f: the token-built replacement for the antd Menu rail) ----
    One markup path for both widths: collapsed is the same tree with labels, group
    overlines, badges and footer text dropped, so nothing can drift between the two.
@@ -706,6 +723,16 @@
   background: var(--ex-card);
   border-right: 1px solid var(--ex-line);
 }
+/* 48px + the same bottom hairline as the header strip, so the two chrome edges line up
+   across the rail/content seam. 17px/700 matches .ex-appbar-logo on the student side. */
+.ex-sidenav-brand {
+  flex: none; display: flex; align-items: center;
+  height: 48px; padding: 0 14px;
+  border-bottom: 1px solid var(--ex-line);
+  font-size: 17px; font-weight: 700; line-height: 1;
+  color: var(--ex-teal-ink); text-decoration: none;
+}
+.ex-sidenav-brand:focus-visible { outline: 2px solid var(--ex-teal); outline-offset: -2px; }
 /* the rail scrolls on its own so a long admin group never drags the page with it */
 .ex-sidenav-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 8px; }
 .ex-sidenav-group { display: flex; flex-direction: column; gap: 2px; }
@@ -774,6 +801,8 @@
 .ex-sidenav--collapsed .ex-sidenav-item { justify-content: center; padding: 0; }
 .ex-sidenav--collapsed .ex-sidenav-item.active::before { left: -4px; }
 .ex-sidenav--collapsed .ex-sidenav-foot { justify-content: center; padding: 12px 4px; }
+.ex-sidenav--collapsed .ex-sidenav-brand { justify-content: center; padding: 0; }
+.ex-sidenav--collapsed .ex-sidenav-brandtail { display: none; }
 
 /* ---- examiner header (7f: 48px strip above the page body) ----
    Same surface story as the rail: `--ex-card` is the surface token, there is no
@@ -840,6 +869,20 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ex-usermenu-role { font-size: 11.5px; color: var(--ex-ink-soft); }
+
+/* ---- page header (§9: the one title block every examiner page opens with) ----
+   flex-end, not center: the summary line sits under the title, and baseline-ish alignment
+   keeps a right-hand action pill level with the title's bottom edge rather than floating
+   against the block's midpoint. */
+.ex-pagehead {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  margin: 4px 0 16px;
+}
+.ex-pagehead-title {
+  margin: 0; font-size: 20px; font-weight: 700; line-height: 1.35; color: var(--ex-ink);
+}
+.ex-pagehead-summary { margin-top: 4px; font-size: 13px; line-height: 1.5; color: var(--ex-ink-soft); }
+.ex-pagehead-actions { flex: none; display: flex; align-items: center; gap: 8px; }
 
 /* ---- ⌘K palette (nav-only, D5) ---- */
 .ex-cmdk-head { padding: 4px 8px; border-bottom: 1px solid var(--ex-line); }

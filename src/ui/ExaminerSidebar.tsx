@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { EXAMINER_NAV, ROLE_LABEL, isVisibleToRole } from "./examinerNav";
 import { useAuth } from "../auth/useAuth";
@@ -78,6 +78,17 @@ export function ExaminerSidebar({
       className={`ex-sidenav${collapsed ? " ex-sidenav--collapsed" : ""}`}
       aria-label="মূল নেভিগেশন"
     >
+      {/* The wordmark the retired antd header used to carry. Latin `Examly` is the ratified
+          exception to the Bengali chrome rule. Collapsed the tail is dropped to a single
+          «E», so the accessible name is pinned with aria-label rather than left to the
+          name-from-content walk, which would otherwise announce "E" on the icon rail.
+          The halves share one inline wrapper: as direct children of the flex link each
+          would become a block-level flex item and copy/innerText would read "E\nxamly". */}
+      <Link to="/dashboard" className="ex-sidenav-brand" aria-label="Examly">
+        <span aria-hidden>
+          E<span className="ex-sidenav-brandtail">xamly</span>
+        </span>
+      </Link>
       <div className="ex-sidenav-scroll">
         {groups.map((group) => (
           // role="group" + aria-label keeps the grouping legible to AT in the collapsed
