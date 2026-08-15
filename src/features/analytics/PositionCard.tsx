@@ -61,7 +61,7 @@ export function PositionCard({ filters }: { filters: AnalyticsFilters }) {
                 />
                 <Bar dataKey="count" isAnimationActive={false}>
                   {p.buckets.map((_, i) => (
-                    <Cell key={i} fill={i === p.yourBucket ? chartColors.you : "#b7d3f6"} />
+                    <Cell key={i} fill={i === p.yourBucket ? chartColors.you : chartColors.bucket} />
                   ))}
                 </Bar>
               </BarChart>
