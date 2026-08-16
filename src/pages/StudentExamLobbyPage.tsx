@@ -12,6 +12,7 @@ import { ATTEMPT_STATUS } from "../lib/labels";
 import { EmptyState } from "../ui/EmptyState";
 import { PageContainer } from "../ui/PageContainer";
 import { PillButton } from "../ui/PillButton";
+import { RetryNotice } from "../ui/RetryNotice";
 import { SectionHeader } from "../ui/SectionHeader";
 import { SkeletonCard } from "../ui/Skeletons";
 import type { MyAttemptSummary, StudentExam } from "../api/types";
@@ -66,7 +67,8 @@ export function StudentExamLobbyPage() {
   // isPending, NOT isLoading — see StudentModelTestPage for the full reasoning: a paused
   // query reports isLoading false, and «পাওয়া যাচ্ছে না» would stand in for a fetch that
   // never ran. The `:id` route param always exists, so the enable gate never holds it.
-  const { data: exam, isPending, isError } = useStudentExam(id);
+  const lobby = useStudentExam(id);
+  const { data: exam, isPending } = lobby;
   const navigate = useNavigate();
   const [buyOpen, setBuyOpen] = useState(false);
 
@@ -77,7 +79,17 @@ export function StudentExamLobbyPage() {
       </PageContainer>
     );
   }
-  if (isError || !exam) {
+  // `!exam`, NOT `isError || !exam` — the house strip rule (see ui/RetryNotice). This query
+  // refetches on window focus and on the ownership invalidations useStubPay fires after a
+  // purchase; keying the wipe on `isError` meant one failed background refetch replaced a
+  // fully-loaded lobby — band, facts, attempts and all — with «পাওয়া যাচ্ছে না», for data we
+  // were still holding. Held data now stays, under the strip added below.
+  //
+  // The dataless branch keeps the EmptyState rather than RetryNotice's panel on purpose: a
+  // lobby URL is the shareable link for an exam, so "settled with nothing" is a 404 at least
+  // as often as it is a network failure, and a retry pill cannot fix a deleted exam while
+  // «মডেল টেস্ট দেখুন» is a way out of both.
+  if (!exam) {
     return (
       <PageContainer>
         <EmptyState
@@ -117,6 +129,10 @@ export function StudentExamLobbyPage() {
         buy={listing.canBuy ? { priceBdt: listing.priceBdt, onClick: () => setBuyOpen(true) } : undefined}
       />
       <PageContainer banded>
+        {/* Rides above the held answer and says the facts below are the previous ones. */}
+        {lobby.isError && (
+          <RetryNotice tone="strip" busy={lobby.isFetching} onRetry={() => void lobby.refetch()} />
+        )}
         {exam.description && (
           <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--ex-ink-soft)" }}>
             {exam.description}

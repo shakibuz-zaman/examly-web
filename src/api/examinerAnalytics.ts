@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiClient } from "./client";
 import type { BilingualText } from "./types";
 import type { StrengthRow } from "./analytics";
@@ -55,6 +55,13 @@ export function useExamAnalytics(examId: string | undefined, enabled: boolean) {
     queryKey: ["examiner-analytics", "exam", examId],
     enabled: !!examId && enabled,
     staleTime: STALE,
+    // Same reasoning as useOrgAnalytics: `examId` is in the key, so walking from one exam's
+    // অ্যানালাইসিস tab to another's collapsed four StatTiles, a 180px chart and two tables into
+    // a six-row skeleton. The previous exam's slice stays mounted instead — which makes this
+    // the first time `data` here can describe a DIFFERENT exam than the page header, so the
+    // consumer owes it the saturate(.35)+aria-busy cue and must gate its «কেউ অংশ নেয়নি»
+    // empty copy on `!isPlaceholderData`: that sentence is a claim about THIS exam.
+    placeholderData: keepPreviousData,
     queryFn: async () =>
       (await apiClient.get<ExamAnalyticsResponse>(`/api/v1/exams/${examId}/analytics`)).data,
   });
@@ -71,9 +78,17 @@ export function useAttemptBreakdown(examId: string | undefined, attemptId: strin
   });
 }
 
+// Keys on the whole filter object, so every ক্যাটাগরি / মডেল টেস্ট / মোড / তারিখ change is a NEW
+// query key rather than a refetch: without placeholderData the dashboard collapsed to a
+// full-page skeleton on each filter touch — KPI tiles, chart and heatmap all unmounting, a
+// ~600px jump. keepPreviousData holds the previous slice on screen; the consumer marks it with
+// the house saturate(.35) cue (never opacity) off `isPlaceholderData` and pairs it with
+// aria-busy, and must not read an emptiness off placeholder data as if it described the
+// current filters (the heatmap/weakest empty copy is a claim about the CURRENT window).
 export function useOrgAnalytics(f: OrgAnalyticsFilters) {
   return useQuery<OrgAnalyticsResponse>({
     queryKey: ["examiner-analytics", "org", f],
+    placeholderData: keepPreviousData,
     staleTime: STALE,
     queryFn: async () => {
       const p = new URLSearchParams();

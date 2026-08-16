@@ -16,12 +16,31 @@ export const ATTEMPT_STATUS: Record<"not_started" | AttemptState, string> = {
   expired: "সময় শেষ",
 };
 
+// Question language. `English` is the endonym, exactly as «বাংলা» is — the same reason the
+// `Examly` wordmark is a ratified exception, and it is what the question editor's own picker
+// has always shown. Moved here when the exam builder's picker drawer became the third copy.
+export const LANGUAGE: Record<string, string> = { bn: "বাংলা", en: "English" };
+
 // `string`-keyed on purpose: the student-side consumer is `DifficultyRow.difficulty`
 // (api/analytics.ts:10), a bare string on the wire. No union to key to.
 export const DIFFICULTY: Record<string, string> = {
   easy: "সহজ",
   medium: "মাঝারি",
   hard: "কঠিন",
+};
+
+// `string`-keyed on purpose — the one map in this file where no union *could* be the key.
+// Its four keys span three different wire enums that each own only three of them: questions
+// and admin qbank papers are "draft" | "active" | "archived" (types.ts:87, :699) while exams
+// and model tests are ExamStatus = "draft" | "published" | "archived" (types.ts:151). The
+// consumers (ContentStatusChip, and Tasks 6–9's table columns through it) are typed to the
+// four-key union that covers all three; this map is the label side of that union and keying
+// it to any single wire enum would reject a key the union legitimately carries.
+export const CONTENT_STATUS: Record<string, string> = {
+  draft: "খসড়া",
+  active: "সক্রিয়",
+  published: "প্রকাশিত",
+  archived: "আর্কাইভড",
 };
 
 export const ANALYTICS_MODE: Record<AnalyticsMode, string> = {

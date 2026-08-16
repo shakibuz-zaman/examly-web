@@ -1,54 +1,118 @@
-import { Card, Col, Empty, Row, Skeleton, Statistic, Typography } from "antd";
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Card, Skeleton, Typography } from "antd";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useExamAnalytics } from "../../../api/examinerAnalytics";
+import { bnNum } from "../../../lib/bn";
+import { EmptyState } from "../../../ui/EmptyState";
+import { RetryNotice } from "../../../ui/RetryNotice";
+import { StatTile } from "../../../ui/StatTile";
 import { useChartColors } from "../chartTheme";
 import { TopicTreeTable } from "./TopicTreeTable";
 import { HardestQuestionsTable } from "./HardestQuestionsTable";
 
-// Lazy-loaded from ExamResultsPage — this module (and Task 9's tables) is the only
-// path by which recharts enters examiner code, so it must stay out of the main chunk.
+// The server files every ranked percentage into 10 buckets of 10 points, clamped to [0, 9]
+// (ExaminerAnalyticsService.cs:259) — so the LAST bucket is 90–100, not 90–99, and a perfect
+// score lives there. Printing «৯০–৯৯%» over a bar that contains the 100s would be wrong.
+const bucketRange = (lo: number) => `${bnNum(lo)}–${bnNum(lo === 90 ? 100 : lo + 9)}%`;
+
+// Lazy-loaded from ExamResultsPage — this module (and its two tables) is the only path by
+// which recharts enters examiner code, so it must stay out of the main chunk.
 export function ExamAnalyticsTab({ examId }: { examId: string }) {
   const chartColors = useChartColors();
-  const { data, isLoading, isError } = useExamAnalytics(examId, true);
+  const analytics = useExamAnalytics(examId, true);
+  const data = analytics.data;
 
-  if (isLoading) return <Skeleton active paragraph={{ rows: 6 }} />;
-  if (isError || !data) return <Empty description="Could not load analytics." />;
-  if (data.funnel.started === 0) return <Empty description="No attempts yet." />;
+  // Three states, not two. The head was `isError || !data` → one English `Empty` for both
+  // "it failed" and "there is nothing", with no way back. Now: pending gets the skeleton,
+  // dataless-and-settled gets the retry panel, and a failure that still holds the previous
+  // answer keeps it on screen under the strip (`!data`, never `isError` — see RetryNotice).
+  if (analytics.isPending) return <Skeleton active paragraph={{ rows: 6 }} />;
+  if (!data)
+    return (
+      <RetryNotice
+        tone="panel"
+        busy={analytics.isFetching}
+        onRetry={() => void analytics.refetch()}
+      />
+    );
+
+  // The strip rides above held data: a stale-but-held funnel is still a real answer worth
+  // showing, with the caveat attached.
+  const strip = analytics.isError && (
+    <RetryNotice tone="strip" busy={analytics.isFetching} onRetry={() => void analytics.refetch()} />
+  );
+
+  // `useExamAnalytics` now carries placeholderData, so `data` can describe the PREVIOUS exam
+  // while this one loads. Two consequences, both handled here and neither optional:
+  //   1. the whole slice gets the house saturate(.35) cue + aria-busy, never opacity;
+  //   2. the «কেউ অংশ নেয়নি» sentence is gated — it is a claim about THIS exam, and on
+  //      placeholder data it would be reporting the previous exam's empty funnel under this
+  //      exam's title. Stale-and-zero falls through to the normal (desaturated) layout
+  //      instead, where the ০ tiles carry the stale cue and assert nothing on their own.
+  const stale = analytics.isPlaceholderData;
 
   const { funnel, histogram } = data;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Card>
-        <Row gutter={[16, 16]}>
-          <Col xs={12} md={6}><Statistic title="Started" value={funnel.started} /></Col>
-          <Col xs={12} md={6}><Statistic title="Submitted" value={funnel.submitted} /></Col>
-          <Col xs={12} md={6}><Statistic title="Expired" value={funnel.expired} /></Col>
-          <Col xs={12} md={6}><Statistic title="In progress" value={funnel.inProgress} /></Col>
-        </Row>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          First attempts only — practice retakes are not counted here.
-        </Typography.Text>
-      </Card>
+  if (funnel.started === 0 && !stale)
+    return (
+      <>
+        {strip}
+        <EmptyState variant="empty" message="এই পরীক্ষায় এখনো কেউ অংশ নেয়নি — অ্যাটেম্পট শুরু হলে এখানে বিশ্লেষণ আসবে।" />
+      </>
+    );
 
-      <Card title="Score distribution (ranked first attempts)">
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={histogram.buckets.map((count, i) => ({ bucket: `${i * 10}`, count }))}>
-            <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: chartColors.axis }} />
-            <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: chartColors.axis }} width={28} />
-            <Tooltip
-              formatter={(v) => [`${v} students`, ""]}
-              labelFormatter={(l) => `${l}–${Number(l) + 9}% of max score`}
-            />
-            <Bar dataKey="count" isAnimationActive={false}>
-              {histogram.buckets.map((_, i) => (
-                <Cell key={i} fill={chartColors.you} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+  return (
+    <div
+      style={{
+        display: "flex", flexDirection: "column", gap: 12,
+        filter: stale ? "saturate(0.35)" : undefined, transition: "filter .2s",
+      }}
+      aria-busy={stale}
+    >
+      {strip}
+      <div>
+        <div className="ex-stattiles">
+          <StatTile label="শুরু করেছে" value={bnNum(funnel.started)} />
+          <StatTile label="জমা দিয়েছে" value={bnNum(funnel.submitted)} />
+          <StatTile label="সময় শেষ" value={bnNum(funnel.expired)} />
+          <StatTile label="চলমান" value={bnNum(funnel.inProgress)} />
+        </div>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Median {histogram.medianPercent ?? "—"}% · Top {histogram.topPercent ?? "—"}%.
-          Negative totals (negative marking) count in the 0–10 bucket.
+          শুধু র‍্যাঙ্কড প্রথম অ্যাটেম্পট — প্র্যাকটিস রিটেক এই হিসাবে নেই।
+        </Typography.Text>
+      </div>
+
+      <Card title="স্কোর বিতরণ">
+        <div
+          role="img"
+          aria-label="স্কোর বিতরণের বার চার্ট — সর্বোচ্চ নম্বরের প্রতি ১০ শতাংশ ভাগে কতজন শিক্ষার্থী"
+        >
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={histogram.buckets.map((count, i) => ({ bucket: `${i * 10}`, count }))}>
+              {/* RULING (7f review): chart axis tick numbers are Bengali app-wide, as in
+                  PositionCard and OrgDashboard. D8's Western digits stay scoped to TABLE
+                  data — the score/percent columns in the two tables below. */}
+              <XAxis dataKey="bucket" tickFormatter={(v) => bnNum(v)}
+                tick={{ fontSize: 10, fill: chartColors.axis }} />
+              <YAxis allowDecimals={false} tickFormatter={(v) => bnNum(v)}
+                tick={{ fontSize: 10, fill: chartColors.axis }} width={28} />
+              {/* `separator=""` with an empty name: recharts prints `name + separator + value`,
+                  so the default " : " left a stray «: ৭ জন» hanging under the label. There is
+                  one series here — the label already says which bucket, the row is the count. */}
+              <Tooltip
+                separator=""
+                formatter={(v) => [`${bnNum(Number(v))} জন`, ""]}
+                labelFormatter={(l) => `সর্বোচ্চ নম্বরের ${bucketRange(Number(l))}`}
+              />
+              {/* One fill for every bar — no <Cell> map. Unlike PositionCard's histogram there
+                  is no "yours" bar to single out here, and mapping identical Cells only made
+                  the emphasis look like it was about to mean something. */}
+              <Bar dataKey="count" fill={chartColors.you} isAnimationActive={false} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          মিডিয়ান {histogram.medianPercent === null ? "—" : bnNum(histogram.medianPercent)}% ·
+          সর্বোচ্চ {histogram.topPercent === null ? "—" : bnNum(histogram.topPercent)}%।
+          নেগেটিভ মার্কিংয়ে মোট নম্বর ঋণাত্মক হলে সেই অ্যাটেম্পট প্রথম ভাগে ({bucketRange(0)}) ধরা হয়।
         </Typography.Text>
       </Card>
 

@@ -1,7 +1,4 @@
-import { PlusOutlined } from "@ant-design/icons";
-import {
-  Button, Card, Input, Popconfirm, Select, Space, Table, Tag, Typography, message,
-} from "antd";
+import { Button, Card, Input, Popconfirm, Select, Space, Table, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -9,21 +6,23 @@ import {
   useArchiveQuestion, useCloneQuestion, useQuestions, useQuestionTags, useRestoreQuestion,
 } from "../api/questions";
 import { useSubjects, useTopics } from "../api/taxonomy";
-import type { QuestionListFilters, QuestionSummary, SubjectResponse, TopicResponse } from "../api/types";
-import { CONTENT_STATUS_COLORS } from "../theme/status";
+import type { QuestionListFilters, QuestionSummary } from "../api/types";
+import { bnNum } from "../lib/bn";
+import { formatDhakaShortBn } from "../lib/format";
+import { bilingualLabel, CONTENT_STATUS, DIFFICULTY, LANGUAGE } from "../lib/labels";
+import { FilterChips, type FilterChipItem } from "../ui/FilterChips";
+import { PageHeader } from "../ui/PageHeader";
+import { PillButton } from "../ui/PillButton";
+import { ContentStatusChip, DifficultyDot } from "../ui/StatusChip";
 
-const DIFFICULTY_COLORS: Record<string, string> = {
-  easy: "green", medium: "gold", hard: "red",
-};
-
-function taxonomyLabel(item: SubjectResponse | TopicResponse): string {
-  const { bn, en } = item.name;
-  if (bn && en) return `${bn} — ${en}`;
-  return bn ?? en ?? item.slug;
-}
+const DIFFICULTIES = ["easy", "medium", "hard"] as const;
+// «সব» is not a status — it is the absence of the filter, so it carries no wire key.
+const STATUSES = ["draft", "active", "archived"] as const;
 
 export function QuestionsListPage() {
   const [searchParams] = useSearchParams();
+  // Seeded once from the URL (6b's weakest-topics links land here with subjectId/topicId).
+  // Deliberately NOT synced back to the URL afterwards — that behaviour predates 7f.
   const [filters, setFilters] = useState<QuestionListFilters>(() => ({
     page: 1,
     pageSize: 20,
@@ -32,7 +31,7 @@ export function QuestionsListPage() {
   }));
   const navigate = useNavigate();
 
-  const { data, isLoading } = useQuestions(filters);
+  const { data, isPending } = useQuestions(filters);
   const { data: subjects } = useSubjects("examiner");
   const { data: topics } = useTopics("examiner", filters.subjectId ?? null);
   const { data: tagOptions } = useQuestionTags();
@@ -40,17 +39,55 @@ export function QuestionsListPage() {
   const restore = useRestoreQuestion();
   const clone = useCloneQuestion();
 
+  // `!= null` is the "answered" test, not truthiness: an org with no subjects answers `[]`,
+  // which is a loaded taxonomy and must not keep the select in its loading state forever.
+  const subjectsLoaded = subjects != null;
+  const topicsLoaded = topics != null;
+
   const subjectNames = useMemo(
-    () => new Map((subjects ?? []).map((s) => [s.id, taxonomyLabel(s)])),
+    () => new Map((subjects ?? []).map((s) => [s.id, bilingualLabel(s.name)])),
     [subjects],
   );
 
   const set = (patch: Partial<QuestionListFilters>) =>
     setFilters((f) => ({ ...f, ...patch, page: 1 }));
 
+  // No per-status counts on the chips: `QuestionListResponse` carries `total` for the CURRENT
+  // filter only (types.ts:116), so counting all four states would cost three extra requests
+  // per keystroke. Plain chips until the API offers a facet count.
+  const statusChips: FilterChipItem[] = [
+    {
+      key: "all",
+      label: "সব",
+      selected: !filters.status,
+      onClick: () => set({ status: undefined }),
+    },
+    ...STATUSES.map((s) => ({
+      key: s,
+      label: CONTENT_STATUS[s],
+      selected: filters.status === s,
+      // Re-clicking the active chip clears back to «সব» rather than being a no-op.
+      onClick: () => set({ status: filters.status === s ? undefined : s }),
+    })),
+  ];
+
+  const total = data?.total;
+  const filtered = Boolean(
+    filters.search || filters.subjectId || filters.topicId || filters.difficulty ||
+    filters.language || filters.status || filters.tags?.length,
+  );
+  // `total` is the filtered total the server just answered, so the copy must say which one it
+  // is — «মোট» on an unfiltered list would be a lie the moment any chip or select is set.
+  const summary =
+    total == null
+      ? undefined
+      : filtered
+        ? `ফিল্টার অনুযায়ী ${bnNum(total)}টি প্রশ্ন`
+        : `মোট ${bnNum(total)}টি প্রশ্ন`;
+
   const columns: ColumnsType<QuestionSummary> = [
     {
-      title: "Question",
+      title: "প্রশ্ন",
       dataIndex: "stemExcerpt",
       render: (text: string) => (
         <Typography.Text style={{ maxWidth: 380 }} ellipsis={{ tooltip: text }}>
@@ -59,79 +96,91 @@ export function QuestionsListPage() {
       ),
     },
     {
-      title: "Subject",
+      title: "বিষয়",
       dataIndex: "subjectId",
-      width: 180,
+      width: 170,
       render: (id: string | null) => (id ? subjectNames.get(id) ?? "—" : "—"),
     },
     {
-      title: "Difficulty",
+      title: "কঠিনতা",
       dataIndex: "difficulty",
-      width: 100,
-      render: (d: string) => <Tag color={DIFFICULTY_COLORS[d]}>{d}</Tag>,
+      width: 110,
+      render: (d: QuestionSummary["difficulty"]) => <DifficultyDot difficulty={d} />,
     },
-    { title: "Lang", dataIndex: "language", width: 70, render: (l: string) => <Tag>{l}</Tag> },
     {
-      title: "Status",
+      title: "ভাষা",
+      dataIndex: "language",
+      width: 90,
+      render: (l: string) => <Tag>{LANGUAGE[l] ?? l}</Tag>,
+    },
+    {
+      title: "স্ট্যাটাস",
       dataIndex: "status",
-      width: 100,
-      render: (s: string) => <Tag color={CONTENT_STATUS_COLORS[s]}>{s}</Tag>,
+      width: 110,
+      render: (s: QuestionSummary["status"]) => <ContentStatusChip status={s} />,
     },
     {
-      title: "Tags",
+      title: "ট্যাগ",
       dataIndex: "tags",
       render: (tags: string[]) => tags.map((t) => <Tag key={t}>{t}</Tag>),
     },
     {
-      title: "Updated",
+      title: "হালনাগাদ",
       dataIndex: "updatedAt",
-      width: 160,
-      render: (d: string) => new Date(d).toLocaleString(),
+      width: 150,
+      // Dhaka-pinned Bengali prose, not `toLocaleString()`: the old call rendered in whatever
+      // locale and timezone the examiner's browser happened to carry. D8 keeps Western digits
+      // for dense numeric columns (scores, percentages, counts, money) — a datetime is prose.
+      render: (d: string) => formatDhakaShortBn(d),
     },
     {
-      title: "Actions",
+      title: "অ্যাকশন",
       key: "actions",
-      width: 220,
+      width: 210,
       render: (_, row) =>
         row.status === "archived" ? (
           <Button
+            type="link"
             size="small"
             onClick={() =>
               restore.mutate(row.id, {
-                onSuccess: () => message.success("Question restored"),
+                onSuccess: () => message.success("প্রশ্ন ফিরিয়ে আনা হয়েছে"),
               })
             }
           >
-            Restore
+            ফিরিয়ে আনুন
           </Button>
         ) : (
-          <Space>
-            <Button size="small" onClick={() => navigate(`/questions/${row.id}`)}>
-              Edit
+          <Space size={0}>
+            <Button type="link" size="small" onClick={() => navigate(`/questions/${row.id}`)}>
+              সম্পাদনা
             </Button>
             <Button
+              type="link"
               size="small"
               onClick={() =>
                 clone.mutate(row.id, {
                   onSuccess: (q) => {
-                    message.success("Cloned as draft");
+                    message.success("খসড়া হিসেবে কপি হয়েছে");
                     navigate(`/questions/${q.id}`);
                   },
                 })
               }
             >
-              Clone
+              ক্লোন
             </Button>
             <Popconfirm
-              title="Archive this question?"
+              title="আর্কাইভ করবেন?"
+              okText="হ্যাঁ"
+              cancelText="না"
               onConfirm={() =>
                 archive.mutate(row.id, {
-                  onSuccess: () => message.success("Question archived"),
+                  onSuccess: () => message.success("প্রশ্ন আর্কাইভ হয়েছে"),
                 })
               }
             >
-              <Button size="small" danger>
-                Archive
+              <Button type="link" size="small" danger>
+                আর্কাইভ
               </Button>
             </Popconfirm>
           </Space>
@@ -140,86 +189,94 @@ export function QuestionsListPage() {
   ];
 
   return (
-    <Card
-      title="Question Bank"
-      extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/questions/new")}>
-          New question
-        </Button>
-      }
-    >
-      <Space wrap style={{ marginBottom: 16 }}>
-        <Input.Search
-          placeholder="Search stem text"
-          allowClear
-          style={{ width: 220 }}
-          onSearch={(v) => set({ search: v || undefined })}
-        />
-        <Select
-          placeholder="Subject"
-          allowClear
-          style={{ width: 200 }}
-          options={(subjects ?? []).map((s) => ({ value: s.id, label: taxonomyLabel(s) }))}
-          value={filters.subjectId}
-          onChange={(v) => set({ subjectId: v ?? undefined, topicId: undefined })}
-        />
-        <Select
-          placeholder="Topic"
-          allowClear
-          disabled={!filters.subjectId}
-          style={{ width: 200 }}
-          options={(topics ?? []).map((t) => ({ value: t.id, label: taxonomyLabel(t) }))}
-          value={filters.topicId}
-          onChange={(v) => set({ topicId: v ?? undefined })}
-        />
-        <Select
-          placeholder="Difficulty"
-          allowClear
-          style={{ width: 120 }}
-          options={["easy", "medium", "hard"].map((d) => ({ value: d, label: d }))}
-          value={filters.difficulty}
-          onChange={(v) => set({ difficulty: v ?? undefined })}
-        />
-        <Select
-          placeholder="Language"
-          allowClear
-          style={{ width: 110 }}
-          options={[{ value: "bn", label: "বাংলা" }, { value: "en", label: "English" }]}
-          value={filters.language}
-          onChange={(v) => set({ language: v ?? undefined })}
-        />
-        <Select
-          placeholder="Status"
-          allowClear
-          style={{ width: 120 }}
-          options={["draft", "active", "archived"].map((s) => ({ value: s, label: s }))}
-          value={filters.status}
-          onChange={(v) => set({ status: v ?? undefined })}
-        />
-        <Select
-          mode="multiple"
-          placeholder="Tags"
-          allowClear
-          style={{ minWidth: 160 }}
-          options={(tagOptions ?? []).map((t) => ({ value: t, label: t }))}
-          value={filters.tags}
-          onChange={(v) => set({ tags: v.length ? v : undefined })}
-        />
-      </Space>
-
-      <Table<QuestionSummary>
-        rowKey="id"
-        loading={isLoading}
-        columns={columns}
-        dataSource={data?.items ?? []}
-        pagination={{
-          current: data?.page ?? filters.page,
-          pageSize: data?.pageSize ?? filters.pageSize,
-          total: data?.total ?? 0,
-          showSizeChanger: true,
-          onChange: (page, pageSize) => setFilters((f) => ({ ...f, page, pageSize })),
-        }}
+    <>
+      <PageHeader
+        title="প্রশ্ন"
+        summary={summary}
+        actions={
+          <PillButton variant="primary" onClick={() => navigate("/questions/new")}>
+            নতুন প্রশ্ন
+          </PillButton>
+        }
       />
-    </Card>
+
+      <Card>
+        <div className="ex-filterrow" style={{ marginTop: 0 }}>
+          <FilterChips items={statusChips} />
+        </div>
+
+        <Space wrap style={{ margin: "12px 0 16px" }}>
+          <Input.Search
+            placeholder="প্রশ্নের লেখা খুঁজুন"
+            allowClear
+            style={{ width: 220 }}
+            onSearch={(v) => set({ search: v || undefined })}
+          />
+          <Select
+            placeholder="বিষয়"
+            allowClear
+            style={{ width: 200 }}
+            loading={!subjectsLoaded}
+            options={(subjects ?? []).map((s) => ({ value: s.id, label: bilingualLabel(s.name) }))}
+            // Withholding the value until the options land is the whole fix for the
+            // raw-ObjectId flash on a URL-seeded prefilter: antd falls back to printing the
+            // bare value when no option matches it, so `/questions?subjectId=<24-hex>` used to
+            // show the ObjectId for one paint. The filter itself is untouched — `filters`
+            // still carries the id and the query still sends it.
+            value={subjectsLoaded ? filters.subjectId : undefined}
+            onChange={(v) => set({ subjectId: v ?? undefined, topicId: undefined })}
+          />
+          <Select
+            placeholder="টপিক"
+            allowClear
+            disabled={!filters.subjectId}
+            style={{ width: 200 }}
+            loading={Boolean(filters.subjectId) && !topicsLoaded}
+            options={(topics ?? []).map((t) => ({ value: t.id, label: bilingualLabel(t.name) }))}
+            value={topicsLoaded ? filters.topicId : undefined}
+            onChange={(v) => set({ topicId: v ?? undefined })}
+          />
+          <Select
+            placeholder="কঠিনতা"
+            allowClear
+            style={{ width: 130 }}
+            options={DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY[d] }))}
+            value={filters.difficulty}
+            onChange={(v) => set({ difficulty: v ?? undefined })}
+          />
+          <Select
+            placeholder="ভাষা"
+            allowClear
+            style={{ width: 120 }}
+            options={Object.entries(LANGUAGE).map(([value, label]) => ({ value, label }))}
+            value={filters.language}
+            onChange={(v) => set({ language: v ?? undefined })}
+          />
+          <Select
+            mode="multiple"
+            placeholder="ট্যাগ"
+            allowClear
+            style={{ minWidth: 160 }}
+            options={(tagOptions ?? []).map((t) => ({ value: t, label: t }))}
+            value={filters.tags}
+            onChange={(v) => set({ tags: v.length ? v : undefined })}
+          />
+        </Space>
+
+        <Table<QuestionSummary>
+          rowKey="id"
+          loading={isPending}
+          columns={columns}
+          dataSource={data?.items ?? []}
+          pagination={{
+            current: data?.page ?? filters.page,
+            pageSize: data?.pageSize ?? filters.pageSize,
+            total: data?.total ?? 0,
+            showSizeChanger: true,
+            onChange: (page, pageSize) => setFilters((f) => ({ ...f, page, pageSize })),
+          }}
+        />
+      </Card>
+    </>
   );
 }

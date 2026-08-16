@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Alert, Button, Card, Col, DatePicker, Input, InputNumber, Popconfirm, Row, Space, Spin,
-  Switch, Tag, Typography, message,
+  Switch, Typography, message,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -20,6 +20,9 @@ import {
   nextKey, toSaveRequest,
 } from "../features/exams/examDraft";
 import type { DraftQuestion, DraftSection, ExamDraft } from "../features/exams/examDraft";
+import { bnNum } from "../lib/bn";
+import { PageHeader } from "../ui/PageHeader";
+import { PillButton } from "../ui/PillButton";
 
 function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
@@ -28,7 +31,7 @@ function serverError(e: unknown, fallback: string): string {
 export function ExamBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: exam, isLoading, isError } = useExam(id);
+  const { data: exam, isPending, isError } = useExam(id);
   const save = useSaveExam();
   const publish = usePublishExam();
   const unpublish = useUnpublishExam();
@@ -51,7 +54,7 @@ export function ExamBuilderPage() {
 
   useEffect(() => {
     if (id && isError) {
-      message.error("Exam not found");
+      message.error("পরীক্ষা পাওয়া যায়নি");
       navigate("/exams", { replace: true });
     }
   }, [id, isError, navigate]);
@@ -83,20 +86,20 @@ export function ExamBuilderPage() {
 
   const onSaveDraft = async (): Promise<string | null> => {
     if (!draft.title.trim()) {
-      message.error("Title is required");
+      message.error("শিরোনাম দিতে হবে");
       return null;
     }
     try {
       const saved = await save.mutateAsync({ id: exam?.id, body: toSaveRequest(draft) });
       setDirty(false);
-      message.success("Draft saved");
+      message.success("খসড়া সংরক্ষিত হয়েছে");
       if (!exam) {
         loadedForIdRef.current = saved.id; // fromResponse would reset local edits
         navigate(`/exams/${saved.id}`, { replace: true });
       }
       return saved.id;
     } catch (e) {
-      message.error(serverError(e, "Save failed"));
+      message.error(serverError(e, "সংরক্ষণ করা যায়নি"));
       return null;
     }
   };
@@ -108,9 +111,9 @@ export function ExamBuilderPage() {
     try {
       await publish.mutateAsync(savedId);
       loadedForIdRef.current = null; // reload the (now frozen) exam into local state
-      message.success("Exam published");
+      message.success("পরীক্ষা প্রকাশিত হয়েছে");
     } catch (e) {
-      setPublishError(serverError(e, "Publish failed"));
+      setPublishError(serverError(e, "প্রকাশ করা যায়নি"));
     }
   };
 
@@ -119,19 +122,82 @@ export function ExamBuilderPage() {
     try {
       await unpublish.mutateAsync(exam.id);
       loadedForIdRef.current = null; // reload as editable draft
-      message.success("Exam unpublished — it is a draft again");
+      message.success("আনপাবলিশ হয়েছে — এটি আবার খসড়া");
     } catch (e) {
-      message.error(serverError(e, "Unpublish failed"));
+      message.error(serverError(e, "আনপাবলিশ করা যায়নি"));
     }
   };
 
-  if (id && isLoading) return <Spin style={{ display: "block", marginTop: 80 }} />;
+  if (id && isPending) return <Spin style={{ display: "block", marginTop: 80 }} />;
 
   const questionCount = draftQuestionCount(draft);
   const totalMarks = draftTotalMarks(draft);
 
   return (
-    <div style={{ paddingBottom: 72 }}>
+    <div>
+      {/* The action row lives once, in the PageHeader — the old copy was a `position: fixed`
+          bar with a hardcoded `left: 220`, which the collapsible 56px rail (T1) would have
+          left floating over the content. Counts move into the summary. `PillButton` carries
+          no antd spinner, so in-flight saves read as `disabled` (T6 precedent). */}
+      <PageHeader
+        title={draft.title.trim() || "নতুন পরীক্ষা"}
+        summary={
+          <Space size={8} wrap>
+            <span>
+              {bnNum(questionCount)}টি প্রশ্ন · মোট {bnNum(totalMarks)} মার্ক
+            </span>
+            {dirty && (
+              <span style={{ color: "var(--ex-amber)", fontWeight: 600 }}>
+                · অসংরক্ষিত পরিবর্তন
+              </span>
+            )}
+          </Space>
+        }
+        actions={
+          <Space size={8} wrap>
+            <PillButton variant="ghost" onClick={() => navigate("/exams")}>
+              ফিরে যান
+            </PillButton>
+            {exam && (
+              <PillButton variant="outline" onClick={() => setPreview((p) => !p)}>
+                {preview ? "সম্পাদনায় ফিরুন" : "প্রিভিউ"}
+              </PillButton>
+            )}
+            {!readOnly && (
+              <PillButton
+                variant="primary"
+                disabled={save.isPending}
+                onClick={() => void onSaveDraft()}
+              >
+                খসড়া সংরক্ষণ
+              </PillButton>
+            )}
+            {!readOnly && exam?.modelTestId == null && (
+              <PillButton
+                variant="tonal"
+                disabled={publish.isPending}
+                onClick={() => void onPublish()}
+              >
+                প্রকাশ করুন
+              </PillButton>
+            )}
+            {exam?.status === "published" && exam.modelTestId == null && (
+              <Popconfirm
+                title="আনপাবলিশ করবেন?"
+                description="পরীক্ষাটি আবার সম্পাদনাযোগ্য খসড়া হয়ে যাবে।"
+                okText="হ্যাঁ"
+                cancelText="না"
+                onConfirm={() => void onUnpublish()}
+              >
+                <PillButton variant="outline" disabled={unpublish.isPending}>
+                  আনপাবলিশ
+                </PillButton>
+              </Popconfirm>
+            )}
+          </Space>
+        }
+      />
+
       {readOnly && exam && (
         <Alert
           type="info"
@@ -139,8 +205,8 @@ export function ExamBuilderPage() {
           style={{ marginBottom: 16 }}
           title={
             exam.status === "published"
-              ? "This exam is published and frozen. Unpublish it to edit (only possible while it has no attempts)."
-              : "This exam is archived."
+              ? "এই পরীক্ষা প্রকাশিত ও ফ্রিজ করা। সম্পাদনা করতে আনপাবলিশ করুন — কোনো অ্যাটেম্পট না থাকলেই সম্ভব।"
+              : "এই পরীক্ষা আর্কাইভ করা।"
           }
         />
       )}
@@ -152,7 +218,8 @@ export function ExamBuilderPage() {
           closable
           onClose={() => setPublishError(null)}
           style={{ marginBottom: 16 }}
-          title="Cannot publish"
+          title="প্রকাশ করা যায়নি"
+          // The description is the server's verbatim gate message — English until Task 10.
           description={<div style={{ whiteSpace: "pre-line" }}>{publishError}</div>}
         />
       )}
@@ -164,26 +231,26 @@ export function ExamBuilderPage() {
               type="warning"
               showIcon
               style={{ marginBottom: 16 }}
-              title="Preview shows the last saved version — save the draft to refresh it."
+              title="প্রিভিউ সর্বশেষ সংরক্ষিত সংস্করণ দেখাচ্ছে — হালনাগাদ করতে খসড়া সংরক্ষণ করুন।"
             />
           )}
           <ExamPreview exam={exam} />
         </>
       ) : (
         <>
-      <Card title={exam ? (readOnly ? "Exam" : "Edit exam") : "New exam"} style={{ marginBottom: 16 }}>
+      <Card title="মূল তথ্য" style={{ marginBottom: 16 }}>
         <Row gutter={[16, 12]}>
           <Col xs={24} md={12}>
-            <Typography.Text strong>Title</Typography.Text>
+            <Typography.Text strong>শিরোনাম</Typography.Text>
             <Input
               value={draft.title}
               disabled={readOnly}
               onChange={(e) => mutate({ title: e.target.value })}
-              placeholder="e.g. BCS 47th — Bangla"
+              placeholder="যেমন: ৪৭তম বিসিএস — বাংলা"
             />
           </Col>
           <Col xs={24} md={12}>
-            <Typography.Text strong>Description (optional)</Typography.Text>
+            <Typography.Text strong>বিবরণ (ঐচ্ছিক)</Typography.Text>
             <Input
               value={draft.description}
               disabled={readOnly}
@@ -191,28 +258,28 @@ export function ExamBuilderPage() {
             />
           </Col>
           <Col xs={12} md={4}>
-            <Typography.Text strong>Duration (minutes)</Typography.Text>
+            <Typography.Text strong>সময় (মিনিট)</Typography.Text>
             <InputNumber
               min={0} style={{ width: "100%" }} value={draft.durationMinutes} disabled={readOnly}
               onChange={(v) => mutate({ durationMinutes: v ?? 0 })}
             />
           </Col>
           <Col xs={12} md={4}>
-            <Typography.Text strong>Marks / question</Typography.Text>
+            <Typography.Text strong>প্রতি প্রশ্নে মার্ক</Typography.Text>
             <InputNumber
               min={0} step={0.25} style={{ width: "100%" }} value={draft.defaultMarks}
               disabled={readOnly} onChange={(v) => mutate({ defaultMarks: v ?? 0 })}
             />
           </Col>
           <Col xs={12} md={4}>
-            <Typography.Text strong>Negative marks</Typography.Text>
+            <Typography.Text strong>নেগেটিভ মার্ক</Typography.Text>
             <InputNumber
               min={0} step={0.25} style={{ width: "100%" }} value={draft.negativeMarks}
               disabled={readOnly} onChange={(v) => mutate({ negativeMarks: v ?? 0 })}
             />
           </Col>
           <Col xs={24} md={12}>
-            <Typography.Text strong>Category (optional)</Typography.Text>
+            <Typography.Text strong>ক্যাটাগরি (ঐচ্ছিক)</Typography.Text>
             <CategoryTreeSelect
               value={draft.categoryId}
               onChange={(v) => mutate({ categoryId: v })}
@@ -220,7 +287,7 @@ export function ExamBuilderPage() {
             />
           </Col>
           <Col xs={24} md={12}>
-            <Typography.Text strong>Scheduled window (optional — empty = take anytime)</Typography.Text>
+            <Typography.Text strong>নির্ধারিত সময়সীমা (ঐচ্ছিক — খালি রাখলে যেকোনো সময়)</Typography.Text>
             <br />
             <DatePicker.RangePicker
               showTime
@@ -245,7 +312,7 @@ export function ExamBuilderPage() {
                 checked={draft.shufflePerStudent} disabled={readOnly}
                 onChange={(v) => mutate({ shufflePerStudent: v })}
               />
-              <Typography.Text>Shuffle per student</Typography.Text>
+              <Typography.Text>প্রতি শিক্ষার্থীর জন্য প্রশ্ন এলোমেলো</Typography.Text>
             </Space>
           </Col>
           <Col xs={12} md={6}>
@@ -254,7 +321,7 @@ export function ExamBuilderPage() {
                 checked={draft.allowRetakes} disabled={readOnly}
                 onChange={(v) => mutate({ allowRetakes: v })}
               />
-              <Typography.Text>Allow retakes (practice)</Typography.Text>
+              <Typography.Text>রিটেক অনুমোদন (প্র্যাকটিস)</Typography.Text>
             </Space>
           </Col>
         </Row>
@@ -293,7 +360,7 @@ export function ExamBuilderPage() {
               ],
             })}
         >
-          Add section
+          সেকশন যোগ করুন
         </Button>
       )}
 
@@ -308,65 +375,21 @@ export function ExamBuilderPage() {
             <SeatsPanel productType="exam" productId={exam.id} memberCount={1} />
           </>
         ) : (
-          <Card title="Selling" style={{ marginTop: 16 }}>
+          <Card title="বিক্রয়" style={{ marginTop: 16 }}>
             <Typography.Text type="secondary">
-              This exam is sold through its model test. Configure selling on the model test.
+              এই পরীক্ষা তার মডেল টেস্টের মাধ্যমে বিক্রি হয়। বিক্রয় সেটিংস মডেল টেস্টে ঠিক করুন।
             </Typography.Text>
           </Card>
         )
       ) : (
-        <Card title="Selling" style={{ marginTop: 16 }}>
+        <Card title="বিক্রয়" style={{ marginTop: 16 }}>
           <Typography.Text type="secondary">
-            Save the draft first to configure selling.
+            বিক্রয় সেটিংস ঠিক করতে আগে খসড়া সংরক্ষণ করুন।
           </Typography.Text>
         </Card>
       )}
         </>
       )}
-
-      <div
-        style={{
-          position: "fixed", bottom: 0, left: 220, right: 0, zIndex: 10,
-          background: "var(--ex-card)", borderTop: "1px solid var(--ex-line)",
-          padding: "12px 24px", display: "flex", alignItems: "center", gap: 16,
-        }}
-      >
-        <Space size="large" style={{ flex: 1 }}>
-          <Typography.Text>
-            <strong>{questionCount}</strong> questions
-          </Typography.Text>
-          <Typography.Text>
-            <strong>{totalMarks}</strong> total marks
-          </Typography.Text>
-          {dirty && <Tag color="orange">unsaved changes</Tag>}
-        </Space>
-        <Space>
-          <Button onClick={() => navigate("/exams")}>Back</Button>
-          {exam && (
-            <Button onClick={() => setPreview((p) => !p)}>
-              {preview ? "Back to editor" : "Preview"}
-            </Button>
-          )}
-          {!readOnly && (
-            <Button type="primary" loading={save.isPending} onClick={() => void onSaveDraft()}>
-              Save draft
-            </Button>
-          )}
-          {!readOnly && exam?.modelTestId == null && (
-            <Button type="primary" ghost loading={publish.isPending} onClick={() => void onPublish()}>
-              Publish
-            </Button>
-          )}
-          {exam?.status === "published" && exam.modelTestId == null && (
-            <Popconfirm
-              title="Unpublish this exam? It becomes an editable draft."
-              onConfirm={() => void onUnpublish()}
-            >
-              <Button loading={unpublish.isPending}>Unpublish</Button>
-            </Popconfirm>
-          )}
-        </Space>
-      </div>
 
       {picker && (
         <QuestionPickerDrawer

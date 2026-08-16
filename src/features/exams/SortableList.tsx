@@ -31,8 +31,14 @@ function SortableRow({ id, disabled, children }: SortableRowProps) {
         <span
           {...attributes}
           {...listeners}
-          style={{ cursor: "grab", padding: "10px 4px", color: "#999", touchAction: "none" }}
-          aria-label="Drag to reorder"
+          // Chrome only — the dnd-kit wiring above and the reorder maths below are untouched.
+          // This handle renders on BOTH builders (exam sections and model-test exams), so the
+          // last English string in the authoring flow was also its most-repeated one.
+          style={{
+            cursor: "grab", padding: "10px 4px", color: "var(--ex-ink-soft)",
+            touchAction: "none",
+          }}
+          aria-label="টেনে সাজান"
         >
           <HolderOutlined />
         </span>

@@ -1,6 +1,8 @@
 import { Card, Collapse, Space, Tag, Typography } from "antd";
 import { CheckCircleFilled } from "@ant-design/icons";
 import { QuestionContentView } from "../questions/QuestionContentView";
+import { bnNum } from "../../lib/bn";
+import { formatDurationBn } from "../../lib/format";
 import type { ExamResponse } from "../../api/types";
 
 const BN_LETTERS = ["ক", "খ", "গ", "ঘ", "ঙ", "চ", "ছ", "জ"];
@@ -19,11 +21,13 @@ export function ExamPreview({ exam }: ExamPreviewProps) {
     <div>
       <Typography.Title level={3} style={{ marginBottom: 0 }}>{exam.title}</Typography.Title>
       {exam.description && <Typography.Paragraph type="secondary">{exam.description}</Typography.Paragraph>}
+      {/* Same three facts, same formatters as the student lobby's facts card — the point of a
+          preview is that the examiner reads what the student will read. */}
       <Space size="large" style={{ marginBottom: 16 }}>
-        <Typography.Text>Duration: <strong>{exam.durationMinutes} min</strong></Typography.Text>
-        <Typography.Text>Total marks: <strong>{exam.totalMarks}</strong></Typography.Text>
+        <Typography.Text>সময়: <strong>{formatDurationBn(exam.durationMinutes)}</strong></Typography.Text>
+        <Typography.Text>মোট নম্বর: <strong>{bnNum(exam.totalMarks)}</strong></Typography.Text>
         {exam.negativeMarks > 0 && (
-          <Typography.Text type="danger">−{exam.negativeMarks} per wrong answer</Typography.Text>
+          <Typography.Text type="danger">প্রতি ভুলে −{bnNum(exam.negativeMarks)}</Typography.Text>
         )}
       </Space>
 
@@ -31,7 +35,7 @@ export function ExamPreview({ exam }: ExamPreviewProps) {
         <div key={section.id} style={{ marginBottom: 24 }}>
           {(section.title || exam.sections.length > 1) && (
             <Typography.Title level={4}>
-              {section.title ?? `Section ${sIndex + 1}`}
+              {section.title ?? `সেকশন ${bnNum(sIndex + 1)}`}
             </Typography.Title>
           )}
           {section.questions.map((q, qIndex) => {
@@ -48,14 +52,22 @@ export function ExamPreview({ exam }: ExamPreviewProps) {
                           style={{
                             display: "flex", gap: 8, alignItems: "flex-start",
                             padding: "4px 8px", borderRadius: 4,
-                            background: option.isCorrect ? "#f6ffed" : undefined,
+                            // House tokens, not the antd-green pair this was built with:
+                            // #f6ffed on a dark card was an unreadable near-white band, and
+                            // the tint/solid pair is theme-aware in both modes.
+                            background: option.isCorrect ? "var(--ex-green-tint)" : undefined,
                           }}
                         >
                           <Typography.Text>{BN_LETTERS[oIndex] ?? oIndex + 1}.</Typography.Text>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <QuestionContentView html={option.html} />
                           </div>
-                          {option.isCorrect && <CheckCircleFilled style={{ color: "#52c41a", marginTop: 4 }} />}
+                          {option.isCorrect && (
+                            <CheckCircleFilled
+                              aria-label="সঠিক উত্তর"
+                              style={{ color: "var(--ex-green)", marginTop: 4 }}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>
@@ -65,13 +77,13 @@ export function ExamPreview({ exam }: ExamPreviewProps) {
                         size="small"
                         items={[{
                           key: "explanation",
-                          label: "Explanation",
+                          label: "ব্যাখ্যা",
                           children: <QuestionContentView html={q.explanationHtml} />,
                         }]}
                       />
                     )}
                   </div>
-                  <Tag>{q.effectiveMarks} marks</Tag>
+                  <Tag>{bnNum(q.effectiveMarks)} নম্বর</Tag>
                 </div>
               </Card>
             );
