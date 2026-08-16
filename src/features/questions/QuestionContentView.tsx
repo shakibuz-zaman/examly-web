@@ -29,6 +29,9 @@ function renderMath(html: string): string {
 }
 
 type QuestionContentViewProps = {
+  // Declared `string`, but `strictNullChecks` is OFF (tsconfig.app.json) — so this is
+  // documentation, not enforcement, and several call sites hand over wire fields that are
+  // `string | null` on the server contract (explanationHtml, the analytics stemHtml).
   html: string;
 };
 
@@ -38,7 +41,11 @@ type QuestionContentViewProps = {
  * through QuestionHtmlProcessor. Math spans (span[data-latex]) render via KaTeX.
  */
 export function QuestionContentView({ html }: QuestionContentViewProps) {
-  const rendered = useMemo(() => renderMath(withAbsoluteMediaUrls(html)), [html]);
+  // The truthiness guard is the crash fix, not defensive noise: an absent/null html took the
+  // WHOLE page down (withAbsoluteMediaUrls → `html.replaceAll` on null, React Router's default
+  // error boundary replacing the route). Reproduced in the browser before this line existed.
+  // "" short-circuits to the same "" the pipeline would have produced, so nothing else moves.
+  const rendered = useMemo(() => (html ? renderMath(withAbsoluteMediaUrls(html)) : ""), [html]);
 
   return (
     <div
