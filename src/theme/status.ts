@@ -6,6 +6,12 @@
 export const CONTENT_STATUS_COLORS: Record<string, string> = {
   draft: "gold", active: "green", published: "green", archived: "default",
 };
+// NOT legacy, and NOT English any more: both consumers — the examiner results table
+// (`ExamResultsPage`) and the student's `MyAttemptsPage` — now render the Bengali word from
+// `lib/labels`.ATTEMPT_STATUS and take only the antd `Tag` tint from here. An attempt STATE is
+// a different axis from content status, so it deliberately does not borrow `ui/StatusChip`'s
+// `--draft/--active/--published/--archived` tints: re-colouring exam status must not silently
+// re-colour this. Keep the two maps keyed alike — a new attempt state needs an entry in both.
 export const ATTEMPT_STATUS_COLORS: Record<string, string> = {
   in_progress: "processing", submitted: "green", expired: "orange",
 };

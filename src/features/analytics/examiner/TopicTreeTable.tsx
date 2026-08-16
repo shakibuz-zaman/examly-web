@@ -12,32 +12,38 @@ const toTreeRow = (r: ExamTopicRow): TreeRow => ({
   children: r.children.length > 0 ? r.children.map(toTreeRow) : undefined,
 });
 
+// D8: the numeric columns keep Western digits + `.ex-num` (tabular numerals) — these are
+// dense table data, not prose. Only the headers and the untagged badge are Bengali.
 const columns: ColumnsType<TreeRow> = [
   {
-    title: "Subject / topic",
+    title: "টপিক",
     key: "node",
     render: (_, r) => (
       <>
         {bilingualLabel(r.name)}
-        {r.nodeId === null && <Tag style={{ marginLeft: 6, fontSize: 10 }}>untagged</Tag>}
+        {/* The server's catch-all row for answers whose question carries no taxonomy node.
+            «ট্যাগ নেই» is about the QUESTION's tagging, not about the student. */}
+        {r.nodeId === null && <Tag style={{ marginLeft: 6, fontSize: 10 }}>ট্যাগ নেই</Tag>}
       </>
     ),
   },
-  { title: "Attempted", dataIndex: "attempted", width: 110, align: "right" },
-  { title: "Correct", dataIndex: "correct", width: 100, align: "right" },
+  { title: "উত্তর", dataIndex: "attempted", width: 100, align: "right", className: "ex-num" },
+  { title: "সঠিক", dataIndex: "correct", width: 90, align: "right", className: "ex-num" },
   {
-    title: "Accuracy",
+    title: "সঠিকতা",
     dataIndex: "accuracy",
-    width: 120,
+    width: 110,
     align: "right",
+    className: "ex-num",
     sorter: (a, b) => a.accuracy - b.accuracy,
     render: (v: number) => `${v}%`,
   },
   {
-    title: "Skipped",
+    title: "খালি",
     dataIndex: "skipRate",
-    width: 100,
+    width: 90,
     align: "right",
+    className: "ex-num",
     render: (v: number) => `${v}%`,
   },
 ];
@@ -46,7 +52,7 @@ const columns: ColumnsType<TreeRow> = [
 // defaultExpandAllRows sees the real rows on first mount.
 export function TopicTreeTable({ rows }: { rows: ExamTopicRow[] }) {
   return (
-    <Card title="Accuracy by topic (ranked first attempts)">
+    <Card title="টপিকভিত্তিক সঠিকতা (র‍্যাঙ্কড প্রথম অ্যাটেম্পট)">
       <Table
         size="small"
         rowKey={(r) => r.nodeId ?? "uncategorized"}

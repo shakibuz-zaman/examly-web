@@ -14,7 +14,7 @@ import { ANALYTICS_MODE } from "../../../lib/labels";
 import { EmptyState } from "../../../ui/EmptyState";
 import { FilterChips } from "../../../ui/FilterChips";
 import { PageHeader } from "../../../ui/PageHeader";
-import { PillButton } from "../../../ui/PillButton";
+import { RetryNotice } from "../../../ui/RetryNotice";
 import { StatTile } from "../../../ui/StatTile";
 import type { AnalyticsMode } from "../filters";
 import { useChartColors } from "../chartTheme";
@@ -22,50 +22,6 @@ import { WeaknessHeatmap } from "./WeaknessHeatmap";
 import { WeakestTopicsList } from "./WeakestTopicsList";
 
 const MODES: AnalyticsMode[] = ["all", "live", "open"];
-
-// The two halves of the 6b ticket share one sentence-plus-pill. `tone="panel"` is the
-// nothing-to-show case; `tone="strip"` is the one that keeps the numbers on screen.
-function RetryNotice({
-  tone,
-  busy,
-  onRetry,
-}: { tone: "panel" | "strip"; busy: boolean; onRetry: () => void }) {
-  const body = (
-    <>
-      <Typography.Text type="secondary" style={{ fontSize: tone === "strip" ? 12.5 : undefined }}>
-        {tone === "panel"
-          ? "ডেটা আনা যায়নি — একটু পরে আবার চেষ্টা করুন।"
-          : "নতুন ডেটা আনা যায়নি — নিচের হিসাব আগের বারের।"}
-      </Typography.Text>
-      {/* A retry already in flight must not accept a second click — the pill gives no other
-          feedback, so without this it reads as dead and invites a queue of refetches. The
-          strip is where this is actually visible: refetching with NO data sends query-core's
-          status back to "pending" (the fetch reducer only keeps the old status when data
-          exists), so the panel swaps itself for the skeleton the instant it is clicked and its
-          own disabled state never gets to render. Keep it on both anyway — the guard belongs
-          to the control, not to whichever branch happens to out-race it. */}
-      <PillButton
-        variant="tonal"
-        size={tone === "strip" ? "sm" : "md"}
-        disabled={busy}
-        onClick={onRetry}
-      >
-        আবার চেষ্টা করুন
-      </PillButton>
-    </>
-  );
-  return tone === "panel" ? (
-    <Card>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
-        {body}
-      </div>
-    </Card>
-  ) : (
-    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
-      {body}
-    </div>
-  );
-}
 
 // Lazy-loaded from DashboardPage (recharts must stay out of the main bundle).
 //
