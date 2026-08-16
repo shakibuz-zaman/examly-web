@@ -10,6 +10,7 @@ import {
   useBuySlots, useListing, usePricing, useRotateCode, useSlotPurchases, useUpgradeSlots,
 } from "../../api/commerce";
 import type { CheckoutResponse, MatrixCell, SlotPurchase } from "../../api/commerce";
+import { bnNum } from "../../lib/bn";
 
 function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
@@ -56,9 +57,11 @@ function MatrixGrid({
         }}
       >
         <div />
+        {/* Matrix axis labels keep Western digits (D8: dense numeric grid, not prose) —
+            Bengali carries no plural inflection here, so «৩ পরীক্ষা» needs no `s` branch. */}
         {examSlots.map((e) => (
           <div key={`h${e}`} style={{ textAlign: "center", fontSize: 12, color: "var(--ex-ink-soft)" }}>
-            {e} exam{e > 1 ? "s" : ""}
+            {e} পরীক্ষা
           </div>
         ))}
         {seatSlots.map((s) => (
@@ -68,7 +71,7 @@ function MatrixGrid({
                 display: "flex", alignItems: "center", fontSize: 12, color: "var(--ex-ink-soft)",
               }}
             >
-              {s} seats
+              {s} সিট
             </div>
             {examSlots.map((e) => {
               const cell = cellAt(s, e);
@@ -117,7 +120,9 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
   const navigate = useNavigate();
   const { data: listing } = useListing(productType, productId);
   const { data: pricing } = usePricing();
-  const { data: purchases, isLoading: purchasesLoading } = useSlotPurchases();
+  // `isPending`, not `isLoading` (house rule). `useSlotPurchases` carries no `enabled` guard,
+  // so the two are the same state here — the query always runs.
+  const { data: purchases, isPending: purchasesPending } = useSlotPurchases();
   const buy = useBuySlots();
   const upgrade = useUpgradeSlots();
 
@@ -136,9 +141,9 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
   // listings sell one seat at a time through the B2C storefront, so no panel.
   if (!listing || (listing.visibility !== "private" && listing.visibility !== "both")) return null;
 
-  if (purchasesLoading || !pricing) {
+  if (purchasesPending || !pricing) {
     return (
-      <Card title="Seats" style={{ marginTop: 16 }}>
+      <Card title="সিট" style={{ marginTop: 16 }}>
         <Spin />
       </Card>
     );
@@ -165,7 +170,7 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
       if (!selected) return;
       const cell = selected;
       setSheet({
-        title: `${cell.seatSlot} seats × ${cell.examSlot} exam${cell.examSlot > 1 ? "s" : ""}`,
+        title: `${cell.seatSlot} সিট × ${cell.examSlot} পরীক্ষা`,
         priceBdt: cell.priceBdt,
         createOrder: () =>
           buy.mutateAsync({ listingId, seatSlot: cell.seatSlot, examSlot: cell.examSlot }),
@@ -176,22 +181,22 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
       <Card
         title={
           <Space>
-            <TeamOutlined /> Sell to a group (seats)
+            <TeamOutlined /> দলগতভাবে বিক্রি (সিট)
           </Space>
         }
         style={{ marginTop: 16 }}
       >
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <Typography.Text type="secondary">
-            Buy a seat bundle, then share the invite code with your batch — each student claims a
-            seat with the code. Pick a plan:
+            সিট বান্ডেল কিনে ব্যাচের সাথে আমন্ত্রণ কোড শেয়ার করুন — প্রত্যেক শিক্ষার্থী কোড দিয়ে
+            একটি সিট নেবে। একটি প্ল্যান বাছুন:
           </Typography.Text>
           <MatrixGrid
             cells={cells}
             selected={selected}
             onSelect={setSelected}
             disabled={(cell) => cell.examSlot < memberCount}
-            reason={() => `This bundle has ${memberCount} exams`}
+            reason={() => `এই বান্ডেলে ${bnNum(memberCount)}টি পরীক্ষা আছে`}
             caption={() => null}
           />
           <Button
@@ -201,7 +206,7 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
             loading={buy.isPending}
             onClick={onBuy}
           >
-            {selected ? `Buy — ৳${selected.priceBdt}` : "Select a plan"}
+            {selected ? `কিনুন — ৳${selected.priceBdt}` : "একটি প্ল্যান বাছুন"}
           </Button>
         </Space>
         {sheetNode}
@@ -215,9 +220,9 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
   const onRotate = async () => {
     try {
       await rotate.mutateAsync();
-      message.success("Invite code rotated — the old code no longer works");
+      message.success("আমন্ত্রণ কোড বদলানো হয়েছে — পুরোনো কোড আর কাজ করবে না");
     } catch (e) {
-      message.error(serverError(e, "Could not rotate the code"));
+      message.error(serverError(e, "কোড বদলানো যায়নি"));
     }
   };
 
@@ -237,7 +242,7 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
     try {
       const res = await upgrade.mutateAsync({ id: purchase.id, body });
       if ("appliedFree" in res) {
-        message.success("Slots upgraded — no payment needed");
+        message.success("স্লট আপগ্রেড হয়েছে — কোনো টাকা লাগেনি");
         setUpgradeSelected(null);
         return;
       }
@@ -246,7 +251,7 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
       // through to a fresh mutateAsync; the server reuses/re-mints the pending order correctly.
       let held: CheckoutResponse | null = res;
       setSheet({
-        title: `Upgrade — ${cell.seatSlot} seats × ${cell.examSlot} exam${cell.examSlot > 1 ? "s" : ""}`,
+        title: `আপগ্রেড — ${cell.seatSlot} সিট × ${cell.examSlot} পরীক্ষা`,
         priceBdt: res.amountBdt,
         createOrder: async () => {
           if (held) {
@@ -258,13 +263,13 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
           if ("appliedFree" in retry) {
             // The upgrade became free between attempts (e.g. server state shifted). No payment
             // to collect — bounce the examiner back to a clean slate via the failed-state retry.
-            throw new Error("This upgrade is now free — close and reopen the panel.");
+            throw new Error("এই আপগ্রেড এখন ফ্রি — প্যানেলটি বন্ধ করে আবার খুলুন।");
           }
           return retry;
         },
       });
     } catch (e) {
-      message.error(serverError(e, "Upgrade failed"));
+      message.error(serverError(e, "আপগ্রেড করা যায়নি"));
     }
   };
 
@@ -272,7 +277,7 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
     <Card
       title={
         <Space>
-          <TeamOutlined /> Seats
+          <TeamOutlined /> সিট
         </Space>
       }
       style={{ marginTop: 16 }}
@@ -280,23 +285,24 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
       <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <div>
           <Typography.Text strong>
-            {purchase.seatSlot} seats × {purchase.examSlot} exam{purchase.examSlot > 1 ? "s" : ""}
+            {purchase.seatSlot} সিট × {purchase.examSlot} পরীক্ষা
           </Typography.Text>
           <Typography.Text type="secondary" style={{ marginInlineStart: 8 }}>
-            paid ৳{purchase.totalPaidBdt}
+            পরিশোধ ৳{purchase.totalPaidBdt}
           </Typography.Text>
         </div>
 
         <div>
+          {/* Western digits: a used/total tally, the ratified dense-numeric exception (D8). */}
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Seats used: {purchase.seatsUsed}/{purchase.seatSlot}
+            ব্যবহৃত সিট: {purchase.seatsUsed}/{purchase.seatSlot}
           </Typography.Text>
           <Progress percent={Math.round(usedPct)} showInfo={false} />
         </div>
 
         <div>
           <Typography.Text strong style={{ display: "block", marginBottom: 4 }}>
-            Invite code
+            আমন্ত্রণ কোড
           </Typography.Text>
           <Space wrap>
             <Typography.Text
@@ -307,30 +313,31 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
               {purchase.inviteCode}
             </Typography.Text>
             <Popconfirm
-              title="Rotate the invite code?"
-              description="The current code stops working immediately. Already-claimed seats keep access."
-              okText="Rotate"
+              title="আমন্ত্রণ কোড বদলাবেন?"
+              description="বর্তমান কোড সঙ্গে সঙ্গে কাজ করা বন্ধ করবে। যারা ইতিমধ্যে সিট নিয়েছে তাদের অ্যাক্সেস থাকবে।"
+              okText="বদলান"
+              cancelText="না"
               onConfirm={onRotate}
             >
               <Button size="small" loading={rotate.isPending}>
-                Rotate
+                কোড বদলান
               </Button>
             </Popconfirm>
           </Space>
         </div>
 
         <Button type="link" style={{ padding: 0 }} onClick={() => navigate(`/selling/roster/${purchase.id}`)}>
-          Manage roster →
+          রোস্টার পরিচালনা →
         </Button>
 
         <Divider style={{ margin: "4px 0" }} />
 
         <div>
           <Typography.Text strong style={{ display: "block" }}>
-            Upgrade
+            আপগ্রেড
           </Typography.Text>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Move to a bigger bundle — you only pay the difference.
+            বড় বান্ডেলে যান — শুধু পার্থক্যটুকু দিতে হবে।
           </Typography.Text>
         </div>
         <MatrixGrid
@@ -338,7 +345,7 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
           selected={upgradeSelected}
           onSelect={setUpgradeSelected}
           disabled={(cell) => !isUpgradeCell(cell)}
-          reason={() => "Pick a larger bundle to upgrade"}
+          reason={() => "আপগ্রেড করতে বড় বান্ডেল বাছুন"}
           caption={(cell) =>
             isUpgradeCell(cell) ? `+৳${Math.max(cell.priceBdt - purchase.totalPaidBdt, 0)}` : null
           }
@@ -350,8 +357,8 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
           onClick={onUpgrade}
         >
           {upgradeSelected
-            ? `Upgrade — +৳${Math.max(upgradeSelected.priceBdt - purchase.totalPaidBdt, 0)}`
-            : "Select a bigger bundle"}
+            ? `আপগ্রেড — +৳${Math.max(upgradeSelected.priceBdt - purchase.totalPaidBdt, 0)}`
+            : "বড় বান্ডেল বাছুন"}
         </Button>
       </Space>
       {sheetNode}
