@@ -4,7 +4,7 @@ import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { EXAMINER_NAV, ROLE_LABEL, SIDENAV_ID, isVisibleToRole } from "./examinerNav";
 import { useAuth } from "../auth/useAuth";
 import { useMyOrg } from "../api/me";
-import { bnNum } from "../lib/bn";
+import { bnMoney, bnNum } from "../lib/bn";
 import type { QuestionListResponse } from "../api/types";
 import type { WalletResponse } from "../api/commerce";
 
@@ -28,15 +28,15 @@ function readQuestionsBadge(qc: QueryClient): string | null {
 }
 
 // WalletResponse's field is `balance` (BDT); there is no balanceBdt on the wire type.
-// Rounded and grouped: the 20% B2C commission produces fractional balances by
-// construction, and an ungrouped six-figure balance overflows the 11px pill. bnNum maps
-// digit characters only, so the separators toLocaleString inserts survive it.
+// Rounding and grouping now live in `bnMoney` — this badge, the orders detail and the
+// pricing matrix were three private `taka` helpers that had already drifted apart on the
+// grouping rule, so the lakh break is settled in one place (lib/bn.ts) instead.
 function readWalletBadge(qc: QueryClient): string | null {
   const hit = qc
     .getQueriesData<WalletResponse>({ queryKey: ["commerce", "wallet"] })
     .map(([, d]) => d?.balance)
     .find((b) => typeof b === "number");
-  return typeof hit === "number" ? `৳${bnNum(Math.round(hit).toLocaleString("en-US"))}` : null;
+  return typeof hit === "number" ? bnMoney(hit) : null;
 }
 
 // getQueriesData is a plain read, so a bare call would render once and then never update
@@ -107,9 +107,17 @@ export function ExaminerSidebar({
                     : null;
               // Bare, the badge joins the link's accessible name as a naked number
               // ("প্রশ্ন ১২৩"). aria-label on the span is honoured by the name-from-content
-              // walk, so the count reaches AT with its unit attached.
-              const badgeLabel =
-                item.badge === "wallet" ? `ব্যালেন্স ${badge}` : `${badge}টি প্রশ্ন`;
+              // walk, so the count reaches AT with its unit attached — «প্রশ্ন ১২৩টি». The
+              // unit alone, NOT «১২৩টি প্রশ্ন»: the link's own label is the noun and the walk
+              // concatenates the two, so spelling it again announced "প্রশ্ন ১২৩টি প্রশ্ন".
+              // The wallet keeps its noun because «ওয়ালেট ৳১,২৩৪» names no quantity.
+              // Computed only when a badge exists — unguarded it built «nullটি» for every
+              // badge-less item in the rail and threw it away one line later.
+              const badgeLabel = !badge
+                ? undefined
+                : item.badge === "wallet"
+                  ? `ব্যালেন্স ${badge}`
+                  : `${badge}টি`;
               return (
                 <NavLink
                   key={item.to}

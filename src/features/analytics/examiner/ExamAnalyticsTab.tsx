@@ -35,16 +35,23 @@ export function ExamAnalyticsTab({ examId }: { examId: string }) {
       />
     );
 
-  // `useExamAnalytics` carries no placeholderData, so `data` always describes THIS exam and
-  // the empty claim below can never be a statement about a previous one (the gate the
-  // filtered surfaces need). The strip still has to ride above it: a stale-but-held zero
-  // funnel is still a real answer worth showing, with the caveat attached.
+  // The strip rides above held data: a stale-but-held funnel is still a real answer worth
+  // showing, with the caveat attached.
   const strip = analytics.isError && (
     <RetryNotice tone="strip" busy={analytics.isFetching} onRetry={() => void analytics.refetch()} />
   );
 
+  // `useExamAnalytics` now carries placeholderData, so `data` can describe the PREVIOUS exam
+  // while this one loads. Two consequences, both handled here and neither optional:
+  //   1. the whole slice gets the house saturate(.35) cue + aria-busy, never opacity;
+  //   2. the «কেউ অংশ নেয়নি» sentence is gated — it is a claim about THIS exam, and on
+  //      placeholder data it would be reporting the previous exam's empty funnel under this
+  //      exam's title. Stale-and-zero falls through to the normal (desaturated) layout
+  //      instead, where the ০ tiles carry the stale cue and assert nothing on their own.
+  const stale = analytics.isPlaceholderData;
+
   const { funnel, histogram } = data;
-  if (funnel.started === 0)
+  if (funnel.started === 0 && !stale)
     return (
       <>
         {strip}
@@ -53,7 +60,13 @@ export function ExamAnalyticsTab({ examId }: { examId: string }) {
     );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div
+      style={{
+        display: "flex", flexDirection: "column", gap: 12,
+        filter: stale ? "saturate(0.35)" : undefined, transition: "filter .2s",
+      }}
+      aria-busy={stale}
+    >
       {strip}
       <div>
         <div className="ex-stattiles">

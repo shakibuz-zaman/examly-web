@@ -47,6 +47,12 @@ export function ExamResultsPage() {
   const { data: exam } = useExam(id);
   const results = useExamResults(id, page, PAGE_SIZE, tab === "practice");
   const data = results.data;
+  // `useExamResults` keeps the previous slice mounted across a page step or a tab flip, so
+  // `data` is not always this tab's answer. Everything that makes a CLAIM about the current
+  // cohort — the three tiles, the header count, the table's empty text — is gated on this;
+  // the rows themselves stay on screen under the house saturate(.35)+aria-busy stale cue,
+  // which is the same bargain OrgDashboard struck with its filter row.
+  const stale = results.isPlaceholderData;
 
   const columns: ColumnsType<ExamResultRow> = [
     // Kept as the glyph, not a word: «#» is the rank column on the ranked tab only (practice
@@ -134,9 +140,12 @@ export function ExamResultsPage() {
 
   // The count is per-tab (the server answers a different total for practice), so the summary
   // names which one it is instead of printing a bare number that changes under the reader.
+  // …and it is dropped while stale rather than desaturated: `tab` flips instantly while the
+  // total lags a fetch behind, so a placeholder would print «প্র্যাকটিস ৪২টি» with the ranked
+  // 42 — a sentence that names the wrong cohort is worse than no sentence.
   const total = data?.total;
   const summary =
-    total == null
+    total == null || stale
       ? undefined
       : `${tab === "practice" ? "প্র্যাকটিস" : "র‍্যাঙ্কড"} ${bnNum(total)}টি অ্যাটেম্পট`;
 
@@ -154,8 +163,11 @@ export function ExamResultsPage() {
 
       {/* Ranked only, and not out of taste: the practice branch of GetExamResultsAsync sends
           participants 0 and both aggregates null (AttemptService.cs:926), so a tile row on
-          that tab would assert «০ জন অংশগ্রহণকারী» over a table with rows in it. */}
-      {tab === "ranked" && data && (
+          that tab would assert «০ জন অংশগ্রহণকারী» over a table with rows in it. `!stale` for
+          the same reason one step further out: flipping প্র্যাকটিস → র‍্যাঙ্কড satisfies
+          `tab === "ranked"` immediately while `data` is still the practice slice, whose
+          participants IS 0 and whose aggregates ARE null by construction. */}
+      {tab === "ranked" && data && !stale && (
         <div className="ex-stattiles ex-stattiles--3">
           <StatTile label="অংশগ্রহণকারী" value={bnNum(data.participants)} />
           <StatTile
@@ -213,24 +225,38 @@ export function ExamResultsPage() {
                   onRetry={() => void results.refetch()}
                 />
               )}
-              <Table
-                size="small"
-                rowKey="attemptId"
-                columns={columns}
-                dataSource={data.items}
-                onRow={(record) => ({
-                  onClick: () => setDrawerRow(record),
-                  style: { cursor: "pointer" },
-                })}
-                pagination={{
-                  current: page,
-                  pageSize: PAGE_SIZE,
-                  total: data.total,
-                  onChange: setPage,
-                  showSizeChanger: false,
-                }}
-                scroll={{ x: true }}
-              />
+              {/* The stale cue wraps the table rather than riding on it: `saturate`, never
+                  opacity (house rule), and aria-busy so the same fact reaches AT. Because the
+                  slice is held, the pagination control stays MOUNTED across a page step —
+                  before keepPreviousData the whole block unmounted behind a skeleton and the
+                  pager disappeared out from under the click that moved it. */}
+              <div
+                style={{ filter: stale ? "saturate(0.35)" : undefined, transition: "filter .2s" }}
+                aria-busy={stale}
+              >
+                <Table
+                  size="small"
+                  rowKey="attemptId"
+                  columns={columns}
+                  dataSource={data.items}
+                  // antd's own empty text is a generic «no data», which on this page reads as
+                  // "nobody sat this exam" — and on placeholder data it would be reporting the
+                  // OTHER tab's emptiness. Named per state instead.
+                  locale={{ emptyText: stale ? "লোড হচ্ছে…" : "এই তালিকায় কোনো অ্যাটেম্পট নেই।" }}
+                  onRow={(record) => ({
+                    onClick: () => setDrawerRow(record),
+                    style: { cursor: "pointer" },
+                  })}
+                  pagination={{
+                    current: page,
+                    pageSize: PAGE_SIZE,
+                    total: data.total,
+                    onChange: setPage,
+                    showSizeChanger: false,
+                  }}
+                  scroll={{ x: true }}
+                />
+              </div>
             </>
           )}
         </>

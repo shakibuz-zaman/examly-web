@@ -5,6 +5,8 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import { useQuestionTags, useQuestions, useSampleQuestions } from "../../api/questions";
 import { useSubjects, useTopics } from "../../api/taxonomy";
+import { bnNum } from "../../lib/bn";
+import { bilingualLabel, DIFFICULTY, LANGUAGE } from "../../lib/labels";
 import type { QuestionListFilters, QuestionSummary, SubjectResponse, TopicResponse } from "../../api/types";
 import type { DraftQuestion } from "./examDraft";
 
@@ -23,10 +25,17 @@ export function toDraftQuestion(summary: QuestionSummary): DraftQuestion {
   };
 }
 
+// The drawer's own filter bar is a copy of the questions list's, so it reuses that page's
+// vocabulary rather than a second one: `bilingualLabel` (Bengali-first, D17 — the old
+// «bn — en» combo here was the half-translation D17 retired) and the shared DIFFICULTY /
+// LANGUAGE maps. `item.slug` stays as the last resort: bilingualLabel's own fallback is «—»,
+// which is unpickable in a Select, and a taxonomy node always has a slug.
 function taxonomyLabel(item: SubjectResponse | TopicResponse): string {
-  const { bn, en } = item.name;
-  return bn && en ? `${bn} — ${en}` : bn ?? en ?? item.slug;
+  const label = bilingualLabel(item.name);
+  return label === "—" ? item.slug : label;
 }
+
+const DIFFICULTIES = ["easy", "medium", "hard"] as const;
 
 type PickerFilters = {
   search?: string;
@@ -50,41 +59,34 @@ function FilterBar({ filters, onChange }: FilterBarProps) {
   return (
     <Space wrap style={{ marginBottom: 12 }}>
       <Input.Search
-        placeholder="Search stem"
+        placeholder="প্রশ্নের লেখা খুঁজুন"
         allowClear
         style={{ width: 200 }}
         onSearch={(v) => onChange({ search: v || undefined })}
       />
       <Select
-        placeholder="Subject" allowClear style={{ width: 180 }} value={filters.subjectId}
+        placeholder="বিষয়" allowClear style={{ width: 180 }} value={filters.subjectId}
         onChange={(v) => onChange({ subjectId: v ?? undefined, topicId: undefined })}
         options={subjects?.map((s) => ({ value: s.id, label: taxonomyLabel(s) }))}
       />
       <Select
-        placeholder="Topic" allowClear style={{ width: 180 }} value={filters.topicId}
+        placeholder="টপিক" allowClear style={{ width: 180 }} value={filters.topicId}
         disabled={!filters.subjectId}
         onChange={(v) => onChange({ topicId: v ?? undefined })}
         options={topics?.map((t) => ({ value: t.id, label: taxonomyLabel(t) }))}
       />
       <Select
-        placeholder="Difficulty" allowClear style={{ width: 130 }} value={filters.difficulty}
+        placeholder="কঠিনতা" allowClear style={{ width: 130 }} value={filters.difficulty}
         onChange={(v) => onChange({ difficulty: v ?? undefined })}
-        options={[
-          { value: "easy", label: "Easy" },
-          { value: "medium", label: "Medium" },
-          { value: "hard", label: "Hard" },
-        ]}
+        options={DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY[d] }))}
       />
       <Select
-        placeholder="Language" allowClear style={{ width: 130 }} value={filters.language}
+        placeholder="ভাষা" allowClear style={{ width: 130 }} value={filters.language}
         onChange={(v) => onChange({ language: v ?? undefined })}
-        options={[
-          { value: "bn", label: "বাংলা" },
-          { value: "en", label: "English" },
-        ]}
+        options={Object.entries(LANGUAGE).map(([value, label]) => ({ value, label }))}
       />
       <Select
-        mode="multiple" placeholder="Tags" allowClear style={{ minWidth: 160 }}
+        mode="multiple" placeholder="ট্যাগ" allowClear style={{ minWidth: 160 }}
         value={filters.tags}
         onChange={(v) => onChange({ tags: v.length ? v : undefined })}
         options={tags?.map((t) => ({ value: t, label: t }))}
@@ -105,15 +107,20 @@ function BrowseTab({ existingIds, onAdd }: BrowseTabProps) {
 
   const columns: ColumnsType<QuestionSummary> = [
     {
-      title: "Question",
+      title: "প্রশ্ন",
       render: (_, r) => (
         <>
           <Typography.Text>{r.stemExcerpt}</Typography.Text>
           <br />
           <Space size="small" wrap>
-            <Tag color={DIFFICULTY_COLORS[r.difficulty]}>{r.difficulty}</Tag>
-            <Tag>{r.language}</Tag>
-            {r.multipleCorrect && <Tag>multi-correct</Tag>}
+            {/* Tags carry the same words the questions list prints, through the same maps —
+                the raw wire keys («easy», «bn») were leaking to screen here. Free-form
+                `r.tags` are the examiner's own strings and stay verbatim. */}
+            <Tag color={DIFFICULTY_COLORS[r.difficulty]}>
+              {DIFFICULTY[r.difficulty] ?? r.difficulty}
+            </Tag>
+            <Tag>{LANGUAGE[r.language] ?? r.language}</Tag>
+            {r.multipleCorrect && <Tag>একাধিক সঠিক</Tag>}
             {r.tags.map((t) => <Tag key={t}>{t}</Tag>)}
           </Space>
         </>
@@ -123,10 +130,10 @@ function BrowseTab({ existingIds, onAdd }: BrowseTabProps) {
       title: "", width: 90,
       render: (_, r) =>
         existingIds.includes(r.id) ? (
-          <Tag color="blue">added</Tag>
+          <Tag color="blue">যোগ করা হয়েছে</Tag>
         ) : (
           <Button size="small" type="primary" ghost onClick={() => onAdd([toDraftQuestion(r)])}>
-            Add
+            যোগ করুন
           </Button>
         ),
     },
@@ -175,17 +182,17 @@ function RandomTab({ existingIds, onAdd }: RandomTabProps) {
         excludeIds: existingIds,
       });
       if (drawn.length === 0) {
-        message.warning("No matching questions left to draw from");
+        message.warning("এই ফিল্টারে আর কোনো প্রশ্ন বাকি নেই");
         return;
       }
       onAdd(drawn.map(toDraftQuestion));
       if (drawn.length < count) {
-        message.info(`Only ${drawn.length} matching questions were available`);
+        message.info(`এই ফিল্টারে ${bnNum(drawn.length)}টি প্রশ্নই পাওয়া গেছে`);
       } else {
-        message.success(`${drawn.length} questions added`);
+        message.success(`${bnNum(drawn.length)}টি প্রশ্ন যোগ হয়েছে`);
       }
     } catch {
-      message.error("Random fill failed");
+      message.error("এলোমেলো প্রশ্ন নেওয়া যায়নি");
     }
   };
 
@@ -193,11 +200,15 @@ function RandomTab({ existingIds, onAdd }: RandomTabProps) {
     <>
       <FilterBar filters={filters} onChange={(patch) => setFilters((f) => ({ ...f, ...patch }))} />
       <Space>
-        <Typography.Text>Draw</Typography.Text>
-        <InputNumber min={1} max={50} value={count} onChange={(v) => setCount(v ?? 10)} />
-        <Typography.Text>random matching questions (already-added ones are excluded)</Typography.Text>
+        {/* The number box is a control with no visible label of its own once the sentence
+            around it is Bengali, so it carries one for AT. */}
+        <InputNumber
+          min={1} max={50} value={count} onChange={(v) => setCount(v ?? 10)}
+          aria-label="কতটি প্রশ্ন নেওয়া হবে"
+        />
+        <Typography.Text>টি প্রশ্ন এলোমেলোভাবে নিন (যেগুলো যোগ করা আছে সেগুলো বাদ)</Typography.Text>
         <Button type="primary" loading={sample.isPending} onClick={() => void fill()}>
-          Random fill
+          এলোমেলো ভরাট
         </Button>
       </Space>
     </>
@@ -217,7 +228,7 @@ export function QuestionPickerDrawer({
 }: QuestionPickerDrawerProps) {
   return (
     <Drawer
-      title="Add questions"
+      title="প্রশ্ন যোগ করুন"
       size={720}
       open={open}
       onClose={onClose}
@@ -228,12 +239,12 @@ export function QuestionPickerDrawer({
         items={[
           {
             key: "browse",
-            label: "Browse bank",
+            label: "ব্যাংক ঘাঁটুন",
             children: <BrowseTab existingIds={existingIds} onAdd={onAdd} />,
           },
           {
             key: "random",
-            label: "Random fill",
+            label: "এলোমেলো ভরাট",
             children: <RandomTab existingIds={existingIds} onAdd={onAdd} />,
           },
         ]}

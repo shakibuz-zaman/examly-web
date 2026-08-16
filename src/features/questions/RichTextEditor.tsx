@@ -32,20 +32,20 @@ type RichTextEditorProps = {
 async function uploadAndInsert(editor: Editor, files: File[]) {
   for (const file of files) {
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      message.error("Only JPEG, PNG, or WebP images are allowed");
+      message.error("শুধু JPEG, PNG বা WebP ছবি দেওয়া যাবে");
       continue;
     }
-    const hideLoading = message.loading("Uploading image…", 0);
+    const hideLoading = message.loading("ছবি আপলোড হচ্ছে…", 0);
     try {
       const processed = await downscaleIfNeeded(file);
       if (processed.size > MAX_BYTES) {
-        message.error("Image is larger than 5 MB even after resizing");
+        message.error("ছোট করার পরেও ছবিটি ৫ MB-র বেশি");
         continue;
       }
       const item = await uploadMedia(processed);
       editor.chain().focus().setImage({ src: mediaUrl(item.id) }).run();
     } catch {
-      message.error("Image upload failed");
+      message.error("ছবি আপলোড করা যায়নি");
     } finally {
       hideLoading();
     }
@@ -117,9 +117,9 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
   if (!editor) return null;
 
   return (
-    <div style={{ border: "1px solid #d9d9d9", borderRadius: 6 }}>
-      <Space wrap size={4} style={{ padding: 4, borderBottom: "1px solid #f0f0f0", width: "100%" }}>
-        <Tooltip title="Bold">
+    <div style={{ border: "1px solid var(--ex-line-strong)", borderRadius: 6 }}>
+      <Space wrap size={4} style={{ padding: 4, borderBottom: "1px solid var(--ex-line)", width: "100%" }}>
+        <Tooltip title="বোল্ড">
           <Button
             size="small"
             type={editor.isActive("bold") ? "primary" : "text"}
@@ -127,7 +127,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
             onClick={() => editor.chain().focus().toggleBold().run()}
           />
         </Tooltip>
-        <Tooltip title="Italic">
+        <Tooltip title="ইটালিক">
           <Button
             size="small"
             type={editor.isActive("italic") ? "primary" : "text"}
@@ -135,7 +135,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
             onClick={() => editor.chain().focus().toggleItalic().run()}
           />
         </Tooltip>
-        <Tooltip title="Underline">
+        <Tooltip title="আন্ডারলাইন">
           <Button
             size="small"
             type={editor.isActive("underline") ? "primary" : "text"}
@@ -143,7 +143,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
             onClick={() => editor.chain().focus().toggleUnderline().run()}
           />
         </Tooltip>
-        <Tooltip title="Strikethrough">
+        <Tooltip title="কাটা দাগ">
           <Button
             size="small"
             type={editor.isActive("strike") ? "primary" : "text"}
@@ -151,7 +151,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
             onClick={() => editor.chain().focus().toggleStrike().run()}
           />
         </Tooltip>
-        <Tooltip title="Subscript">
+        <Tooltip title="সাবস্ক্রিপ্ট">
           <Button
             size="small"
             type={editor.isActive("subscript") ? "primary" : "text"}
@@ -160,7 +160,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
             x₂
           </Button>
         </Tooltip>
-        <Tooltip title="Superscript">
+        <Tooltip title="সুপারস্ক্রিপ্ট">
           <Button
             size="small"
             type={editor.isActive("superscript") ? "primary" : "text"}
@@ -169,7 +169,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
             x²
           </Button>
         </Tooltip>
-        <Tooltip title="Bullet list">
+        <Tooltip title="বুলেট তালিকা">
           <Button
             size="small"
             type={editor.isActive("bulletList") ? "primary" : "text"}
@@ -177,7 +177,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
             onClick={() => editor.chain().focus().toggleBulletList().run()}
           />
         </Tooltip>
-        <Tooltip title="Numbered list">
+        <Tooltip title="সংখ্যাযুক্ত তালিকা">
           <Button
             size="small"
             type={editor.isActive("orderedList") ? "primary" : "text"}
@@ -185,7 +185,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
           />
         </Tooltip>
-        <Tooltip title="Insert image">
+        <Tooltip title="ছবি যোগ করুন">
           <Button
             size="small"
             type="text"
@@ -193,7 +193,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
             onClick={() => fileInputRef.current?.click()}
           />
         </Tooltip>
-        <Tooltip title="Insert math (LaTeX)">
+        <Tooltip title="গণিত যোগ করুন (LaTeX)">
           <Button
             size="small"
             type="text"
@@ -224,7 +224,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
       />
 
       <Modal
-        title="Insert math"
+        title="গণিত যোগ করুন"
         open={mathOpen}
         onCancel={() => setMathOpen(false)}
         onOk={() => {
@@ -233,10 +233,10 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
           }
           setMathOpen(false);
         }}
-        okText="Insert"
+        okText="যোগ করুন"
       >
         <Input
-          placeholder="e.g.  x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}"
+          placeholder="যেমন  x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}"
           value={latex}
           onChange={(e) => setLatex(e.target.value)}
           onPressEnter={() => {

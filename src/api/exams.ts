@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
 import type {
   ExamListFilters,
@@ -93,6 +93,15 @@ export function useExamResults(
   return useQuery<ExamResultsResponse>({
     queryKey: ["exams", "results", id, page, pageSize, practice],
     enabled: !!id,
+    // `page` and `practice` are IN the key, so paging or flipping the র‍্যাঙ্কড/প্র্যাকটিস tab
+    // is a new query, not a refetch: without this the whole table — pagination control
+    // included — unmounted behind a skeleton on every page step, so the pager the reader had
+    // just clicked vanished under the cursor. keepPreviousData holds the previous slice
+    // mounted; the consumer marks it with the house saturate(.35) cue (never opacity) plus
+    // aria-busy off `isPlaceholderData`, and MUST NOT let anything derived from placeholder
+    // data speak about the current tab — the stat tiles, the header count and the table's
+    // empty text are all claims about a cohort, and the placeholder belongs to the other one.
+    placeholderData: keepPreviousData,
     queryFn: async () =>
       (await apiClient.get<ExamResultsResponse>(
         `/api/v1/exams/${id}/results?page=${page}&pageSize=${pageSize}&practice=${practice}`)).data,

@@ -16,6 +16,11 @@ export const ATTEMPT_STATUS: Record<"not_started" | AttemptState, string> = {
   expired: "সময় শেষ",
 };
 
+// Question language. `English` is the endonym, exactly as «বাংলা» is — the same reason the
+// `Examly` wordmark is a ratified exception, and it is what the question editor's own picker
+// has always shown. Moved here when the exam builder's picker drawer became the third copy.
+export const LANGUAGE: Record<string, string> = { bn: "বাংলা", en: "English" };
+
 // `string`-keyed on purpose: the student-side consumer is `DifficultyRow.difficulty`
 // (api/analytics.ts:10), a bare string on the wire. No union to key to.
 export const DIFFICULTY: Record<string, string> = {

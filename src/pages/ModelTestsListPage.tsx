@@ -39,9 +39,10 @@ export function ModelTestsListPage() {
     setFilters((f) => ({ ...f, ...patch, page: 1 }));
 
   // Archive is the destructive action, so it lives in the ⋯ menu — and its confirm is a
-  // CONTROLLED <Modal> driven by this row state, never `Modal.confirm`: no `<App>` wrapper is
-  // mounted, so antd's static methods render outside the ConfigProvider, never see
-  // `buildTheme`, and come up white-with-antd-blue in dark mode (T7 fix wave).
+  // CONTROLLED <Modal> driven by this row state, never `Modal.confirm`: rendered in the tree
+  // it is themed by the ConfigProvider outright, where the static came up white-with-antd-blue
+  // in dark mode (T7 fix wave). AppShell now also mounts antd's `App`, so an imperative
+  // dialog COULD be themed via `App.useApp().modal` — this one has no reason to become one.
   const [archiveRow, setArchiveRow] = useState<ModelTestSummary | null>(null);
 
   const submitArchive = () => {

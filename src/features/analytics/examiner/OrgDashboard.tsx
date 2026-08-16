@@ -102,7 +102,14 @@ function ExaminerOrgDashboard() {
           overflow the content column on a collapsed rail, and the shell contains its own
           horizontal overflow — so without wrapping the row would scroll sideways instead. */}
       <div className="ex-filterrow" style={{ flexWrap: "wrap" }}>
+        {/* A `placeholder` is not an accessible name — cleared, these two combo boxes
+            announced as unlabelled, and side by side they are indistinguishable. `aria-label`
+            is the right lever and it does reach the right node: antd v6 picks aria-* out of
+            the Select's props and hands them to the inner role="combobox" <input> rather than
+            the wrapper div (verified in the DOM, not assumed — @rc-component/select omits the
+            aria keys from the root). So no labelled-by/visually-hidden-label detour is needed. */}
         <Select
+          aria-label="ক্যাটাগরি ফিল্টার"
           allowClear
           showSearch
           optionFilterProp="label"
@@ -118,6 +125,7 @@ function ExaminerOrgDashboard() {
           onChange={(v) => setCategoryId(v ?? null)}
         />
         <Select
+          aria-label="মডেল টেস্ট ফিল্টার"
           allowClear
           showSearch
           optionFilterProp="label"

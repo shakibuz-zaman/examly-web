@@ -5,6 +5,7 @@ import {
 import type { DescriptionsProps } from "antd";
 import type { AxiosError } from "axios";
 import { useAdminOrder, useVoidOrder } from "../api/commerce";
+import { bnMoney } from "../lib/bn";
 import type { AdminOrder } from "../api/commerce";
 
 function serverError(e: unknown, fallback: string): string {
@@ -24,8 +25,6 @@ const KIND_LABEL: Record<string, string> = {
   b2b_upgrade: "Slot upgrade (B2B)",
 };
 
-const taka = (n: number) => `৳${n.toLocaleString("en-US")}`;
-
 function isB2c(order: AdminOrder): boolean {
   return order.kind === "b2c_purchase";
 }
@@ -34,7 +33,7 @@ function isB2c(order: AdminOrder): boolean {
 function voidEffects(order: AdminOrder): string {
   if (isB2c(order)) {
     const share = order.authorShareBdt ?? 0;
-    return `Revokes the buyer's access and claws back ${taka(share)} from the author wallet.`;
+    return `Revokes the buyer's access and claws back ${bnMoney(share)} from the author wallet.`;
   }
   return (
     `Rolls back the ${order.seatSlot ?? "?"} × ${order.examSlot ?? "?"} slot purchase for this org. ` +
@@ -54,18 +53,18 @@ function OrderDetail({ order, onVoided }: { order: AdminOrder; onVoided: () => v
       label: "Buyer",
       children: isB2c(order) ? `Student ${order.studentId ?? "—"}` : `Org ${order.orgId ?? "—"}`,
     },
-    { key: "amount", label: "Amount", children: taka(order.amountBdt) },
+    { key: "amount", label: "Amount", children: bnMoney(order.amountBdt) },
     ...(isB2c(order)
       ? [
           {
             key: "commission",
             label: "Commission",
-            children: order.commissionBdt != null ? taka(order.commissionBdt) : "—",
+            children: order.commissionBdt != null ? bnMoney(order.commissionBdt) : "—",
           },
           {
             key: "share",
             label: "Author share",
-            children: order.authorShareBdt != null ? taka(order.authorShareBdt) : "—",
+            children: order.authorShareBdt != null ? bnMoney(order.authorShareBdt) : "—",
           },
         ]
       : [

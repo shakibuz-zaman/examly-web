@@ -30,8 +30,10 @@ function renderMath(html: string): string {
 
 type QuestionContentViewProps = {
   // Declared `string`, but `strictNullChecks` is OFF (tsconfig.app.json) — so this is
-  // documentation, not enforcement, and several call sites hand over wire fields that are
-  // `string | null` on the server contract (explanationHtml, the analytics stemHtml).
+  // documentation, not enforcement, and call sites hand over wire fields that are
+  // `string | null` in their own type (explanationHtml; `DraftQuestion.stemHtml`,
+  // examDraft.ts:8). NOT the analytics stemHtml — `HardQuestion.stemHtml` is a plain
+  // `string` (examinerAnalytics.ts) and HardestQuestionsTable guards it anyway.
   html: string;
 };
 

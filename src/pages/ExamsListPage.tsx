@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Button, Card, DatePicker, Dropdown, Input, Modal, Popconfirm, Select, Space, Table, Typography,
-  message,
+  App, Button, Card, DatePicker, Dropdown, Input, Modal, Popconfirm, Select, Space, Table,
+  Typography, message,
 } from "antd";
 import { MoreHorizontal } from "lucide-react";
 import type { MenuProps } from "antd";
@@ -36,6 +36,11 @@ function serverError(e: unknown, fallback: string): string {
 
 export function ExamsListPage() {
   const navigate = useNavigate();
+  // AppShell mounts antd's `App` inside the examiner ConfigProvider, so this `modal` is
+  // theme-aware where the imported `Modal.error` static is not. Only the dialog moves here:
+  // the `message` statics are themed globally instead (see ThemedApp), which is what the
+  // ~50 remaining toast call sites across the examiner tree get without being rewritten.
+  const { modal } = App.useApp();
   const [filters, setFilters] = useState<ExamListFilters>({ page: 1, pageSize: 20 });
   const { data, isPending } = useExams(filters);
   const publish = usePublishExam();
@@ -85,10 +90,9 @@ export function ExamsListPage() {
       await publish.mutateAsync(id);
       message.success("পরীক্ষা প্রকাশিত হয়েছে");
     } catch (e) {
-      Modal.error({
+      modal.error({
         title: "প্রকাশ করা যায়নি",
-        // The body is the server's verbatim gate message. It stays English until Task 10
-        // translates the API strings — expected, not a defect.
+        // The body is the server's verbatim gate message — Bengali since Task 10.
         content: (
           <div style={{ whiteSpace: "pre-line" }}>{serverError(e, "প্রকাশ করা যায়নি")}</div>
         ),
@@ -107,10 +111,10 @@ export function ExamsListPage() {
 
   // Archive is the one gated action that has to live in the ⋯ menu (a Popconfirm inside a
   // menu item fights the Dropdown's close-on-click). It is a CONTROLLED <Modal> driven by
-  // this row state, not `Modal.confirm`: no `<App>` wrapper is mounted, so antd's static
-  // methods render outside the ConfigProvider and never see `buildTheme` — in dark mode the
-  // static dialog came up white with an antd-blue OK. Same shape as the reschedule modal
-  // below. Retiring the app-wide static `message`/`Modal` usage is a separate T11 ticket.
+  // this row state rather than a dialog call, which is the shape the reschedule modal below
+  // also uses: rendered in the tree, it is themed by the ConfigProvider with nothing to
+  // arrange. It stays as-is now that `App.useApp()` is available — there is nothing to gain
+  // by turning a declarative dialog back into an imperative one.
   const [archiveRow, setArchiveRow] = useState<ExamSummary | null>(null);
 
   const submitArchive = () => {

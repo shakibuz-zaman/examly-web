@@ -55,6 +55,13 @@ export function useExamAnalytics(examId: string | undefined, enabled: boolean) {
     queryKey: ["examiner-analytics", "exam", examId],
     enabled: !!examId && enabled,
     staleTime: STALE,
+    // Same reasoning as useOrgAnalytics: `examId` is in the key, so walking from one exam's
+    // অ্যানালাইসিস tab to another's collapsed four StatTiles, a 180px chart and two tables into
+    // a six-row skeleton. The previous exam's slice stays mounted instead — which makes this
+    // the first time `data` here can describe a DIFFERENT exam than the page header, so the
+    // consumer owes it the saturate(.35)+aria-busy cue and must gate its «কেউ অংশ নেয়নি»
+    // empty copy on `!isPlaceholderData`: that sentence is a claim about THIS exam.
+    placeholderData: keepPreviousData,
     queryFn: async () =>
       (await apiClient.get<ExamAnalyticsResponse>(`/api/v1/exams/${examId}/analytics`)).data,
   });

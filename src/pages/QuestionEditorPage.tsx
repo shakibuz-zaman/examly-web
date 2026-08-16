@@ -15,7 +15,7 @@ import type { QuestionResponse, SaveQuestionRequest } from "../api/types";
 import { QuestionContentView } from "../features/questions/QuestionContentView";
 import { RichTextEditor } from "../features/questions/RichTextEditor";
 import { htmlHasContent } from "../features/questions/html";
-import { bilingualLabel, DIFFICULTY } from "../lib/labels";
+import { bilingualLabel, DIFFICULTY, LANGUAGE } from "../lib/labels";
 import { PageHeader } from "../ui/PageHeader";
 import { PillButton } from "../ui/PillButton";
 
@@ -278,10 +278,9 @@ export function QuestionEditorPage() {
                       <Select
                         {...field}
                         style={{ width: 110 }}
-                        options={[
-                          { value: "bn", label: "বাংলা" },
-                          { value: "en", label: "English" },
-                        ]}
+                        options={Object.entries(LANGUAGE).map(([value, label]) => ({
+                          value, label,
+                        }))}
                       />
                     )}
                   />

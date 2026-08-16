@@ -2,6 +2,7 @@ import { Card, Skeleton, Typography } from "antd";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { usePosition } from "../../api/analytics";
 import { bnNum } from "../../lib/bn";
+import { RetryNotice } from "../../ui/RetryNotice";
 import type { AnalyticsFilters } from "./filters";
 import { useChartColors } from "./chartTheme";
 
@@ -14,6 +15,18 @@ export function PositionCard({ filters }: { filters: AnalyticsFilters }) {
   const position = usePosition(filters.categoryId, filters.mode);
   const p = position.data;
 
+  // The house strip rule (see RetryNotice): a failure that still HOLDS the previous answer
+  // keeps it on screen and says so, instead of throwing it away. Every branch below therefore
+  // keys on `!p`, never on `isError` — TanStack keeps `data` through a same-key refetch
+  // failure, and this card refetches on every ক্যাটাগরি/মোড change the progress page makes.
+  const strip = position.isError && (
+    <RetryNotice
+      tone="strip"
+      busy={position.isFetching}
+      onRetry={() => void position.refetch()}
+    />
+  );
+
   return (
     <Card title="আপনার অবস্থান">
       {/* Three states, not two. The old head was `position.isLoading || !p`, so once the
@@ -22,20 +35,31 @@ export function PositionCard({ filters }: { filters: AnalyticsFilters }) {
           the real pending state (placeholderData now keeps the previous slice on screen), and
           failure gets its own branch — the empty-state text below is a claim about the cohort
           and must never stand in for a failed request.
-          `|| !p` rides WITH the failure branch, not with the skeleton, because "settled and
+          `!p` rides WITH the failure branch, not with the skeleton, because "settled and
           still dataless" IS the hang: a skeleton there promises an arrival that is not coming.
           Every no-data path therefore ends somewhere the student can read, whether or not the
-          query bothered to call itself an error. */}
+          query bothered to call itself an error — and now with a way out: the sentence used to
+          be dead text with no retry. `framed={false}` because this card already IS the frame;
+          a tone="panel" Card here would draw a second box inside the first. */}
       {position.isPending ? (
         <Skeleton active paragraph={{ rows: 2 }} />
-      ) : position.isError || !p ? (
-        <Typography.Text type="secondary">ডেটা আনা যায়নি — একটু পরে আবার চেষ্টা করুন।</Typography.Text>
+      ) : !p ? (
+        <RetryNotice
+          tone="panel"
+          framed={false}
+          busy={position.isFetching}
+          onRetry={() => void position.refetch()}
+        />
       ) : p.participants === 0 || p.yourAvgPercentile === null ? (
-        <Typography.Text type="secondary">
-          এখনো কোনো র‍্যাঙ্কড অ্যাটেম্পট নেই।
-        </Typography.Text>
+        <>
+          {strip}
+          <Typography.Text type="secondary">
+            এখনো কোনো র‍্যাঙ্কড অ্যাটেম্পট নেই।
+          </Typography.Text>
+        </>
       ) : (
         <>
+          {strip}
           <Typography.Title level={4} style={{ marginTop: 0 }}>
             {bnNum(p.participants)} জনের মধ্যে টপ {bnNum(100 - p.yourAvgPercentile)}%
           </Typography.Title>

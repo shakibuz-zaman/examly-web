@@ -9,16 +9,11 @@ import { useSubjects, useTopics } from "../api/taxonomy";
 import type { QuestionListFilters, QuestionSummary } from "../api/types";
 import { bnNum } from "../lib/bn";
 import { formatDhakaShortBn } from "../lib/format";
-import { bilingualLabel, CONTENT_STATUS, DIFFICULTY } from "../lib/labels";
+import { bilingualLabel, CONTENT_STATUS, DIFFICULTY, LANGUAGE } from "../lib/labels";
 import { FilterChips, type FilterChipItem } from "../ui/FilterChips";
 import { PageHeader } from "../ui/PageHeader";
 import { PillButton } from "../ui/PillButton";
 import { ContentStatusChip, DifficultyDot } from "../ui/StatusChip";
-
-// Local, not lib/labels: two keys used by this file's ভাষা column and its ভাষা select, and
-// language names conventionally render in their own language, so this is not the
-// half-translation D17 outlawed. A third consumer is the cue to promote it.
-const LANGUAGE: Record<string, string> = { bn: "বাংলা", en: "English" };
 
 const DIFFICULTIES = ["easy", "medium", "hard"] as const;
 // «সব» is not a status — it is the absence of the filter, so it carries no wire key.

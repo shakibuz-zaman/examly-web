@@ -13,11 +13,17 @@ import { PillButton } from "./PillButton";
 // Choosing between them is the caller's job and the rule is `!data`, never `isError`:
 // TanStack keeps `data` through a SAME-KEY refetch failure, so `isError || !data` would throw
 // away numbers we still hold. See the branch comment in OrgDashboard for the full derivation.
+//
+// `framed` applies to tone="panel" only and defaults on. A caller that is ITSELF a Card —
+// PositionCard, whose whole body is the panel — passes framed={false} so the notice does
+// not draw a second bordered box inside the first. The copy, the pill and the busy guard
+// are identical either way; only the outer Card is dropped.
 export function RetryNotice({
   tone,
   busy,
   onRetry,
-}: { tone: "panel" | "strip"; busy: boolean; onRetry: () => void }) {
+  framed = true,
+}: { tone: "panel" | "strip"; busy: boolean; onRetry: () => void; framed?: boolean }) {
   const body = (
     <>
       <Typography.Text type="secondary" style={{ fontSize: tone === "strip" ? 12.5 : undefined }}>
@@ -42,12 +48,13 @@ export function RetryNotice({
       </PillButton>
     </>
   );
+  const column = (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
+      {body}
+    </div>
+  );
   return tone === "panel" ? (
-    <Card>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
-        {body}
-      </div>
-    </Card>
+    framed ? <Card>{column}</Card> : column
   ) : (
     <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
       {body}

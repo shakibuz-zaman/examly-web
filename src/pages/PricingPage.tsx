@@ -2,9 +2,8 @@ import { Link } from "react-router-dom";
 import { Alert, Card, Spin, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { usePricing } from "../api/commerce";
+import { bnMoney } from "../lib/bn";
 import type { MatrixCell } from "../api/commerce";
-
-const taka = (n: number) => `৳${n.toLocaleString("en-US")}`;
 
 function uniqueSorted(values: number[]): number[] {
   return [...new Set(values)].sort((a, b) => a - b);
@@ -31,7 +30,7 @@ function MatrixTable({ cells }: { cells: MatrixCell[] }) {
       align: "right" as const,
       render: (_: unknown, row: Row) => {
         const p = priceOf(row.seat, exam);
-        return p == null ? "—" : taka(p);
+        return p == null ? "—" : bnMoney(p);
       },
     })),
   ];
@@ -62,7 +61,7 @@ function StandaloneTable({ cells }: { cells: MatrixCell[] }) {
           title: "মূল্য",
           dataIndex: "priceBdt",
           align: "right",
-          render: (v: number) => taka(v),
+          render: (v: number) => bnMoney(v),
         },
       ]}
     />

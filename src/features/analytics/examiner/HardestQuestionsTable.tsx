@@ -26,7 +26,10 @@ const columns: ColumnsType<HardQuestion> = [
       ),
   },
   {
-    title: "সঠিক",
+    // «সঠিকতা», not «সঠিক»: this column is a RATE, and «সঠিক» is already the results table's
+    // header for a COUNT of correct answers («সঠিক · ভুল · খালি»). Two different quantities
+    // under one word, two clicks apart, is the collision worth spending three characters on.
+    title: "সঠিকতা",
     dataIndex: "correctRate",
     width: 90,
     align: "right",
