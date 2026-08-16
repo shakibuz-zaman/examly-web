@@ -27,17 +27,52 @@ const MONTHS_BN = [
   "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর",
 ];
 
-// Dhaka-pinned (+06:00 fixed) short datetime in Bengali digits: «২৫ জুলাই, ৩:০৫ PM».
-// Prose datetimes are Bengali-first (spec §3.1); AM/PM stays Latin per common BD usage.
-export function formatDhakaShortBn(iso: string): string {
+// Shifting into a `Date` by +6h and then reading the UTC fields is how the whole file pins
+// Dhaka without a tz library: the offset is fixed (+06:00, no DST), so the UTC getters on the
+// shifted instant read out the Dhaka wall clock.
+function dhakaInstant(iso: string): Date | null {
   const t = Date.parse(iso);
-  if (Number.isNaN(t)) return "";
-  const d = new Date(t + 6 * 3_600_000);
+  return Number.isNaN(t) ? null : new Date(t + 6 * 3_600_000);
+}
+
+// «৩:০৫ PM» — the time half of the short form. Latin AM/PM is the ratified exception.
+function dhakaTimeBn(d: Date): string {
   let h = d.getUTCHours();
   const ampm = h < 12 ? "AM" : "PM";
   h = h % 12 || 12;
-  const mm = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${bnNum(d.getUTCDate())} ${MONTHS_BN[d.getUTCMonth()]}, ${bnNum(h)}:${bnNum(mm)} ${ampm}`;
+  return `${bnNum(h)}:${bnNum(String(d.getUTCMinutes()).padStart(2, "0"))} ${ampm}`;
+}
+
+// Dhaka-pinned (+06:00 fixed) short datetime in Bengali digits: «২৫ জুলাই, ৩:০৫ PM».
+// Prose datetimes are Bengali-first (spec §3.1); AM/PM stays Latin per common BD usage.
+export function formatDhakaShortBn(iso: string): string {
+  const d = dhakaInstant(iso);
+  if (!d) return "";
+  return `${bnNum(d.getUTCDate())} ${MONTHS_BN[d.getUTCMonth()]}, ${dhakaTimeBn(d)}`;
+}
+
+// Do two instants land on the same *Dhaka* day? Callers use this to decide whether a window
+// can print as one line — the answer differs from the browser's own day boundary, which is
+// exactly why it is computed here and not at the call site.
+export function isSameDhakaDay(aIso: string, bIso: string): boolean {
+  const a = dhakaInstant(aIso);
+  const b = dhakaInstant(bIso);
+  if (!a || !b) return false;
+  return (
+    a.getUTCFullYear() === b.getUTCFullYear() &&
+    a.getUTCMonth() === b.getUTCMonth() &&
+    a.getUTCDate() === b.getUTCDate()
+  );
+}
+
+// A scheduled window on one Dhaka day, collapsed to a single date: «২৫ জুলাই, ১০:০০ AM – ১২:০০ PM».
+// Callers that may straddle two days must gate on `isSameDhakaDay` first — this formatter
+// prints only the START date, so a cross-day range through it would silently lose the end date.
+export function formatDhakaWindowBn(startIso: string, endIso: string): string {
+  const end = dhakaInstant(endIso);
+  const start = formatDhakaShortBn(startIso);
+  if (!end || !start) return "";
+  return `${start} – ${dhakaTimeBn(end)}`;
 }
 
 // Dhaka-pinned (+06:00 fixed) date-only label in Bengali digits: «২৫ জুলাই».

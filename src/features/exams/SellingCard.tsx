@@ -11,9 +11,9 @@ function serverError(e: unknown, fallback: string): string {
 }
 
 const VISIBILITY_OPTIONS = [
-  { value: "public", label: "Public — listed in the storefront for anyone" },
-  { value: "private", label: "Private — reachable only by direct invite / seat code" },
-  { value: "both", label: "Both — in the storefront and shareable by invite" },
+  { value: "public", label: "পাবলিক — স্টোরফ্রন্টে সবার জন্য তালিকাভুক্ত" },
+  { value: "private", label: "প্রাইভেট — শুধু সরাসরি আমন্ত্রণ বা সিট কোডে" },
+  { value: "both", label: "দুটোই — স্টোরফ্রন্টে থাকবে, আমন্ত্রণেও শেয়ার করা যাবে" },
 ];
 
 const DEFAULT_FORM: SaveListingRequest = {
@@ -31,7 +31,10 @@ type Props = {
 };
 
 export function SellingCard({ productType, productId, hasWindowedContent }: Props) {
-  const { data: listing, isLoading, isError, error } = useListing(productType, productId);
+  // `isPending`, not `isLoading` (house rule). Safe here even though `useListing` carries an
+  // `enabled` guard — a disabled query stays pending forever, but both call sites (this exam
+  // builder and the model-test builder) render the card only once they hold a saved id.
+  const { data: listing, isPending, isError, error } = useListing(productType, productId);
   const save = useSaveListing();
 
   // 404 = no listing yet (draft never published / never configured) — start from defaults.
@@ -51,9 +54,9 @@ export function SellingCard({ productType, productId, hasWindowedContent }: Prop
     }
   }, [listing]);
 
-  if (isLoading) {
+  if (isPending) {
     return (
-      <Card title="Selling" style={{ marginTop: 16 }}>
+      <Card title="বিক্রয়" style={{ marginTop: 16 }}>
         <Spin />
       </Card>
     );
@@ -62,9 +65,9 @@ export function SellingCard({ productType, productId, hasWindowedContent }: Prop
   // A hard (non-404) error — surface it rather than silently show editable defaults.
   if (isError && !notFound) {
     return (
-      <Card title="Selling" style={{ marginTop: 16 }}>
+      <Card title="বিক্রয়" style={{ marginTop: 16 }}>
         <Typography.Text type="danger">
-          {serverError(error, "Could not load selling settings.")}
+          {serverError(error, "বিক্রয় সেটিংস লোড করা যায়নি।")}
         </Typography.Text>
       </Card>
     );
@@ -76,10 +79,10 @@ export function SellingCard({ productType, productId, hasWindowedContent }: Prop
   const canArchive = listing?.mode === "live";
 
   const modeOptions = [
-    { value: "open", label: "Open — take anytime, no window" },
-    { value: "live", label: "Live — scheduled run (needs a window)" },
+    { value: "open", label: "ওপেন — যেকোনো সময় দেওয়া যায়, উইন্ডো নেই" },
+    { value: "live", label: "লাইভ — নির্ধারিত সময়ে (উইন্ডো লাগবে)" },
     ...(form.mode === "archive"
-      ? [{ value: "archive", label: "Archive — practice replay" }]
+      ? [{ value: "archive", label: "আর্কাইভ — প্র্যাকটিস রিপ্লে" }]
       : []),
   ];
 
@@ -88,17 +91,17 @@ export function SellingCard({ productType, productId, hasWindowedContent }: Prop
     try {
       await save.mutateAsync({ productType, productId, body });
       setForm(body);
-      message.success("Selling settings saved");
+      message.success("বিক্রয় সেটিংস সংরক্ষিত হয়েছে");
     } catch (e) {
-      message.error(serverError(e, "Save failed"));
+      message.error(serverError(e, "সংরক্ষণ করা যায়নি"));
     }
   };
 
   return (
-    <Card title="Selling" style={{ marginTop: 16 }}>
+    <Card title="বিক্রয়" style={{ marginTop: 16 }}>
       <Space orientation="vertical" style={{ width: "100%" }} size="middle">
         <div>
-          <Typography.Text strong>Visibility</Typography.Text>
+          <Typography.Text strong>দৃশ্যমানতা</Typography.Text>
           <Select
             style={{ width: "100%" }}
             value={form.visibility}
@@ -108,7 +111,7 @@ export function SellingCard({ productType, productId, hasWindowedContent }: Prop
         </div>
 
         <div>
-          <Typography.Text strong>Price</Typography.Text>
+          <Typography.Text strong>মূল্য</Typography.Text>
           <InputNumber
             min={0}
             style={{ width: "100%" }}
@@ -117,12 +120,12 @@ export function SellingCard({ productType, productId, hasWindowedContent }: Prop
             onChange={(v) => setForm((f) => ({ ...f, priceBdt: v ?? 0 }))}
           />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            0 = free · paid minimum ৳20
+            ০ = ফ্রি · পেইড হলে সর্বনিম্ন ৳২০
           </Typography.Text>
         </div>
 
         <div>
-          <Typography.Text strong>Mode</Typography.Text>
+          <Typography.Text strong>মোড</Typography.Text>
           <Select
             style={{ width: "100%" }}
             value={form.mode}
@@ -131,7 +134,7 @@ export function SellingCard({ productType, productId, hasWindowedContent }: Prop
           />
           {form.mode === "live" && !windowed && (
             <Typography.Text type="warning" style={{ fontSize: 12, display: "block" }}>
-              Live mode needs a scheduled window on the content.
+              লাইভ মোডের জন্য কনটেন্টে নির্ধারিত সময়সীমা থাকতে হবে।
             </Typography.Text>
           )}
         </div>
@@ -141,11 +144,11 @@ export function SellingCard({ productType, productId, hasWindowedContent }: Prop
             checked={form.status === "listed"}
             onChange={(on) => setForm((f) => ({ ...f, status: on ? "listed" : "delisted" }))}
           />
-          <Typography.Text>Visible in the storefront</Typography.Text>
+          <Typography.Text>স্টোরফ্রন্টে দেখা যাবে</Typography.Text>
         </Space>
 
         <Button type="primary" loading={save.isPending} onClick={() => void onSave()}>
-          Save selling settings
+          বিক্রয় সেটিংস সংরক্ষণ
         </Button>
 
         {canArchive && (
@@ -153,13 +156,13 @@ export function SellingCard({ productType, productId, hasWindowedContent }: Prop
             <Divider style={{ margin: "4px 0" }} />
             <Space orientation="vertical" size={4} style={{ width: "100%" }}>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                The live run is over — reopen it for practice at a new price.
+                লাইভ রান শেষ — নতুন দামে প্র্যাকটিসের জন্য আবার খুলুন।
               </Typography.Text>
               <Button
                 loading={save.isPending}
                 onClick={() => void onSave({ mode: "archive" })}
               >
-                Move to Archive &amp; reprice
+                আর্কাইভে সরিয়ে নতুন দাম দিন
               </Button>
             </Space>
           </>
