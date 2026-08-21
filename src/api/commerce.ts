@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -387,6 +388,16 @@ export function useRotateCode(id: string) {
 export function useWallet(page = 1, pageSize = 20) {
   return useQuery<WalletResponse>({
     queryKey: ["commerce", "wallet", page, pageSize],
+    // `page` is IN the key, so a page step is a NEW query, not a refetch — without this the
+    // whole ওয়ালেট body (tiles, ledger and the pager the reader just clicked) unmounted behind
+    // a skeleton, and the balance the header prints fell back to ৳০ for the duration. The
+    // held slice keeps both honest: `balance` is page-independent on the wire, so a
+    // placeholder balance is the SAME number, not a stale claim about another cohort — the
+    // only thing that lags is the entry list, which the consumer marks with the house
+    // saturate(.35) cue (never opacity) plus aria-busy off `isPlaceholderData`.
+    // The key itself is untouched — ExaminerSidebar's badge prefix-matches ["commerce","wallet"]
+    // and reads cache entries, which placeholder substitution never writes to.
+    placeholderData: keepPreviousData,
     queryFn: async () =>
       (await apiClient.get<WalletResponse>(
         `/api/v1/wallet?page=${page}&pageSize=${pageSize}`)).data,

@@ -215,6 +215,32 @@
    `--draft` does not alias `--upcoming`: a chip class is a vocabulary entry, not a colour
    alias, and the two never co-occur (--live is a student catalog time state). */
 .ex-chipstat--danger { background: var(--ex-coral-tint); color: var(--ex-coral); }
+/* Money vocabulary (7g Task 2) — the wallet ledger's entry kind and the payout queue's
+   status, which used `<Tag color="green|blue|gold">`. Three entries because the wallet has
+   exactly three non-failing money states: it came in, it went out, it is still queued.
+   `--danger` above covers both failure states (a voided sale, a rejected payout), so the
+   whole surface reads on one hue rule: coral means something went wrong, never "this is a
+   debit" — a routine withdrawal is not an alarm. Named for the money fact rather than the
+   hue, so re-tinting a token cannot silently re-mean a chip; separate classes rather than
+   aliasing `--published`/`--active`/`--draft`, per the vocabulary rule recorded above.
+   Ink-on-tint is the same measured pair each of those records (green 4.53/4.97,
+   amber 4.51/5.38, stage+ink-soft 5.70/7.52 — light/dark), so all three are AA unchanged.
+   `--outflow` is the QUIET entry on purpose, not the teal one it was first drafted with:
+   --ex-teal-tint (#E4F1EE) and --ex-green-tint (#E4F1E8) differ by six units of blue and
+   nothing else, so an outflow chip beside an inflow chip was indistinguishable at 24px —
+   a colour that adds no information. Neutral separates cleanly from all three of the
+   coloured entries AND says the true thing about a routine withdrawal: completed, nothing
+   wrong. It takes `--price`'s hairline rather than `--ended`'s bare stage, because those
+   two live on the student catalog's page surface while these sit in a table ON a card:
+   measured live, dark stage (#1B1E1A) against the dark card (#20241F) is 1.08:1 and the
+   chip shape simply disappeared, leaving what read as a missing chip beside the coloured
+   ones. The 1px --ex-line-strong edge is the same fix --price already carries. */
+.ex-chipstat--inflow { background: var(--ex-green-tint); color: var(--ex-green); }
+.ex-chipstat--outflow {
+  background: var(--ex-stage); color: var(--ex-ink-soft);
+  border: 1px solid var(--ex-line-strong);
+}
+.ex-chipstat--queued { background: var(--ex-amber-tint); color: var(--ex-amber); }
 /* On the band the tint surfaces (purple/green) sit at 1.07–1.31:1 in dark — the chip shape
    vanishes while the text survives. The band-cta pair is the surface engineered for the
    band (see .ex-btn--band); one ink, because on the band legibility beats the card tints'

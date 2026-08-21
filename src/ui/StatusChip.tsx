@@ -57,6 +57,27 @@ export function ContentStatusChip({ status }: { status: ContentStatus }) {
   );
 }
 
+// §9 money vocabulary (7g). The wallet ledger's entry kind and the payout queue's status,
+// which were `<Tag color="green|blue|gold|red">` — antd presets that sit outside the token
+// module entirely. Four steps, four readings: green came in, neutral went out, amber is still
+// queued, coral went WRONG. Coral never means merely "this is a debit" — a routine withdrawal
+// is not an alarm — which is why `--outflow` is the quiet one (ui.css records why it also
+// carries `--price`'s hairline rather than a bare tint).
+//
+// It lives here beside ContentStatusChip rather than inside WalletPage because a money state
+// is not wallet-private: the same four readings answer a seat purchase and an order line, and
+// a second copy is how CONTENT_STATUS_COLORS drifted. Label is caller-supplied Bengali, as in
+// TimeStatusChip — these are two different wire enums with no shared key space, so a map on
+// the primitive would have to be keyed to `string` and would say nothing.
+//
+// Callers pass the NEUTRAL tone for a wire value they cannot read, never `queued`: the same
+// rule ContentStatusChip's archived fallback records — an unknown value must assert nothing.
+export type MoneyTone = "inflow" | "outflow" | "queued" | "danger";
+
+export function MoneyChip({ tone, label }: { tone: MoneyTone; label: string }) {
+  return <span className={`ex-chipstat ex-chipstat--${tone}`}>{label}</span>;
+}
+
 export type Difficulty = "easy" | "medium" | "hard";
 
 // §9 difficulty cell: colour dot + the Bengali word. The dot is aria-hidden — it restates
