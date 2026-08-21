@@ -14,17 +14,51 @@ function mix(a: string, b: string, t: number): string {
   return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
-// Text that stays legible on the interpolated cell fill — picked from the FILL's luminance,
-// not from the theme. A heat cell paints its own background in both modes, so `paletteFor(mode)`
-// would be the wrong source here: dark's ink is near-white and would vanish on the pale end of
-// the ramp. The two ends still come from the token module rather than a local hex — `onSolid`
-// is mode-independent by definition, and the light palette's `ink` IS the dark-ink constant
-// (paletteDark re-tints ink for a dark surface, which is not what a light cell fill is). A
-// palette re-tune therefore reaches these cells too.
+// WCAG relative luminance (2.x): sRGB channels linearised before weighting. The previous
+// readableText weighted the *gamma-encoded* channels and compared the result to a 0.55
+// constant, which is not a contrast test at all — it only correlates with one, and it
+// correlated badly exactly where the ramp is darkest.
+function relativeLuminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5]
+    .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+const contrast = (a: number, b: number) =>
+  (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+
+// Both constants are mode-independent (identical in `paletteDark`), so hoisting is safe.
+const LUM_ON_SOLID = relativeLuminance(palette.onSolid);
+const LUM_ON_SOLID_INK = relativeLuminance(palette.onSolidInk);
+
+// Text that stays legible on the interpolated cell fill — picked from the FILL, not from the
+// theme. A heat cell paints its own background in both modes, so `paletteFor(mode)` would be
+// the wrong source here: dark's ink is near-white and would vanish on the pale end of the ramp.
+// Both ends still come from the token module rather than local hexes, so a palette re-tune
+// reaches these cells.
+//
+// The pick is the higher of the two real contrast ratios, not a luminance threshold. There is
+// no threshold that works: `palette.ink` (#1C201D) and white cross at 4.06:1 on this ramp, so
+// with those two constants a band of mid-teal fills fails AA whichever one you hand it —
+// which is why the old 0.55 cut produced white-on-#2AA894 at 2.95:1 and had no better option
+// available. `onSolidInk` (black) moves the crossover to 4.60:1; see the tokens.ts note.
+//
+// Measured, this file's ramps (chartTheme heatLow→heatHigh), before → after, at the four
+// sampled error rates. "before" = 0.55 threshold with ink #1C201D; "after" = this function.
+//   light #E4F1EE→#0E7A6B   55: ink 6.61 → black 8.42 | 70: white 3.17 ✗ → black 6.63
+//                           90: white 4.42 ✗ → black 4.75 | 100: white 5.23 → white 5.23
+//   dark  #12332E→#2AA894   55: white 5.67 → white 5.67 | 70: white 4.48 ✗ → black 4.68
+//                           90: white 3.38 ✗ → black 6.21 | 100: white 2.95 ✗ → black 7.13
+// Worst case across the whole 0–100 sweep: 3.17 (light) / 2.95 (dark) before, 4.60 for both
+// after. 11px digits are not large text, so 4.5:1 (1.4.3) is the floor that applies.
 function readableText(bg: string): string {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(bg.slice(i, i + 2), 16) / 255);
-  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.55 ? palette.ink : palette.onSolid;
+  const lum = relativeLuminance(bg);
+  // Compared through the real ratios rather than a hard-coded crossover, so re-tuning either
+  // token moves the switch point instead of silently invalidating it.
+  return contrast(lum, LUM_ON_SOLID) >= contrast(lum, LUM_ON_SOLID_INK)
+    ? palette.onSolid
+    : palette.onSolidInk;
 }
 
 // heatColor is a pure exported helper (Task 8 contract); it interpolates the

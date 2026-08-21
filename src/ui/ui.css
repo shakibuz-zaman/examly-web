@@ -207,6 +207,14 @@
 .ex-chipstat--published { background: var(--ex-green-tint); color: var(--ex-green); }
 /* ink-soft, not ink-faint — same AA floor the ended chip records above. */
 .ex-chipstat--archived { background: var(--ex-stage); color: var(--ex-ink-soft); }
+/* Blocking-problem vocabulary (7g): the examiner-side replacement for `<Tag color="red">`,
+   whose antd red sits outside the token module entirely. Coral is this palette's alarm
+   hue and `--ex-coral` is already engineered as the ink for `--ex-coral-tint` (tokens.ts) —
+   there is no `--ex-coral-ink`, and none is needed: measured ink-on-tint 4.52:1 light /
+   4.91:1 dark, both AA. Same two tokens as `--live`, a separate class for the same reason
+   `--draft` does not alias `--upcoming`: a chip class is a vocabulary entry, not a colour
+   alias, and the two never co-occur (--live is a student catalog time state). */
+.ex-chipstat--danger { background: var(--ex-coral-tint); color: var(--ex-coral); }
 /* On the band the tint surfaces (purple/green) sit at 1.07–1.31:1 in dark — the chip shape
    vanishes while the text survives. The band-cta pair is the surface engineered for the
    band (see .ex-btn--band); one ink, because on the band legibility beats the card tints'
@@ -244,7 +252,8 @@
   height: 36px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer;
   font-family: var(--ex-font); font-size: 14px; font-weight: 600; white-space: nowrap;
   text-decoration: none;
-  transition: background .15s ease-out, box-shadow .15s ease-out, transform .1s ease-out;
+  transition: background .15s ease-out, color .15s ease-out,
+    box-shadow .15s ease-out, transform .1s ease-out;
 }
 .ex-btn:active { transform: scale(.97); }
 .ex-btn:disabled { opacity: .55; cursor: default; }
@@ -269,7 +278,28 @@
 .ex-btn--band:focus-visible { outline-color: var(--ex-band-ink); }
 .ex-btn--outline { background: transparent; border: 1.5px solid var(--ex-line-strong); color: var(--ex-ink); }
 .ex-btn--outline:not(:disabled):hover { border-color: var(--ex-teal); color: var(--ex-teal-ink); }
-.ex-btn--ghost { background: transparent; color: var(--ex-coral); }
+/* Neutral ink, not coral (7g D5). Coral is this palette's *destructive/live* signal, but
+   every ghost consumer is benign, and plan decision P1 checked all five: three «ফিরে যান»
+   back-buttons (ExamBuilder, ModelTestBuilder, ExamResults), QuestionEditor's «বাতিল», and
+   StudentCatalog's «লুকান / Nটি দেখুন» filter toggle. «বাতিল» is a cancel, but a
+   *navigational* one — it only `navigate("/questions")`s away from the editor, destroying
+   nothing that was ever persisted (that page's genuinely destructive control, the per-option
+   delete, is a separate antd `danger` button and keeps its red). No destructive modifier needed.
+   A red-tinted "go back" reads as "discard", which is exactly the wrong promise.
+   ink-soft measured on the surfaces these actually rest on (all five sit on a page surface,
+   never on a card): 5.70:1 light / 7.52:1 dark on --ex-stage (the four examiner ones),
+   6.13 / 8.05 on --ex-bg (the student toggle). Coral was 4.81 / 6.11 on --ex-bg, so the swap
+   raises contrast as well as fixing the semantics.
+   Hover (7g minor): ghost was the only variant with no hover rule — coral-vs-ink was doing
+   that job implicitly, so removing the colour removed the affordance. Fill and ink follow
+   `.ex-exhead-search:hover` (minus its border), the house rule for a control that RESTS ON
+   --ex-stage; the --ex-stage hover used by .ex-sidenav-item / .ex-exhead-iconbtn is for
+   controls resting on --ex-card and would be a literal no-op here (measured step 1.000 —
+   the same colour — on all four examiner ghosts). --ex-card lifts by 1.203 light / 1.069 dark
+   on --ex-stage and 1.119 / 1.145 on --ex-bg, and the ink step carries the rest of the cue:
+   5.70 → 16.49 light and 7.52 → 12.72 dark. */
+.ex-btn--ghost { background: transparent; color: var(--ex-ink-soft); }
+.ex-btn--ghost:not(:disabled):hover { background: var(--ex-card); color: var(--ex-ink); }
 .ex-btn--sm { height: 30px; padding: 0 14px; font-size: 13px; }
 
 /* Results container: washes out while showing the previous query's rows
@@ -751,7 +781,24 @@
    inside the page body. The document stays the vertical scroller: `overflow-y` computes to
    auto alongside it, but this box has no height constraint, so it grows instead of
    scrolling — and nothing sticky lives inside it (rail and header are both outside). */
-.ex-exshell-content { padding: 20px 24px; max-width: 1400px; min-width: 0; overflow-x: auto; }
+/* margin-inline:auto is the ultrawide decision (7g D4): the 1400px cap already existed, but
+   without a centring margin the whole examiner page hugged the rail on a 1920px+ monitor and
+   dumped the whole remainder of the 1fr track as dead --ex-stage down the right edge (300px
+   at 1920 behind the 220px rail), so every page read as if it had slid sideways.
+   width:100% is NOT redundant with it. This box is a flex item of .ex-exshell-main (a column
+   flex container), so its width came from cross-axis *stretch* — and an auto inline margin
+   switches stretch off (CSS Flexbox §9.6 step 11), leaving `width:auto` to shrink-wrap to
+   fit-content. Measured with margin alone: /model-tests collapsed to 827px at BOTH 1920 and
+   1200 (so the sub-cap case was not a no-op either — 77px margins at 1200), /dashboard to
+   1160px at 1920. width:100% restores the stretch width explicitly, and max-width still caps
+   it; box-sizing is border-box, so the 24px padding stays inside the 1400.
+   Measured after: at 1920 every examiner page is left=370 width=1400 gap=150/150; at 1200 it
+   is left=220 width=980 gap=0/0 — i.e. below the cap the margins resolve to 0 and the layout
+   is identical to before this rule. No document-level horizontal scroll at either width. */
+.ex-exshell-content {
+  padding: 20px 24px; width: 100%; max-width: 1400px; min-width: 0; overflow-x: auto;
+  margin-inline: auto;
+}
 
 /* ---- examiner sidebar (7f: the token-built replacement for the antd Menu rail) ----
    One markup path for both widths: collapsed is the same tree with labels, group

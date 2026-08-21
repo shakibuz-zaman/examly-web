@@ -32,6 +32,15 @@ export const palette = {
   bandCta: "#FFFFFF", bandCtaInk: "#0A5C50", bandCtaHover: "#E4F1EE",
   shadow1: "0 2px 10px rgba(28,32,29,.07)", shadow2: "0 4px 18px rgba(28,32,29,.12)",
   onSolid: "#FFFFFF", // text/glyphs sitting on saturated solid fills (same both modes)
+  // The dark half of the onSolid pair, for glyphs on a fill the THEME does not choose — a
+  // heat cell interpolates its own background, so the ink is picked per cell by contrast
+  // (WeaknessHeatmap.readableText). Pure black rather than `ink` (#1C201D) because the teal
+  // ramp has a mid band where neither white nor #1C201D reaches AA: the best achievable is
+  // 4.06:1 at errorRate ≈ 85 (light) / 76 (dark), and #060606 is the lightest neutral that
+  // still clears 4.5:1 across both ramps. So this is "black" by arithmetic, not by taste;
+  // its worst case anywhere on either ramp is 4.60:1. Same value in both modes — the cell
+  // fill, not the surface, decides. NOT for chrome: `ink`/`ink-soft` own the theme's text.
+  onSolidInk: "#000000",
 } as const;
 
 export type Palette = Record<keyof typeof palette, string>;
@@ -54,6 +63,7 @@ export const paletteDark: Palette = {
   bandCta: "#E9E7DF", bandCtaInk: "#12332E", bandCtaHover: "#FFFFFF",
   shadow1: "0 0 0 1px #33372F", shadow2: "0 8px 24px rgba(0,0,0,.45)",
   onSolid: "#FFFFFF",
+  onSolidInk: "#000000",
 };
 
 export const FONT_STACK =

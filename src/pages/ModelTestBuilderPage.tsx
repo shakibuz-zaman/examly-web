@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Alert, Button, Card, Input, Popconfirm, Select, Space, Spin, Tag, Typography, message,
+  Alert, Button, Card, Input, Popconfirm, Select, Space, Spin, Typography, message,
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import type { AxiosError } from "axios";
@@ -294,7 +294,11 @@ export function ModelTestBuilderPage() {
                     {e.title}
                   </Typography.Link>
                   <ContentStatusChip status={e.status} />
-                  {e.isArchived && <Tag color="red">আর্কাইভড — শিক্ষার্থীরা দেখবে না</Tag>}
+                  {e.isArchived && (
+                    <span className="ex-chipstat ex-chipstat--danger">
+                      আর্কাইভড — শিক্ষার্থীরা দেখবে না
+                    </span>
+                  )}
                   <Typography.Text type="secondary">
                     {bnNum(e.questionCount)}টি প্রশ্ন · {bnNum(e.totalMarks)} মার্ক ·{" "}
                     {bnNum(e.durationMinutes)} মিনিট
