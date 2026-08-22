@@ -64,29 +64,37 @@ function FilterBar({ filters, onChange }: FilterBarProps) {
         style={{ width: 200 }}
         onSearch={(v) => onChange({ search: v || undefined })}
       />
+      {/* Same rule the InputNumber below already records and the 7f OrgDashboard pass
+          settled: a `placeholder` is not an accessible name, so these five combo boxes
+          announced as unlabelled — five of them, side by side, in a drawer. antd v6 forwards
+          aria-* to the inner role="combobox" input, so the attribute is the whole fix. */}
       <Select
+        aria-label="বিষয় ফিল্টার"
         placeholder="বিষয়" allowClear style={{ width: 180 }} value={filters.subjectId}
         onChange={(v) => onChange({ subjectId: v ?? undefined, topicId: undefined })}
         options={subjects?.map((s) => ({ value: s.id, label: taxonomyLabel(s) }))}
       />
       <Select
+        aria-label="টপিক ফিল্টার"
         placeholder="টপিক" allowClear style={{ width: 180 }} value={filters.topicId}
         disabled={!filters.subjectId}
         onChange={(v) => onChange({ topicId: v ?? undefined })}
         options={topics?.map((t) => ({ value: t.id, label: taxonomyLabel(t) }))}
       />
       <Select
+        aria-label="কঠিনতা ফিল্টার"
         placeholder="কঠিনতা" allowClear style={{ width: 130 }} value={filters.difficulty}
         onChange={(v) => onChange({ difficulty: v ?? undefined })}
         options={DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY[d] }))}
       />
       <Select
+        aria-label="ভাষা ফিল্টার"
         placeholder="ভাষা" allowClear style={{ width: 130 }} value={filters.language}
         onChange={(v) => onChange({ language: v ?? undefined })}
         options={Object.entries(LANGUAGE).map(([value, label]) => ({ value, label }))}
       />
       <Select
-        mode="multiple" placeholder="ট্যাগ" allowClear style={{ minWidth: 160 }}
+        mode="multiple" aria-label="ট্যাগ ফিল্টার" placeholder="ট্যাগ" allowClear style={{ minWidth: 160 }}
         value={filters.tags}
         onChange={(v) => onChange({ tags: v.length ? v : undefined })}
         options={tags?.map((t) => ({ value: t, label: t }))}

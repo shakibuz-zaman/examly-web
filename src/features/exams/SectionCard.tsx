@@ -124,9 +124,9 @@ export function SectionCard({
                   )}
                   {q.multipleCorrect && <Tag>একাধিক সঠিক</Tag>}
                   {q.bankStatus !== "active" && (
-                    <Tag color="red">
+                    <span className="ex-chipstat ex-chipstat--danger">
                       ব্যাংকে {BANK_STATUS[q.bankStatus] ?? q.bankStatus} — প্রকাশের আগে ঠিক করুন
-                    </Tag>
+                    </span>
                   )}
                 </Space>
               </div>

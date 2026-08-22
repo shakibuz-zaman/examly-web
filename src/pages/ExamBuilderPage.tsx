@@ -293,6 +293,12 @@ export function ExamBuilderPage() {
               showTime
               style={{ width: "100%" }}
               disabled={readOnly}
+              // A published exam with no window is `disabled` AND `value={null}`, which antd
+              // reads as "disabled input with no value and no allowEmpty" and warns about on
+              // every render. The window genuinely IS empty here and stays that way (read-only),
+              // so saying so silences it; the editable case keeps antd's default, which requires
+              // both ends of a range the examiner is actually setting.
+              allowEmpty={readOnly ? [true, true] : undefined}
               value={
                 draft.windowStartUtc && draft.windowEndUtc
                   ? [dayjs(draft.windowStartUtc), dayjs(draft.windowEndUtc)]

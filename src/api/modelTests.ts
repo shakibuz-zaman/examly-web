@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { apiClient } from "./client";
 import type {
   ModelTestListFilters,
@@ -28,6 +29,17 @@ export function useModelTest(id: string | undefined) {
   return useQuery<ModelTestResponse>({
     queryKey: ["model-tests", "detail", id],
     enabled: !!id,
+    // A 404 is a FINAL answer — the id is wrong or the record is gone — and the builder acts
+    // on it by leaving the route (ModelTestBuilderPage's `isError` effect toasts and replaces
+    // the route with /model-tests). Under the default policy that bounce waited out three
+    // retries with exponential backoff first, so a mistyped id sat on a skeleton for seconds
+    // before the toast. Same predicate `useMyOrg` (api/me.ts) uses, with the fall-through kept
+    // at TanStack's OWN default of three attempts rather than me.ts's two: only the 404 path
+    // changes.
+    retry: (failureCount, error) => {
+      if (error instanceof AxiosError && error.response?.status === 404) return false;
+      return failureCount < 3;
+    },
     queryFn: async () =>
       (await apiClient.get<ModelTestResponse>(`/api/v1/model-tests/${id}`)).data,
   });

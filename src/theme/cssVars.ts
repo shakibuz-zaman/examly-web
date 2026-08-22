@@ -21,7 +21,7 @@ export function applyCssVars(mode: ThemeMode): void {
     "--ex-amber": p.amber, "--ex-amber-tint": p.amberTint,
     "--ex-green": p.green, "--ex-green-tint": p.greenTint,
     "--ex-red": p.red, "--ex-red-tint": p.redTint,
-    "--ex-on-solid": p.onSolid,
+    "--ex-on-solid": p.onSolid, "--ex-on-solid-ink": p.onSolidInk,
     "--ex-band-from": p.bandFrom, "--ex-band-to": p.bandTo,
     "--ex-band-ink": p.bandInk, "--ex-band-ink-soft": p.bandInkSoft,
     "--ex-band-pill": p.bandPill, "--ex-band-pill-hover": p.bandPillHover,

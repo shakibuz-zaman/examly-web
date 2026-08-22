@@ -118,11 +118,18 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
 
   return (
     <div style={{ border: "1px solid var(--ex-line-strong)", borderRadius: 6 }}>
+      {/* Every button here is icon-only or a two-glyph label («x₂»), and an antd Tooltip is
+          NOT an accessible name — it renders into a portal and only attaches `aria-describedby`
+          while it is open, so a screen reader met ten unnamed buttons. `aria-label` carries
+          the same Bengali word the tooltip shows; on the two script buttons it also replaces
+          «x₂»/«x²», which announce as bare characters. Attributes only — the TipTap chains,
+          the active-state `type` and the upload wiring below are untouched. */}
       <Space wrap size={4} style={{ padding: 4, borderBottom: "1px solid var(--ex-line)", width: "100%" }}>
         <Tooltip title="বোল্ড">
           <Button
             size="small"
             type={editor.isActive("bold") ? "primary" : "text"}
+            aria-label="বোল্ড"
             icon={<BoldOutlined />}
             onClick={() => editor.chain().focus().toggleBold().run()}
           />
@@ -131,6 +138,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
           <Button
             size="small"
             type={editor.isActive("italic") ? "primary" : "text"}
+            aria-label="ইটালিক"
             icon={<ItalicOutlined />}
             onClick={() => editor.chain().focus().toggleItalic().run()}
           />
@@ -139,6 +147,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
           <Button
             size="small"
             type={editor.isActive("underline") ? "primary" : "text"}
+            aria-label="আন্ডারলাইন"
             icon={<UnderlineOutlined />}
             onClick={() => editor.chain().focus().toggleUnderline().run()}
           />
@@ -147,6 +156,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
           <Button
             size="small"
             type={editor.isActive("strike") ? "primary" : "text"}
+            aria-label="কাটা দাগ"
             icon={<StrikethroughOutlined />}
             onClick={() => editor.chain().focus().toggleStrike().run()}
           />
@@ -155,6 +165,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
           <Button
             size="small"
             type={editor.isActive("subscript") ? "primary" : "text"}
+            aria-label="সাবস্ক্রিপ্ট"
             onClick={() => editor.chain().focus().toggleSubscript().run()}
           >
             x₂
@@ -164,6 +175,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
           <Button
             size="small"
             type={editor.isActive("superscript") ? "primary" : "text"}
+            aria-label="সুপারস্ক্রিপ্ট"
             onClick={() => editor.chain().focus().toggleSuperscript().run()}
           >
             x²
@@ -173,6 +185,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
           <Button
             size="small"
             type={editor.isActive("bulletList") ? "primary" : "text"}
+            aria-label="বুলেট তালিকা"
             icon={<UnorderedListOutlined />}
             onClick={() => editor.chain().focus().toggleBulletList().run()}
           />
@@ -181,6 +194,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
           <Button
             size="small"
             type={editor.isActive("orderedList") ? "primary" : "text"}
+            aria-label="সংখ্যাযুক্ত তালিকা"
             icon={<OrderedListOutlined />}
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
           />
@@ -189,6 +203,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
           <Button
             size="small"
             type="text"
+            aria-label="ছবি যোগ করুন"
             icon={<PictureOutlined />}
             onClick={() => fileInputRef.current?.click()}
           />
@@ -197,6 +212,7 @@ export function RichTextEditor({ value, onChange, minHeight = 80 }: RichTextEdit
           <Button
             size="small"
             type="text"
+            aria-label="গণিত যোগ করুন (LaTeX)"
             icon={<FunctionOutlined />}
             onClick={() => {
               setLatex("");

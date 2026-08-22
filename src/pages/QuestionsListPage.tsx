@@ -1,5 +1,6 @@
-import { Button, Card, Input, Popconfirm, Select, Space, Table, Tag, Typography, message } from "antd";
+import { App, Button, Card, Input, Popconfirm, Select, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import type { AxiosError } from "axios";
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -15,11 +16,18 @@ import { PageHeader } from "../ui/PageHeader";
 import { PillButton } from "../ui/PillButton";
 import { ContentStatusChip, DifficultyDot } from "../ui/StatusChip";
 
+function serverError(e: unknown, fallback: string): string {
+  return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
+}
+
 const DIFFICULTIES = ["easy", "medium", "hard"] as const;
 // «সব» is not a status — it is the absence of the filter, so it carries no wire key.
 const STATUSES = ["draft", "active", "archived"] as const;
 
 export function QuestionsListPage() {
+  // The themed instance, not the `message` module static: AppShell mounts antd's `App` inside
+  // the examiner ConfigProvider, and the plan's statics rule puts every page it touches on it.
+  const { message } = App.useApp();
   const [searchParams] = useSearchParams();
   // Seeded once from the URL (6b's weakest-topics links land here with subjectId/topicId).
   // Deliberately NOT synced back to the URL afterwards — that behaviour predates 7f.
@@ -145,6 +153,11 @@ export function QuestionsListPage() {
             onClick={() =>
               restore.mutate(row.id, {
                 onSuccess: () => message.success("প্রশ্ন ফিরিয়ে আনা হয়েছে"),
+                // Every one of these three mutations used to fail SILENTLY: the row simply
+                // did not change and nothing said why. The server's own sentence leads
+                // (Bengali since T7 for the examiner-reachable gates); the fallback is the
+                // only half this page owns, and it names the action that failed.
+                onError: (e) => message.error(serverError(e, "প্রশ্ন ফিরিয়ে আনা যায়নি")),
               })
             }
           >
@@ -164,6 +177,7 @@ export function QuestionsListPage() {
                     message.success("খসড়া হিসেবে কপি হয়েছে");
                     navigate(`/questions/${q.id}`);
                   },
+                  onError: (e) => message.error(serverError(e, "প্রশ্ন কপি করা যায়নি")),
                 })
               }
             >
@@ -176,6 +190,7 @@ export function QuestionsListPage() {
               onConfirm={() =>
                 archive.mutate(row.id, {
                   onSuccess: () => message.success("প্রশ্ন আর্কাইভ হয়েছে"),
+                  onError: (e) => message.error(serverError(e, "আর্কাইভ করা যায়নি")),
                 })
               }
             >
@@ -212,7 +227,12 @@ export function QuestionsListPage() {
             style={{ width: 220 }}
             onSearch={(v) => set({ search: v || undefined })}
           />
+          {/* A `placeholder` is not an accessible name — cleared, these five combo boxes
+              announce as unlabelled and are indistinguishable from one another. `aria-label`
+              is the lever the 7f OrgDashboard pass settled on: antd v6 forwards aria-* to the
+              inner role="combobox" input rather than the wrapper div. */}
           <Select
+            aria-label="বিষয় ফিল্টার"
             placeholder="বিষয়"
             allowClear
             style={{ width: 200 }}
@@ -227,6 +247,7 @@ export function QuestionsListPage() {
             onChange={(v) => set({ subjectId: v ?? undefined, topicId: undefined })}
           />
           <Select
+            aria-label="টপিক ফিল্টার"
             placeholder="টপিক"
             allowClear
             disabled={!filters.subjectId}
@@ -237,6 +258,7 @@ export function QuestionsListPage() {
             onChange={(v) => set({ topicId: v ?? undefined })}
           />
           <Select
+            aria-label="কঠিনতা ফিল্টার"
             placeholder="কঠিনতা"
             allowClear
             style={{ width: 130 }}
@@ -245,6 +267,7 @@ export function QuestionsListPage() {
             onChange={(v) => set({ difficulty: v ?? undefined })}
           />
           <Select
+            aria-label="ভাষা ফিল্টার"
             placeholder="ভাষা"
             allowClear
             style={{ width: 120 }}
@@ -254,6 +277,7 @@ export function QuestionsListPage() {
           />
           <Select
             mode="multiple"
+            aria-label="ট্যাগ ফিল্টার"
             placeholder="ট্যাগ"
             allowClear
             style={{ minWidth: 160 }}

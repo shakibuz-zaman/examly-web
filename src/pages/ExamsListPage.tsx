@@ -358,7 +358,10 @@ export function ExamsListPage() {
             style={{ width: 240 }}
             onSearch={(v) => set({ search: v || undefined })}
           />
+          {/* The page's one combo box, and a `placeholder` is not an accessible name —
+              same OrgDashboard lever the questions list and the picker drawer now carry. */}
           <Select
+            aria-label="ধরন ফিল্টার"
             placeholder="ধরন"
             allowClear
             style={{ width: 180 }}

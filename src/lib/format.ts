@@ -1,7 +1,14 @@
 import { bnNum } from "./bn";
 
-export function formatDateTime(iso: string | null | undefined): string {
-  return iso ? new Date(iso).toLocaleString() : "—";
+// "1 price" vs "12 prices". English has a singular, so a count line built as `${n} prices`
+// prints "1 prices" the moment the smallest real case shows up — a payout queue holding one
+// request, a standalone order for one exam. Both halves are passed in because the plural is not
+// always the noun plus "s" (and the phrase, not the noun, is what the caller is composing).
+// Digits stay Western: D8 keeps tallies and identifiers on Latin numerals, and every caller so
+// far is an English admin surface anyway. A Bengali caller must NOT use this — Bengali has no
+// plural agreement here and the digits would be wrong; it composes with bnNum instead.
+export function count(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
 }
 
 export function formatDuration(minutes: number): string {
@@ -84,6 +91,40 @@ export function formatDhakaDayMonthBn(iso: string): string {
   if (Number.isNaN(t)) return "";
   const d = new Date(t + 6 * 3_600_000);
   return `${bnNum(d.getUTCDate())} ${MONTHS_BN[d.getUTCMonth()]}`;
+}
+
+// Dhaka-pinned (+06:00 fixed) date WITH the year, in Bengali digits: «২৫ জুলাই ২০২৬».
+// The two formatters above deliberately drop the year — a scheduled window and a chart tick
+// are both read in the present — but a record's birth date is not: an org created in ২০২৫
+// printed through formatDhakaShortBn reads as a date this year, and it carries a clock nobody
+// asked for. Returns "" on an unparseable instant, like every formatter here; the caller
+// decides what to print instead.
+export function formatDhakaFullDateBn(iso: string): string {
+  const d = dhakaInstant(iso);
+  if (!d) return "";
+  return `${bnNum(d.getUTCDate())} ${MONTHS_BN[d.getUTCMonth()]} ${bnNum(d.getUTCFullYear())}`;
+}
+
+const MONTHS_EN = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+// Dhaka-pinned (+06:00 fixed) datetime in ENGLISH: "25 Jul 2026, 3:05 PM".
+// The Bengali formatters above are the same instant in the same timezone; this is the D1
+// half for the platform_admin pages, whose bodies stay English. It exists rather than
+// `new Date(iso).toLocaleString()` for the reason WalletPage's ledger column records: that
+// prints in the READER's locale and timezone, so an admin abroad reads a payout queue and an
+// order trail at different wall-clock times than the rows were written in — and on a money
+// surface the two must agree. The year is kept (unlike formatDhakaShortBn) because these are
+// historical records, not something happening today.
+export function formatDhakaDateTimeEn(iso: string): string {
+  const d = dhakaInstant(iso);
+  if (!d) return "";
+  let h = d.getUTCHours();
+  const ampm = h < 12 ? "AM" : "PM";
+  h = h % 12 || 12;
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${d.getUTCDate()} ${MONTHS_EN[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${h}:${mm} ${ampm}`;
 }
 
 // Bengali-numeral duration for card meta (§3.1 — prose counts use bnNum).

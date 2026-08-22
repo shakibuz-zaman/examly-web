@@ -129,9 +129,10 @@ export function ExamResultsPage() {
       title: "জমা",
       dataIndex: "submittedAt",
       width: 150,
-      // Was `formatDateTime` — the browser's own locale AND timezone, so an examiner abroad
-      // read a different submission time than the student who sat the exam. Dhaka-pinned
-      // Bengali now, the same formatter every other examiner table uses (T7 precedent).
+      // Was `new Date(iso).toLocaleString()` (via the old `formatDateTime` helper, deleted
+      // in 7g Task 8 once this page took its last call site) — the browser's own locale AND
+      // timezone, so an examiner abroad read a different submission time than the student who
+      // sat the exam. Dhaka-pinned Bengali now, the same formatter every examiner table uses.
       render: (d: string | null) => (
         <span style={{ whiteSpace: "nowrap" }}>{d ? formatDhakaShortBn(d) : "—"}</span>
       ),
