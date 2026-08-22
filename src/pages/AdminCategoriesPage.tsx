@@ -1,4 +1,4 @@
-import { Button, Card, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography, message } from "antd";
+import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Skeleton, Space, Table, Tag } from "antd";
 import { useMemo, useState, type Key } from "react";
 import {
   buildCategoryTree, categoryLabel,
@@ -8,6 +8,11 @@ import {
 } from "../api/categories";
 import type { BilingualText } from "../api/types";
 import { CategoryTreeSelect } from "../features/categories/CategoryTreeSelect";
+import { count } from "../lib/format";
+import { lookup } from "../lib/lookup";
+import { PageHeader } from "../ui/PageHeader";
+import { PillButton } from "../ui/PillButton";
+import { RetryNotice } from "../ui/RetryNotice";
 
 type CategoryRow = ExamCategoryResponse & { children?: CategoryRow[] };
 
@@ -21,10 +26,27 @@ type CategoryFormValues = {
   parentCategoryId?: string | null;
 };
 
-const kindColor: Record<CategoryKind, string> = {
+// Both maps are typed to `string` keys, not to `CategoryKind`/a status union: the wire is
+// untyped JSON, and `lookup` (lib/lookup) is the prototype-key guard every string-keyed map on
+// these admin surfaces now goes through. A kind we cannot read falls back to the raw wire word
+// with no tint, which asserts nothing — the same rule the chip vocabulary records.
+const KIND_COLOR: Record<string, string> = {
   section: "purple",
   track: "green",
   collection: "default",
+};
+
+const KIND_LABEL: Record<string, string> = {
+  section: "Section",
+  track: "Track",
+  collection: "Collection",
+};
+
+// D1: these platform_admin bodies stay English, so the raw wire word is title-cased rather
+// than printed as the lowercase enum key an API reader would recognise.
+const STATUS_LABEL: Record<string, string> = {
+  active: "Active",
+  archived: "Archived",
 };
 
 function toBilingual(v: { nameEn?: string; nameBn?: string }): BilingualText {
@@ -46,6 +68,9 @@ function collectParentIds(rows: CategoryRow[]): Key[] {
 }
 
 export function AdminCategoriesPage() {
+  // AppShell mounts antd's `App` inside the admin ConfigProvider; the imported statics render
+  // into their own detached root and cannot see this theme (7g constraint).
+  const { message } = App.useApp();
   const categoriesQ = useAdminExamCategories();
   const createCat = useCreateExamCategory();
   const updateCat = useUpdateExamCategory();
@@ -119,49 +144,108 @@ export function AdminCategoriesPage() {
     }
   }
 
+  // The count is of the FLAT list, not of `rows`: `rows` holds roots only, and "3 categories"
+  // for a tree of thirty is worse than no summary at all. Singular guarded (`count`) — a fresh
+  // environment really does hold one category.
+  const summary =
+    categoriesQ.data == null
+      ? undefined
+      : count(categoriesQ.data.length, "category", "categories");
+
   return (
-    <Card
-      title={<Typography.Title level={4} style={{ margin: 0 }}>Categories</Typography.Title>}
-      extra={<Button type="primary" onClick={openCreate}>Add category</Button>}
-    >
-      <Table<CategoryRow>
-        rowKey="id"
-        loading={categoriesQ.isLoading}
-        dataSource={rows}
-        pagination={false}
-        expandable={{
-          expandedRowKeys: effectiveExpanded,
-          onExpandedRowsChange: (keys) => setExpandedKeys([...keys]),
-        }}
-        columns={[
-          {
-            title: "Name",
-            key: "name",
-            render: (_, record) => (
-              <Space>
-                <span>{categoryLabel(record)}</span>
-                <Tag color={kindColor[record.kind]}>{record.kind}</Tag>
-              </Space>
-            ),
-          },
-          { title: "Slug", dataIndex: "slug" },
-          {
-            title: "Status", dataIndex: "status",
-            render: (s: string) => <Tag color={s === "active" ? "green" : "default"}>{s}</Tag>,
-          },
-          { title: "Sort", dataIndex: "sortOrder", width: 80 },
-          {
-            title: "Actions", key: "actions", width: 100,
-            render: (_, record) => (
-              <Button size="small" onClick={() => openEdit(record)}>Edit</Button>
-            ),
-          },
-        ]}
+    <>
+      <PageHeader
+        title="Categories"
+        summary={summary}
+        actions={
+          <PillButton variant="primary" onClick={openCreate}>
+            Add category
+          </PillButton>
+        }
       />
 
+      {/* The house three-state shape (see ui/RetryNotice). The branch keys on `!data`, never
+          `isError`: TanStack keeps `data` through a same-key refetch failure, so a tree we
+          already hold stays on screen under the strip instead of being replaced by an empty
+          table. Copy is English throughout (D1). */}
+      {categoriesQ.isPending ? (
+        <Skeleton active paragraph={{ rows: 6 }} />
+      ) : !categoriesQ.data ? (
+        <RetryNotice
+          tone="panel"
+          busy={categoriesQ.isFetching}
+          onRetry={() => void categoriesQ.refetch()}
+          message="Couldn't load the category tree."
+          retryLabel="Try again"
+        />
+      ) : (
+        <Card>
+          {categoriesQ.isError && (
+            <RetryNotice
+              tone="strip"
+              busy={categoriesQ.isFetching}
+              onRetry={() => void categoriesQ.refetch()}
+              message="Couldn't refresh — showing the previous data."
+              retryLabel="Try again"
+            />
+          )}
+          <Table<CategoryRow>
+            rowKey="id"
+            dataSource={rows}
+            pagination={false}
+            locale={{ emptyText: "No categories yet." }}
+            expandable={{
+              expandedRowKeys: effectiveExpanded,
+              onExpandedRowsChange: (keys) => setExpandedKeys([...keys]),
+            }}
+            columns={[
+              {
+                title: "Name",
+                key: "name",
+                render: (_, record) => (
+                  <Space>
+                    <span>{categoryLabel(record)}</span>
+                    <Tag color={lookup(KIND_COLOR, record.kind) ?? "default"}>
+                      {lookup(KIND_LABEL, record.kind) ?? record.kind}
+                    </Tag>
+                  </Space>
+                ),
+              },
+              // A slug is an identifier — Latin, ratified — and tabular so a column of them
+              // lines up character by character.
+              { title: "Slug", dataIndex: "slug", className: "ex-num" },
+              {
+                title: "Status", dataIndex: "status", width: 120,
+                render: (s: string) => (
+                  <Tag color={s === "active" ? "green" : "default"}>
+                    {lookup(STATUS_LABEL, s) ?? s}
+                  </Tag>
+                ),
+              },
+              { title: "Sort", dataIndex: "sortOrder", width: 80, align: "right", className: "ex-num" },
+              {
+                title: "Actions", key: "actions", width: 100,
+                render: (_, record) => (
+                  <Button size="small" onClick={() => openEdit(record)}>Edit</Button>
+                ),
+              },
+            ]}
+          />
+        </Card>
+      )}
+
+      {/* `forceRender`: the form instance is seeded by `openEdit`/`openCreate` BEFORE the
+          modal opens, and antd does not mount a dialog's children until its first open — so
+          without this the first seed lands on an unconnected instance and antd logs the
+          "Instance created by `useForm` is not connected to any Form element" warning.
+          Explicit ok/cancel text: AppShell's ConfigProvider carries antd's bn_BD locale, so
+          un-passed buttons print «বাতিল» in the middle of an English page. */}
       <Modal
         open={modalOpen}
+        forceRender
         title={editing ? "Edit category" : "Add category"}
+        okText="Save"
+        cancelText="Cancel"
         onCancel={() => setModalOpen(false)}
         onOk={() => form.submit()}
         confirmLoading={createCat.isPending || updateCat.isPending}
@@ -177,7 +261,7 @@ export function AdminCategoriesPage() {
             <Input placeholder="bcs" />
           </Form.Item>
           <Form.Item name="sortOrder" label="Sort order">
-            <InputNumber min={0} style={{ width: "100%" }} />
+            <InputNumber min={0} className="ex-num" style={{ width: "100%" }} />
           </Form.Item>
           {!editing && (
             <Form.Item name="kind" label="Kind (cannot be changed later)">
@@ -194,8 +278,8 @@ export function AdminCategoriesPage() {
             <Form.Item name="status" label="Status">
               <Select
                 options={[
-                  { value: "active", label: "active" },
-                  { value: "archived", label: "archived" },
+                  { value: "active", label: "Active" },
+                  { value: "archived", label: "Archived" },
                 ]}
               />
             </Form.Item>
@@ -208,6 +292,6 @@ export function AdminCategoriesPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </Card>
+    </>
   );
 }

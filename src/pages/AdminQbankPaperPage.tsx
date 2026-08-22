@@ -1,8 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import {
-  Button, Card, Checkbox, Collapse, Descriptions, Drawer, Form, Input, InputNumber, Modal,
-  Popconfirm, Radio, Select, Space, Spin, Table, Tag, TreeSelect, Typography, message,
+  App, Button, Card, Checkbox, Collapse, Drawer, Form, Input, InputNumber, Modal,
+  Popconfirm, Radio, Select, Skeleton, Space, Table, Tag, TreeSelect, Typography,
 } from "antd";
 import type { AxiosError } from "axios";
 import { useEffect, useState } from "react";
@@ -21,8 +21,23 @@ import type {
 import { CategoryTreeSelect } from "../features/categories/CategoryTreeSelect";
 import { htmlHasContent } from "../features/questions/html";
 import { RichTextEditor } from "../features/questions/RichTextEditor";
-import { formatDateTime } from "../lib/format";
+import { count, formatDhakaDateTimeEn } from "../lib/format";
+import { lookup } from "../lib/lookup";
+import { PageHeader } from "../ui/PageHeader";
+import { PillButton } from "../ui/PillButton";
+import { RetryNotice } from "../ui/RetryNotice";
 import { CONTENT_STATUS_COLORS } from "../theme/status";
+
+// D1 keeps this body English, so the antd `Tag` stays (its text is the English word) rather
+// than moving to `ui/StatusChip`'s ContentStatusChip, whose labels are Bengali by design.
+// This page and the list one route up are the last two consumers of CONTENT_STATUS_COLORS;
+// the map dies with them, not in this task.
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  active: "Active",
+  published: "Published",
+  archived: "Archived",
+};
 
 // ---- helpers ----
 
@@ -144,6 +159,10 @@ function QuestionEditorDrawer({
   editing: QbankQuestion | null;
   onClose: () => void;
 }) {
+  // AppShell mounts antd's `App` inside the admin ConfigProvider; the imported statics render
+  // into their own detached root and cannot see this theme (7g constraint). Only the toast
+  // handle moves — the editor itself is frozen (TipTap reuse, media interceptor, Zod copy).
+  const { message } = App.useApp();
   const save = useSaveQbankQuestion();
   const { data: subjects } = useSubjects("admin");
 
@@ -420,6 +439,9 @@ function MetadataModal({
   paper: AdminPaper;
   onClose: () => void;
 }) {
+  // AppShell mounts antd's `App` inside the admin ConfigProvider; the imported statics render
+  // into their own detached root and cannot see this theme (7g constraint).
+  const { message } = App.useApp();
   const update = useUpdatePaper();
   const [form] = Form.useForm<MetaFormValues>();
 
@@ -445,6 +467,10 @@ function MetadataModal({
     <Modal
       open={open}
       title="Edit paper"
+      // Explicit: AppShell's ConfigProvider carries antd's bn_BD locale, so un-passed dialog
+      // buttons print «বাতিল» in the middle of an English page.
+      okText="Save"
+      cancelText="Cancel"
       onCancel={onClose}
       onOk={() => form.submit()}
       confirmLoading={update.isPending}
@@ -485,6 +511,9 @@ const SAMPLE_ROW = `[
 ]`;
 
 function ImportCard({ paperId }: { paperId: string }) {
+  // AppShell mounts antd's `App` inside the admin ConfigProvider; the imported statics render
+  // into their own detached root and cannot see this theme (7g constraint).
+  const { message } = App.useApp();
   const importQuestions = useImportQuestions(paperId);
   const [text, setText] = useState("");
 
@@ -528,10 +557,10 @@ function ImportCard({ paperId }: { paperId: string }) {
           <Space orientation="vertical" style={{ width: "100%" }}>
             <Space>
               <Typography.Text type="success" strong>
-                Accepted: <span className="tnum">{report.accepted}</span>
+                Accepted: <span className="ex-num">{report.accepted}</span>
               </Typography.Text>
               <Typography.Text type="danger" strong>
-                Rejected: <span className="tnum">{report.rejected}</span>
+                Rejected: <span className="ex-num">{report.rejected}</span>
               </Typography.Text>
             </Space>
             {report.errors.length > 0 && (
@@ -543,7 +572,10 @@ function ImportCard({ paperId }: { paperId: string }) {
                 columns={[
                   {
                     title: "Row", dataIndex: "index", width: 80,
-                    render: (i: number) => <span className="tnum">{i + 1}</span>,
+                    align: "right", className: "ex-num",
+                    // 1-based: the admin is looking at their own pasted array, whose first
+                    // row is row 1 — the server reports a 0-based index.
+                    render: (i: number) => i + 1,
                   },
                   { title: "Error", dataIndex: "error" },
                 ]}
@@ -574,6 +606,9 @@ function ImportCard({ paperId }: { paperId: string }) {
 export function AdminQbankPaperPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  // AppShell mounts antd's `App` inside the admin ConfigProvider; the imported statics render
+  // into their own detached root and cannot see this theme (7g constraint).
+  const { message } = App.useApp();
 
   const paperQ = useAdminPaper(id);
   const questionsQ = useAdminPaperQuestions(id);
@@ -584,16 +619,40 @@ export function AdminQbankPaperPage() {
   const [metaOpen, setMetaOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<QbankQuestion | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<"activate" | "archive" | null>(null);
+
+  // A 404 is a FINAL answer — the id is wrong, or the paper is gone — so it bounces back to the
+  // list with a toast, the same reading OrdersPage's dead-end panel records. This used to fire
+  // on ANY error, which turned a dropped connection into a navigation and threw away the id the
+  // admin was on; the retry panel below is the answer to those, and it is only reachable
+  // because this branch is narrowed.
+  const notFound = (paperQ.error as AxiosError | undefined)?.response?.status === 404;
 
   useEffect(() => {
-    if (paperQ.isError) {
+    if (notFound) {
       message.error("Paper not found");
       navigate("/admin/qbank");
     }
-  }, [paperQ.isError, navigate]);
+  }, [notFound, message, navigate]);
 
-  if (paperQ.isLoading || !paperQ.data) {
-    return <Spin style={{ display: "block", margin: "80px auto" }} />;
+  // The house three-state shape (see ui/RetryNotice), which this page was a holdout from: a
+  // bare <Spin/> covered both "still loading" and "the fetch failed", so a failure showed a
+  // spinner that never resolved.
+  if (paperQ.isPending) {
+    return <Skeleton active paragraph={{ rows: 8 }} />;
+  }
+  if (!paperQ.data) {
+    // The 404 branch is already navigating away; a retry pill over a route that is leaving
+    // would offer a recovery the server has ruled out.
+    return notFound ? null : (
+      <RetryNotice
+        tone="panel"
+        busy={paperQ.isFetching}
+        onRetry={() => void paperQ.refetch()}
+        message="Couldn't load this paper."
+        retryLabel="Try again"
+      />
+    );
   }
 
   const paper = paperQ.data;
@@ -603,7 +662,10 @@ export function AdminQbankPaperPage() {
     try {
       await setStatus.mutateAsync({ id: paper.id, action });
       message.success(action === "activate" ? "Paper activated" : "Paper archived");
+      setPendingStatus(null);
     } catch (e) {
+      // 400 on activate with no questions (PastPaperService.SetPaperStatusAsync) — the server
+      // sentence is the specific one, so it is surfaced verbatim and the dialog stays open.
       const serverError = (e as AxiosError<{ error?: string }>).response?.data?.error;
       message.error(serverError ?? "Status change failed");
     }
@@ -628,98 +690,167 @@ export function AdminQbankPaperPage() {
     setDrawerOpen(true);
   }
 
-  const statusActions = paper.status === "active" ? (
-    <Popconfirm title="Archive this paper?" onConfirm={() => changeStatus("archive")}>
-      <Button danger>Archive</Button>
-    </Popconfirm>
-  ) : (
-    <Popconfirm title="Activate this paper?" onConfirm={() => changeStatus("activate")}>
-      <Button type="primary">Activate</Button>
-    </Popconfirm>
-  );
+  const archiving = pendingStatus === "archive";
 
   return (
-    <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-      <Card
-        title={
-          <Space>
-            <Button onClick={() => navigate("/admin/qbank")}>← Papers</Button>
-            <Typography.Title level={4} style={{ margin: 0 }}>{paper.title}</Typography.Title>
-            <Tag color={CONTENT_STATUS_COLORS[paper.status] ?? "default"}>{paper.status}</Tag>
+    <>
+      {/* The Descriptions strip this page used to carry is folded into the summary: year,
+          category, question tally and last edit are four facts, and a labelled two-column
+          grid for four one-word values was a whole Card of chrome above the only table that
+          matters here. */}
+      <PageHeader
+        title={paper.title}
+        summary={
+          <Space size={8} wrap>
+            <Tag color={lookup(CONTENT_STATUS_COLORS, paper.status) ?? "default"}>
+              {lookup(STATUS_LABEL, paper.status) ?? paper.status}
+            </Tag>
+            <span>
+              {/* Western tabular digits on the year, the tally and the timestamp (D8); the
+                  count is singular-guarded because a paper genuinely starts with one. */}
+              <span className="ex-num">{paper.year}</span>
+              {" · "}
+              {category ? categoryLabel(category) : paper.categoryId}
+              {" · "}
+              <span className="ex-num">{count(paper.questionCount, "question", "questions")}</span>
+              {" · "}
+              Updated{" "}
+              <span className="ex-num">{formatDhakaDateTimeEn(paper.updatedAt) || "—"}</span>
+            </span>
           </Space>
         }
-        extra={
-          <Space>
-            <Button onClick={() => setMetaOpen(true)}>Edit</Button>
-            {statusActions}
-          </Space>
+        actions={
+          <>
+            <PillButton variant="ghost" onClick={() => navigate("/admin/qbank")}>
+              Back to papers
+            </PillButton>
+            <PillButton variant="tonal" onClick={() => setMetaOpen(true)}>
+              Edit details
+            </PillButton>
+            {/* Both status changes are tonal: the page's one primary is «Add question» on the
+                table below, which is what an admin comes here to do. The destructive weight
+                lives on the confirming dialog's OK button, not on the trigger. */}
+            <PillButton
+              variant="tonal"
+              onClick={() => setPendingStatus(paper.status === "active" ? "archive" : "activate")}
+            >
+              {paper.status === "active" ? "Archive" : "Activate"}
+            </PillButton>
+          </>
         }
-      >
-        <Descriptions column={2} size="small">
-          <Descriptions.Item label="Year">
-            <span className="tnum">{paper.year}</span>
-          </Descriptions.Item>
-          <Descriptions.Item label="Category">
-            {category ? categoryLabel(category) : paper.categoryId}
-          </Descriptions.Item>
-          <Descriptions.Item label="Questions">
-            <span className="tnum">{paper.questionCount}</span>
-          </Descriptions.Item>
-          <Descriptions.Item label="Updated">{formatDateTime(paper.updatedAt)}</Descriptions.Item>
-        </Descriptions>
-      </Card>
+      />
 
-      <Card
-        title="Questions"
-        extra={<Button type="primary" onClick={openCreate}>Add question</Button>}
-      >
-        <Table<QbankQuestion>
-          rowKey="id"
-          loading={questionsQ.isLoading}
-          dataSource={questionsQ.data ?? []}
-          pagination={false}
-          columns={[
-            {
-              title: "Order", dataIndex: "order", width: 80,
-              render: (n: number) => <span className="tnum">{n}</span>,
-            },
-            {
-              title: "Stem", key: "stem",
-              render: (_, q) => {
-                const text = plainText(q.stemHtml);
-                return text.length > 80 ? `${text.slice(0, 80)}…` : text || "—";
-              },
-            },
-            {
-              title: "Section", dataIndex: "sectionLabel", width: 140,
-              render: (s: string | null) => s ?? "—",
-            },
-            {
-              title: "Subject", key: "subject", width: 160,
-              render: (_, q) => bilingualLabel(q.subjectName),
-            },
-            {
-              title: "Correct", key: "correct", width: 90,
-              render: (_, q) => (
-                <span className="tnum">{q.options.filter((o) => o.isCorrect).length}</span>
-              ),
-            },
-            {
-              title: "Actions", key: "actions", width: 150,
-              render: (_, q) => (
-                <Space>
-                  <Button size="small" onClick={() => openEdit(q)}>Edit</Button>
-                  <Popconfirm title="Delete this question?" onConfirm={() => onDelete(q.id)}>
-                    <Button size="small" danger>Delete</Button>
-                  </Popconfirm>
-                </Space>
-              ),
-            },
-          ]}
-        />
-      </Card>
+      <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+        <Card
+          title="Questions"
+          extra={<Button type="primary" onClick={openCreate}>Add question</Button>}
+        >
+          {/* The full three-state shape, not the strip alone: the paper header can load while
+              the questions call fails on its own (a 500, a dropped connection), and a strip
+              gated on `data` left that case as a dead end — an "empty" table whose only clue
+              was one line of locale text and no way to retry. `framed={false}` because this
+              Card IS the panel's frame. */}
+          {questionsQ.isPending ? (
+            <Skeleton active paragraph={{ rows: 5 }} />
+          ) : !questionsQ.data ? (
+            <RetryNotice
+              tone="panel"
+              framed={false}
+              busy={questionsQ.isFetching}
+              onRetry={() => void questionsQ.refetch()}
+              message="Couldn't load the questions."
+              retryLabel="Try again"
+            />
+          ) : (
+            <>
+              {questionsQ.isError && (
+                <RetryNotice
+                  tone="strip"
+                  busy={questionsQ.isFetching}
+                  onRetry={() => void questionsQ.refetch()}
+                  message="Couldn't refresh — showing the previous data."
+                  retryLabel="Try again"
+                />
+              )}
+              <Table<QbankQuestion>
+                rowKey="id"
+                dataSource={questionsQ.data}
+                pagination={false}
+                locale={{ emptyText: "No questions yet — add one or import a batch below." }}
+                columns={[
+                  { title: "Order", dataIndex: "order", width: 80, align: "right", className: "ex-num" },
+                  {
+                    title: "Stem", key: "stem",
+                    render: (_, q) => {
+                      const text = plainText(q.stemHtml);
+                      return text.length > 80 ? `${text.slice(0, 80)}…` : text || "—";
+                    },
+                  },
+                  {
+                    title: "Section", dataIndex: "sectionLabel", width: 140,
+                    render: (s: string | null) => s ?? "—",
+                  },
+                  {
+                    title: "Subject", key: "subject", width: 160,
+                    render: (_, q) => bilingualLabel(q.subjectName),
+                  },
+                  {
+                    title: "Correct", key: "correct", width: 90,
+                    align: "right", className: "ex-num",
+                    render: (_, q) => q.options.filter((o) => o.isCorrect).length,
+                  },
+                  {
+                    title: "Actions", key: "actions", width: 150,
+                    render: (_, q) => (
+                      <Space>
+                        <Button size="small" onClick={() => openEdit(q)}>Edit</Button>
+                        <Popconfirm
+                          title="Delete this question?"
+                          description="The question leaves this paper. This cannot be undone."
+                          okText="Delete"
+                          // Explicit: AppShell's ConfigProvider carries antd's bn_BD locale, so an
+                          // un-passed cancel button prints «বাতিল» in the middle of an English page.
+                          cancelText="Cancel"
+                          okButtonProps={{ danger: true }}
+                          onConfirm={() => onDelete(q.id)}
+                        >
+                          <Button size="small" danger>Delete</Button>
+                        </Popconfirm>
+                      </Space>
+                    ),
+                  },
+                ]}
+              />
+            </>
+          )}
+        </Card>
 
-      <ImportCard paperId={paper.id} />
+        <ImportCard paperId={paper.id} />
+      </Space>
+
+      {/* Was a pair of Popconfirms on the status buttons. A controlled dialog is what the
+          money pages settled on for a state change worth confirming: it has room for the
+          sentence that says what the change actually does, and its cancel button is passed
+          explicitly rather than inherited from the shell's bn_BD locale. */}
+      <Modal
+        open={pendingStatus !== null}
+        title={archiving ? "Archive this paper?" : "Activate this paper?"}
+        okText={archiving ? "Archive" : "Activate"}
+        cancelText="Cancel"
+        okButtonProps={{ danger: archiving }}
+        confirmLoading={setStatus.isPending}
+        onOk={() => {
+          if (pendingStatus) void changeStatus(pendingStatus);
+        }}
+        onCancel={() => setPendingStatus(null)}
+        destroyOnHidden
+      >
+        <Typography.Paragraph style={{ marginBottom: 0 }}>
+          {archiving
+            ? "An archived paper leaves student practice and stops accepting imports. Its questions stay where they are, and activating it again puts them back."
+            : "An active paper's questions become available to student practice. Activating needs at least one question."}
+        </Typography.Paragraph>
+      </Modal>
 
       <MetadataModal open={metaOpen} paper={paper} onClose={() => setMetaOpen(false)} />
       <QuestionEditorDrawer
@@ -728,6 +859,6 @@ export function AdminQbankPaperPage() {
         editing={editing}
         onClose={() => setDrawerOpen(false)}
       />
-    </Space>
+    </>
   );
 }
