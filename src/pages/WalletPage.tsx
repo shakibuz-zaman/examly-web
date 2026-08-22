@@ -6,7 +6,7 @@ import {
   useMyWithdrawals, usePricing, useRequestWithdrawal, useWallet,
 } from "../api/commerce";
 import type { WalletEntry, Withdrawal } from "../api/commerce";
-import { bnMoney } from "../lib/bn";
+import { bnMoney, enMoney } from "../lib/bn";
 import { formatDhakaShortBn } from "../lib/format";
 import { lookup } from "../lib/lookup";
 import { PageHeader } from "../ui/PageHeader";
@@ -22,16 +22,19 @@ function serverError(e: unknown, fallback: string): string {
 // Fallback while pricing loads; the platform-configured floor drives the real threshold.
 const MIN_WITHDRAWAL_FALLBACK = 500;
 
-// D8: table money is Western digits, so this is bnMoney's grouping rule without the digit
-// map. `en-IN` is the only locale in the app that breaks at the lakh, and keeping the two
-// formatters on the same locale is what makes «৳1,23,456» in a cell and «৳১,২৩,৪৫৬» in the
-// header/sidebar read as one number. Rounded for bnMoney's reason — the 20% commission
-// produces fractional taka by construction and a 2-decimal tail is noise in a dense column.
-// The sign is lifted out in front of the symbol so a debit never prints «৳-1,234».
+// D8: table money is Western digits, so this is `enMoney` — the same rounding, the same
+// `en-IN` lakh grouping and the same lifted U+2212 sign as the «৳১,২৩,৪৫৬» in the header and
+// the sidebar badge, which are `bnMoney` over that identical string. Sharing the one formatter
+// is what makes «৳1,23,456» in a cell and «৳১,২৩,৪৫৬» above it read as one number; this used
+// to re-implement the rule and could drift from it.
+//
+// The only thing left here is the LEDGER's own convention: a ledger column marks direction on
+// every row, so a credit gets an explicit `+`. `enMoney` prints no sign for a non-negative
+// amount (a price is not a credit), so the plus is prefixed on top of it — and never onto a
+// debit, whose «−» the formatter has already placed in front of the ৳.
 function tableMoney(amount: number): string {
-  const rounded = Math.round(amount);
-  const sign = rounded < 0 ? "−" : "+";
-  return `${sign}৳${Math.abs(rounded).toLocaleString("en-IN")}`;
+  const money = enMoney(amount);
+  return money.startsWith("−") ? money : `+${money}`;
 }
 
 // The two maps below are read through `lookup` (lib/lookup), which is `Object.hasOwn` and
@@ -57,10 +60,11 @@ const WITHDRAWAL_STATUS: Record<string, { tone: MoneyTone; label: string }> = {
 };
 
 // Sums over the payout list, not the ledger, because the ledger cannot answer either tile:
-// `withdrawal_debit` is written at REQUEST time, not at payout — WalletService.RequestAsync
-// inserts the Withdrawal row and its negative WalletEntry in the same call (WalletEntry.cs
-// annotates the kind as "− a withdrawal request"). A queued request and a paid one are
-// therefore INDISTINGUISHABLE in the ledger; only `Withdrawal.status` separates them.
+// `withdrawal_debit` is written at REQUEST time, not at payout — WalletService's
+// `RequestWithdrawalAsync` inserts the Withdrawal row and its negative WalletEntry in the same
+// call (WalletEntry.cs annotates the kind as "− a withdrawal request"). A queued request and a
+// paid one are therefore INDISTINGUISHABLE in the ledger; only `Withdrawal.status` separates
+// them.
 //
 // The consequence any other surface must inherit: ব্যালেন্স ALREADY has queued payouts taken
 // out of it. «অপেক্ষমাণ উত্তোলন» is a breakdown of money that has *left* the balance and is
@@ -193,8 +197,9 @@ export function WalletPage() {
       align: "right",
       width: 120,
       className: "ex-num",
-      // Every payout row is a positive request, so the ledger's ± prefix would be noise here.
-      render: (v: number) => `৳${Math.round(v).toLocaleString("en-IN")}`,
+      // Every payout row is a positive request, so the ledger's ± prefix would be noise here —
+      // `enMoney` bare is exactly that: same rounding and lakh grouping, no sign in front.
+      render: (v: number) => enMoney(v),
     },
     {
       title: "বিকাশ নম্বর",

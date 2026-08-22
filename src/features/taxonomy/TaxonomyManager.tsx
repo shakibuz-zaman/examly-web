@@ -16,6 +16,7 @@ import {
 } from "../../api/taxonomy";
 import type { BilingualText, SubjectResponse, TopicResponse } from "../../api/types";
 import { bnNum } from "../../lib/bn";
+import { count } from "../../lib/format";
 import { PageHeader } from "../../ui/PageHeader";
 import { PillButton } from "../../ui/PillButton";
 import { RetryNotice } from "../../ui/RetryNotice";
@@ -95,8 +96,10 @@ export function TaxonomyManager({ mode }: { mode: Mode }) {
       setEditingSubject(null);
       subjForm.resetFields();
     } catch (e) {
-      // The taxonomy endpoints still answer in English (Task 7 covers the commerce strings
-      // only); the fallback below is the half this component owns.
+      // The SAVE-path taxonomy errors still answer in English — Task 7 translated only the two
+      // examiner delete-conflict lines (ExaminerTaxonomyEndpoints), which the Popconfirms below
+      // surface; slug-collision and parent-validation sentences are post-series work. The
+      // fallback here is the half this component owns.
       message.error(serverError(e, "সংরক্ষণ করা যায়নি"));
     }
   }
@@ -120,7 +123,7 @@ export function TaxonomyManager({ mode }: { mode: Mode }) {
         summary={
           subjects
             ? mode === "admin"
-              ? `${subjects.length} subjects`
+              ? count(subjects.length, "subject", "subjects")
               : `${bnNum(subjects.length)}টি বিষয়`
             : undefined
         }
@@ -234,8 +237,17 @@ export function TaxonomyManager({ mode }: { mode: Mode }) {
         </>
       )}
 
+      {/* `forceRender`, matching AdminCategoriesPage / AdminQbankPage: both entry points seed
+          this form before the modal opens — «সম্পাদনা» calls `setFieldsValue`, the header's add
+          button calls `resetFields` — and antd does not mount a dialog's children until its
+          first open, so that seed lands on a `useForm` instance no `<Form>` has hooked yet.
+          @rc-component/form checks on the next tick and logs "Instance created by `useForm` is
+          not connected to any Form element" if it is still unhooked then; keeping the children
+          mounted removes the race instead of relying on the open landing in the same task.
+          Behaviour is unchanged: the form store holds the seeded values across the mount. */}
       <Modal
         open={subjModalOpen}
+        forceRender
         title={editingSubject ? "বিষয় সম্পাদনা" : "নতুন বিষয়"}
         onCancel={() => setSubjModalOpen(false)}
         onOk={() => subjForm.submit()}
@@ -418,8 +430,12 @@ function TopicsDrawer({
         </>
       )}
 
+      {/* `forceRender` for the subject modal's reason — the row's «সম্পাদনা» seeds this form
+          with `setFieldsValue`, and the drawer's add button with `resetFields`, both before this
+          modal's first open. */}
       <Modal
         open={modalOpen}
+        forceRender
         title={editingTopic ? "টপিক সম্পাদনা" : "নতুন টপিক"}
         onCancel={() => setModalOpen(false)}
         onOk={() => form.submit()}

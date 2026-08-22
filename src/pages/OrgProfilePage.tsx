@@ -177,8 +177,18 @@ export function OrgProfilePage() {
         </>
       )}
 
+      {/* `forceRender`, matching AdminCategoriesPage / AdminQbankPage: the «তথ্য সম্পাদনা» button
+          seeds this form with `setFieldsValue` BEFORE it opens the modal, and antd does not mount
+          a dialog's children until its first open, so that first seed lands on a `useForm`
+          instance no `<Form>` has hooked yet. @rc-component/form answers that with a next-tick
+          check that logs "Instance created by `useForm` is not connected to any Form element" if
+          the instance is STILL unhooked when the timeout runs — today it never is, because the
+          `setEditing(true)` on the next line mounts the Form in the same task. Keeping the
+          children mounted removes the race rather than relying on that ordering. Behaviour is
+          unchanged either way: the form store holds the seeded values across the mount. */}
       <Modal
         open={editing}
+        forceRender
         title="প্রতিষ্ঠানের তথ্য সম্পাদনা"
         onCancel={() => setEditing(false)}
         onOk={() => form.submit()}

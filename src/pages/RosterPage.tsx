@@ -135,8 +135,10 @@ export function RosterPage() {
     } catch (e) {
       // The mutation never landed, so the PREVIOUS submit's report is now stale chrome sitting
       // above an unchanged table — clear it rather than leave counts that describe a different
-      // request. The server's roster strings are still English until Task 7; this fallback is
-      // the only half the page owns, and it is Bengali.
+      // request. This add path has no server-authored sentence to lead with at all — its only
+      // failure is a bare 404 with no body (SlotEndpoints.AddAllowlist) — so the Bengali
+      // fallback below is the whole message. (The revoke 409 further down does carry a server
+      // string, and Task 7 translated it.)
       setReport(null);
       message.error(serverError(e, "তালিকায় যোগ করা যায়নি"));
     }
