@@ -95,3 +95,18 @@ export function DifficultyDot({ difficulty }: { difficulty: Difficulty }) {
     </span>
   );
 }
+
+// §9 roster seat state (7g Task 3). Two states and no unknown branch, unlike MoneyChip and
+// ContentStatusChip: this chip is driven by `claimedAt != null` on the wire, not by a string
+// enum, so there is no value we could fail to read and nothing to fall back to. That is also
+// why it owns its labels instead of taking them from the caller — one closed boolean, one
+// pair of words, and a second surface that shows seat states gets the same two rather than
+// inventing «দখলকৃত». Revoked is deliberately absent: revoking DELETES the roster row
+// (SlotService.RevokeMemberAsync), so a revoked seat is a row that is gone, not a state.
+export function SeatChip({ claimed }: { claimed: boolean }) {
+  return claimed ? (
+    <span className="ex-chipstat ex-chipstat--claimed">সিট নিয়েছে</span>
+  ) : (
+    <span className="ex-chipstat ex-chipstat--seat-pending">অপেক্ষমাণ</span>
+  );
+}

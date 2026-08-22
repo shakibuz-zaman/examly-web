@@ -241,6 +241,25 @@
   border: 1px solid var(--ex-line-strong);
 }
 .ex-chipstat--queued { background: var(--ex-amber-tint); color: var(--ex-amber); }
+/* Seat vocabulary (7g Task 3) — the B2B roster's two seat states, which were
+   `<Tag color="green|gold">` (antd presets, outside the token module). Two entries because a
+   roster row is exactly two things: the seat is TAKEN, or the phone is allowlisted and still
+   waiting for its student to sign in. Separate classes rather than aliasing `--published` /
+   `--draft`, per the vocabulary rule recorded above: a chip class is a vocabulary entry, not a
+   colour alias, and re-tinting exam status must not silently re-tint a seat. Same two token
+   pairs those two measure (green-tint+green 4.53/4.97, amber-tint+amber 4.51/5.38 light/dark),
+   so both are AA on the card surface the roster table paints on, unchanged.
+   A revoked seat has no chip: revoke DELETES the row (SlotService.RevokeMemberAsync), so there
+   is no third state on the wire. `--danger` (T1) is used once on this page instead — on the
+   invite code, for the one blocking fact the roster can report: every seat is spent, so the
+   code no longer admits anyone.
+   Named `--seat-pending`, not `--pending`: bare "pending" names a GENERIC waiting-ness that a
+   later vocabulary (an order, a payout, a moderation queue) would reasonably reach for, and
+   two unrelated states sharing one class is exactly the aliasing this block forbids. Same
+   naming rule T2 applied to `--queued` — say which fact, not which feeling. `--claimed` needs
+   no prefix: it already names one fact and nothing else in the app claims anything. */
+.ex-chipstat--claimed { background: var(--ex-green-tint); color: var(--ex-green); }
+.ex-chipstat--seat-pending { background: var(--ex-amber-tint); color: var(--ex-amber); }
 /* On the band the tint surfaces (purple/green) sit at 1.07–1.31:1 in dark — the chip shape
    vanishes while the text survives. The band-cta pair is the surface engineered for the
    band (see .ex-btn--band); one ink, because on the band legibility beats the card tints'
