@@ -18,18 +18,35 @@ import { PillButton } from "./PillButton";
 // PositionCard, whose whole body is the panel — passes framed={false} so the notice does
 // not draw a second bordered box inside the first. The copy, the pill and the busy guard
 // are identical either way; only the outer Card is dropped.
+//
+// `message`/`retryLabel` exist for the platform_admin pages, whose bodies stay ENGLISH (7g
+// D1) while every other caller is a Bengali student/examiner surface. They are OPTIONAL and
+// default to the Bengali strings that were hard-coded here, so the existing call sites keep
+// rendering the exact same two sentences and the same pill without passing anything. The
+// alternative — a second English notice component — would fork the strip/panel rule itself,
+// which is the one thing this file exists to keep single-sourced.
 export function RetryNotice({
   tone,
   busy,
   onRetry,
   framed = true,
-}: { tone: "panel" | "strip"; busy: boolean; onRetry: () => void; framed?: boolean }) {
+  message,
+  retryLabel,
+}: {
+  tone: "panel" | "strip";
+  busy: boolean;
+  onRetry: () => void;
+  framed?: boolean;
+  message?: string;
+  retryLabel?: string;
+}) {
   const body = (
     <>
       <Typography.Text type="secondary" style={{ fontSize: tone === "strip" ? 12.5 : undefined }}>
-        {tone === "panel"
-          ? "ডেটা আনা যায়নি — একটু পরে আবার চেষ্টা করুন।"
-          : "নতুন ডেটা আনা যায়নি — নিচের হিসাব আগের বারের।"}
+        {message ??
+          (tone === "panel"
+            ? "ডেটা আনা যায়নি — একটু পরে আবার চেষ্টা করুন।"
+            : "নতুন ডেটা আনা যায়নি — নিচের হিসাব আগের বারের।")}
       </Typography.Text>
       {/* A retry already in flight must not accept a second click — the pill gives no other
           feedback, so without this it reads as dead and invites a queue of refetches. The
@@ -44,7 +61,7 @@ export function RetryNotice({
         disabled={busy}
         onClick={onRetry}
       >
-        আবার চেষ্টা করুন
+        {retryLabel ?? "আবার চেষ্টা করুন"}
       </PillButton>
     </>
   );

@@ -1,22 +1,29 @@
 import { useState } from "react";
-import {
-  Alert, Button, Card, Descriptions, Input, Modal, Space, Spin, Tag, Typography, message,
-} from "antd";
+import { App, Button, Card, Descriptions, Input, Modal, Skeleton, Space, Typography } from "antd";
 import type { DescriptionsProps } from "antd";
 import type { AxiosError } from "axios";
 import { useAdminOrder, useVoidOrder } from "../api/commerce";
-import { bnMoney } from "../lib/bn";
+import { enMoney } from "../lib/bn";
+import { count, formatDhakaDateTimeEn } from "../lib/format";
+import { lookup } from "../lib/lookup";
+import { PageHeader } from "../ui/PageHeader";
+import { RetryNotice } from "../ui/RetryNotice";
+import { MoneyChip, type MoneyTone } from "../ui/StatusChip";
 import type { AdminOrder } from "../api/commerce";
 
 function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: "gold",
-  paid: "green",
-  failed: "red",
-  voided: "default",
+// The four order states map 1:1 onto the money vocabulary T1 settled (ui/StatusChip): the sale
+// is still queued, the money came IN, the attempt went wrong, and a void is the quiet neutral —
+// a reversal the platform performed on purpose is not an alarm. No new chip vocabulary for the
+// admin pages, and the same four readings the wallet ledger and the payout queue already use.
+const STATUS: Record<string, { tone: MoneyTone; label: string }> = {
+  pending: { tone: "queued", label: "Pending" },
+  paid: { tone: "inflow", label: "Paid" },
+  failed: { tone: "danger", label: "Failed" },
+  voided: { tone: "outflow", label: "Voided" },
 };
 
 const KIND_LABEL: Record<string, string> = {
@@ -29,11 +36,18 @@ function isB2c(order: AdminOrder): boolean {
   return order.kind === "b2c_purchase";
 }
 
+// Western digits with tabular alignment (D8): money, slot counts, identifiers and clock times.
+// A ৳ figure and a timestamp stacked in the same Descriptions column only line up if both are
+// tabular, and a lakh-grouped amount is the one value here a reader compares against another row.
+function Num({ children }: { children: string }) {
+  return <span className="ex-num">{children}</span>;
+}
+
 // The void-confirmation copy spells out the concrete effects, which differ by order kind.
 function voidEffects(order: AdminOrder): string {
   if (isB2c(order)) {
     const share = order.authorShareBdt ?? 0;
-    return `Revokes the buyer's access and claws back ${bnMoney(share)} from the author wallet.`;
+    return `Revokes the buyer's access and claws back ${enMoney(share)} from the author wallet.`;
   }
   return (
     `Rolls back the ${order.seatSlot ?? "?"} × ${order.examSlot ?? "?"} slot purchase for this org. ` +
@@ -42,50 +56,89 @@ function voidEffects(order: AdminOrder): string {
 }
 
 function OrderDetail({ order, onVoided }: { order: AdminOrder; onVoided: () => void }) {
+  // AppShell mounts antd's `App` inside the admin ConfigProvider; the imported statics render
+  // into their own detached root and cannot see this theme (7g constraint).
+  const { message } = App.useApp();
   const voidOrder = useVoidOrder();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const items: DescriptionsProps["items"] = [
-    { key: "kind", label: "Kind", children: KIND_LABEL[order.kind] ?? order.kind },
+    {
+      key: "kind",
+      label: "Kind",
+      children: lookup(KIND_LABEL, order.kind) ?? order.kind,
+    },
     { key: "product", label: "Product", children: order.productTitle },
     {
       key: "buyer",
       label: "Buyer",
       children: isB2c(order) ? `Student ${order.studentId ?? "—"}` : `Org ${order.orgId ?? "—"}`,
     },
-    { key: "amount", label: "Amount", children: bnMoney(order.amountBdt) },
+    // `enMoney`, not `bnMoney`: same rounding, same lakh grouping (both are one function in
+    // lib/bn now), Western digits. 7f Task 11 put bnMoney here when these pages were still
+    // untouched English bodies; D1 makes the digits English too, and the queue one page over
+    // prints the same money the same way.
+    { key: "amount", label: "Amount", children: <Num>{enMoney(order.amountBdt)}</Num> },
     ...(isB2c(order)
       ? [
           {
             key: "commission",
             label: "Commission",
-            children: order.commissionBdt != null ? bnMoney(order.commissionBdt) : "—",
+            children:
+              order.commissionBdt != null ? <Num>{enMoney(order.commissionBdt)}</Num> : "—",
           },
           {
             key: "share",
             label: "Author share",
-            children: order.authorShareBdt != null ? bnMoney(order.authorShareBdt) : "—",
+            children:
+              order.authorShareBdt != null ? <Num>{enMoney(order.authorShareBdt)}</Num> : "—",
           },
         ]
       : [
           {
             key: "slots",
             label: "Slots",
-            children: `${order.seatSlot ?? "?"} seats × ${order.examSlot ?? "?"} exams`,
+            // Both halves are guarded: a standalone order is one exam by construction, and the
+            // matrix has no 1-seat cell today but the wire is what it is — "1 seats × 1 exams"
+            // is the kind of line that only shows up in the row an admin is investigating.
+            children: (
+              <Num>
+                {order.seatSlot == null || order.examSlot == null
+                  ? `${order.seatSlot ?? "?"} seats × ${order.examSlot ?? "?"} exams`
+                  : `${count(order.seatSlot, "seat", "seats")} × ${count(order.examSlot, "exam", "exams")}`}
+              </Num>
+            ),
           },
         ]),
-    { key: "created", label: "Created", children: new Date(order.createdAt).toLocaleString() },
+    // Dhaka-pinned, like every other timestamp in the app: `toLocaleString()` printed the
+    // reader's own timezone, so an admin abroad read a different paid-at than the ledger row
+    // that answers for it.
+    // `|| "—"` on all three: the formatter returns "" on an unparseable instant (house
+    // convention — the caller decides what to print instead), and a blank cell in an order
+    // trail reads as "this never happened" rather than "this date is broken".
+    {
+      key: "created",
+      label: "Created",
+      children: <Num>{formatDhakaDateTimeEn(order.createdAt) || "—"}</Num>,
+    },
     ...(order.paidAt
-      ? [{ key: "paid", label: "Paid", children: new Date(order.paidAt).toLocaleString() }]
+      ? [{
+          key: "paid",
+          label: "Paid",
+          children: <Num>{formatDhakaDateTimeEn(order.paidAt) || "—"}</Num>,
+        }]
       : []),
     ...(order.voidedAt
       ? [
           {
             key: "voided",
             label: "Voided",
-            children:
-              new Date(order.voidedAt).toLocaleString() +
-              (order.voidedBy ? ` by ${order.voidedBy}` : ""),
+            children: (
+              <>
+                <Num>{formatDhakaDateTimeEn(order.voidedAt) || "—"}</Num>
+                {order.voidedBy ? ` by ${order.voidedBy}` : ""}
+              </>
+            ),
           },
         ]
       : []),
@@ -103,12 +156,17 @@ function OrderDetail({ order, onVoided }: { order: AdminOrder; onVoided: () => v
     }
   };
 
+  const hit = lookup(STATUS, order.status);
+
   return (
     <Card
       title={
         <Space>
-          <span>Order {order.id.slice(-6)}</span>
-          <Tag color={STATUS_COLOR[order.status]}>{order.status}</Tag>
+          {/* The id tail is an identifier — Latin, ratified. */}
+          <span>Order <Num>{order.id.slice(-6)}</Num></span>
+          {/* Unknown wire value → the NEUTRAL tone and the raw key (ContentStatusChip's
+              fallback rule): a state we cannot read must assert nothing. */}
+          <MoneyChip tone={hit?.tone ?? "outflow"} label={hit?.label ?? order.status} />
         </Space>
       }
       extra={
@@ -123,10 +181,14 @@ function OrderDetail({ order, onVoided }: { order: AdminOrder; onVoided: () => v
         open={confirmOpen}
         title="Void this order?"
         okText="Void order"
+        // Explicit: AppShell's ConfigProvider carries antd's bn_BD locale, so an un-passed
+        // cancel button prints «বাতিল» in the middle of an English page.
+        cancelText="Cancel"
         okButtonProps={{ danger: true }}
         confirmLoading={voidOrder.isPending}
-        onOk={doVoid}
+        onOk={() => void doVoid()}
         onCancel={() => setConfirmOpen(false)}
+        destroyOnHidden
       >
         <Typography.Paragraph>{voidEffects(order)}</Typography.Paragraph>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
@@ -141,18 +203,20 @@ export function OrdersPage() {
   // The submitted (searched) id drives the lookup; the input box is separate so the query fires
   // only on Enter / Search, not on every keystroke.
   const [orderId, setOrderId] = useState("");
-  const { data, isLoading, isError, error, refetch } = useAdminOrder(orderId);
+  const orderQ = useAdminOrder(orderId);
+  const { data, error, refetch } = orderQ;
 
   const notFound =
-    isError && (error as AxiosError | undefined)?.response?.status === 404;
+    orderQ.isError && (error as AxiosError | undefined)?.response?.status === 404;
 
   return (
-    <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-      <Card
-        title={
-          <Typography.Title level={4} style={{ margin: 0 }}>Orders</Typography.Title>
-        }
-      >
+    <>
+      <PageHeader
+        title="Orders"
+        summary="Look up one order by its id. All sales are final — voiding a paid order is the only reversal, and it cannot be undone."
+      />
+
+      <Card style={{ marginBottom: 16 }}>
         <Input.Search
           placeholder="Enter an order id"
           enterButton="Look up"
@@ -162,17 +226,46 @@ export function OrdersPage() {
         />
       </Card>
 
-      {orderId && isLoading && <Spin style={{ display: "block", margin: "48px auto" }} />}
-
-      {orderId && isError && (
-        <Alert
-          type={notFound ? "warning" : "error"}
-          showIcon
-          message={notFound ? "No order with that id." : "Could not load the order."}
-        />
-      )}
-
-      {orderId && data && <OrderDetail order={data} onVoided={() => void refetch()} />}
-    </Space>
+      {/* The house three-state shape (see ui/RetryNotice), with the roster page's fourth
+          branch: a 404 is a FINAL answer, so it gets a dead-end panel instead of a retry pill
+          that would promise a recovery the same successful lookup has already ruled out.
+          Everything is gated on a submitted id — an empty box is not a failed lookup. */}
+      {orderId &&
+        (orderQ.isPending ? (
+          <Skeleton active paragraph={{ rows: 5 }} />
+        ) : !data ? (
+          notFound ? (
+            <Card>
+              <Typography.Text type="secondary">
+                No order with that id. Check the id and search again.
+              </Typography.Text>
+            </Card>
+          ) : (
+            <RetryNotice
+              tone="panel"
+              busy={orderQ.isFetching}
+              onRetry={() => void refetch()}
+              message="Couldn't load the order."
+              retryLabel="Try again"
+            />
+          )
+        ) : (
+          <>
+            {/* `&& !notFound`: an order that 404s on a REFETCH (it was voided and pruned, or
+                the id went stale) leaves the held detail on screen — correct — but the strip
+                would then offer a retry against a permanent answer. */}
+            {orderQ.isError && !notFound && (
+              <RetryNotice
+                tone="strip"
+                busy={orderQ.isFetching}
+                onRetry={() => void refetch()}
+                message="Couldn't refresh — showing the previous data."
+                retryLabel="Try again"
+              />
+            )}
+            <OrderDetail order={data} onVoided={() => void refetch()} />
+          </>
+        ))}
+    </>
   );
 }
