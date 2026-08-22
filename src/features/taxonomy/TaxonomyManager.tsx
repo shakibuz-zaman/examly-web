@@ -1,10 +1,25 @@
-import { Button, Card, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message } from "antd";
+// SHARED SURFACE: /taxonomy (examiner) and /admin/taxonomy (platform_admin) are both this
+// component. Its body — tables, modals, drawer, buttons, toasts, validation copy — is Bengali in
+// BOTH modes, so the admin page reads Bengali inside an otherwise-English admin area: that leak
+// is accepted by spec D6 (plan note P2). Do not fork the file or add a locale prop to undo it.
+// The ONE exception is the PageHeader title + summary pair, which spec §2 assigns to English on
+// the admin surface: D6's accepted-leak clause covers only strings with no cheap split, and the
+// header already had a `mode === "admin"` fork, so it is branched rather than leaked. That fork
+// is the whole exception — do not grow it into a general per-mode copy split.
+import {
+  App, Button, Card, Drawer, Form, Input, Modal, Popconfirm, Select, Skeleton, Space, Table, Typography,
+} from "antd";
 import { useState } from "react";
 import {
   useCreateSubject, useCreateTopic, useDeleteSubject, useDeleteTopic,
   useSubjects, useTopics, useUpdateSubject, useUpdateTopic,
 } from "../../api/taxonomy";
 import type { BilingualText, SubjectResponse, TopicResponse } from "../../api/types";
+import { bnNum } from "../../lib/bn";
+import { PageHeader } from "../../ui/PageHeader";
+import { PillButton } from "../../ui/PillButton";
+import { RetryNotice } from "../../ui/RetryNotice";
+import { ContentStatusChip } from "../../ui/StatusChip";
 
 type Mode = "examiner" | "admin";
 
@@ -18,7 +33,39 @@ function toBilingual(v: { nameEn?: string; nameBn?: string }): BilingualText {
   return out;
 }
 
+function serverError(e: unknown, fallback: string): string {
+  const err = e as { response?: { data?: { error?: string } } };
+  return err.response?.data?.error ?? fallback;
+}
+
+// Bengali-first, exactly as `bilingualLabel` reads a taxonomy node elsewhere; `||` for its
+// reason too — the API's validator requires only ONE half to be non-blank and never normalises
+// the other, so `{ bn: "", en: "History" }` is a shape another client can write and `??` would
+// keep the `""`. The slug is the last resort rather than «—»: it is the node's own identifier
+// and always present, so the drawer title can never come up empty.
+function nodeLabel(name: BilingualText, slug: string): string {
+  return name.bn?.trim() || name.en?.trim() || slug;
+}
+
+// «গ্লোবাল» = the platform's shared tree, «প্রতিষ্ঠান» = this org's own additions. It was a
+// `<Tag color="blue|purple">` — antd presets, which sit outside the token module entirely and
+// so ignore both themes. It does NOT become a chip: scope is provenance, not state, exactly
+// like the roster's «উৎস» column, and this row already carries a real state chip one column
+// over. A first draft did make it a chip and the two collided outright — «প্রতিষ্ঠান» on
+// `--anytime` and «সক্রিয়» on `--active` resolve to the SAME two tokens (teal-tint + teal-ink,
+// measured live as rgb(18,51,46) on rgb(127,208,194) in dark), so two adjacent cells rendered
+// identical pills carrying different facts. Reaching for a free hue instead would have aliased
+// a third vocabulary; secondary text says the quieter thing truthfully and adds nothing to the
+// chip namespace. No unknown branch: `scope` is a closed two-value union on the wire
+// (types.ts:29/:42) and `canEdit` already keys off it.
+function scopeLabel(scope: "global" | "org"): string {
+  return scope === "global" ? "গ্লোবাল" : "প্রতিষ্ঠান";
+}
+
 export function TaxonomyManager({ mode }: { mode: Mode }) {
+  // AppShell mounts antd's `App` inside the examiner/admin ConfigProvider; the imported
+  // statics render into their own detached root and cannot see this theme (7g constraint).
+  const { message } = App.useApp();
   const subjectsQ = useSubjects(mode);
   const createSubj = useCreateSubject(mode);
   const updateSubj = useUpdateSubject(mode);
@@ -39,102 +86,173 @@ export function TaxonomyManager({ mode }: { mode: Mode }) {
     try {
       if (editingSubject) {
         await updateSubj.mutateAsync({ id: editingSubject.id, body });
-        message.success("Subject updated");
+        message.success("বিষয় হালনাগাদ হয়েছে");
       } else {
         await createSubj.mutateAsync(body);
-        message.success("Subject created");
+        message.success("বিষয় যোগ হয়েছে");
       }
       setSubjModalOpen(false);
       setEditingSubject(null);
       subjForm.resetFields();
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: string } } };
-      message.error(err.response?.data?.error ?? "Save failed");
+    } catch (e) {
+      // The taxonomy endpoints still answer in English (Task 7 covers the commerce strings
+      // only); the fallback below is the half this component owns.
+      message.error(serverError(e, "সংরক্ষণ করা যায়নি"));
     }
   }
 
+  const subjects = subjectsQ.data;
+
   return (
-    <Card
-      title={<Typography.Title level={4} style={{ margin: 0 }}>
-        {mode === "admin" ? "Global Taxonomy" : "Taxonomy"}
-      </Typography.Title>}
-      extra={
-        <Button type="primary" onClick={() => {
-          setEditingSubject(null);
-          subjForm.resetFields();
-          setSubjModalOpen(true);
-        }}>
-          {mode === "admin" ? "Add global subject" : "Add subject"}
-        </Button>
-      }
-    >
-      <Table<SubjectResponse>
-        rowKey="id"
-        loading={subjectsQ.isLoading}
-        dataSource={subjectsQ.data ?? []}
-        pagination={{ pageSize: 20 }}
-        columns={[
-          { title: "Name (EN)", dataIndex: ["name", "en"], render: (v?: string) => v ?? "—" },
-          { title: "Name (BN)", dataIndex: ["name", "bn"], render: (v?: string) => v ?? "—" },
-          { title: "Slug", dataIndex: "slug" },
-          {
-            title: "Scope", dataIndex: "scope",
-            render: (s: "global" | "org") =>
-              <Tag color={s === "global" ? "blue" : "purple"}>{s}</Tag>,
-          },
-          { title: "Status", dataIndex: "status" },
-          {
-            title: "Actions", key: "actions",
-            render: (_, record) => (
-              <Space>
-                <Button size="small" onClick={() => setDrawerSubject(record)}>Topics</Button>
-                {canEdit(record.scope) && (
-                  <>
-                    <Button size="small" onClick={() => {
-                      setEditingSubject(record);
-                      subjForm.setFieldsValue({
-                        nameEn: record.name.en, nameBn: record.name.bn, slug: record.slug,
-                      });
-                      setSubjModalOpen(true);
-                    }}>Edit</Button>
-                    <Popconfirm
-                      title="Delete subject?"
-                      description="Only allowed if it has no topics."
-                      onConfirm={async () => {
-                        try {
-                          await deleteSubj.mutateAsync(record.id);
-                          message.success("Deleted");
-                        } catch (e: unknown) {
-                          const err = e as { response?: { data?: { error?: string } } };
-                          message.error(err.response?.data?.error ?? "Delete failed");
-                        }
-                      }}
-                    >
-                      <Button size="small" danger>Delete</Button>
-                    </Popconfirm>
-                  </>
-                )}
-              </Space>
-            ),
-          },
-        ]}
+    <>
+      <PageHeader
+        // The header the two thin wrappers (TaxonomyPage / AdminTaxonomyPage) would otherwise
+        // duplicate: only this component holds the subject list, so the count summary has to be
+        // rendered from here — a wrapper asking for it would mean a second subscription.
+        //
+        // Title AND summary branch together, per spec §2: the admin page's own chrome is English
+        // (D1), so its count goes with it — Western digits, which is also what D8 asks of a
+        // dense numeric run. The examiner half is Bengali prose and takes bnNum. The examiner
+        // title matches its sidebar entry verbatim (examinerNav.ts:49); the admin sidebar entry
+        // stays «গ্লোবাল ট্যাক্সোনমি» because nav LABELS are Bengali on both surfaces (D1/D2) —
+        // it is page bodies and page headers that are English on admin, and this is the header.
+        title={mode === "admin" ? "Global Taxonomy" : "ট্যাক্সোনমি"}
+        summary={
+          subjects
+            ? mode === "admin"
+              ? `${subjects.length} subjects`
+              : `${bnNum(subjects.length)}টি বিষয়`
+            : undefined
+        }
+        actions={
+          <PillButton
+            variant="primary"
+            onClick={() => {
+              setEditingSubject(null);
+              subjForm.resetFields();
+              setSubjModalOpen(true);
+            }}
+          >
+            {mode === "admin" ? "গ্লোবাল বিষয় যোগ করুন" : "বিষয় যোগ করুন"}
+          </PillButton>
+        }
       />
+
+      {/* House three-state. The branch keys on `!subjects`, never `isError`: TanStack keeps
+          `data` through a same-key refetch failure, so a list we already hold stays on screen
+          under the strip instead of being thrown away for a panel that says we have nothing.
+          It also replaces the table's own `loading` prop, whose empty state said «কোনও ডেটা
+          নেই» (antd's bn_BD default) after a FAILED fetch — a lie about the tree. */}
+      {subjectsQ.isPending ? (
+        <Skeleton active paragraph={{ rows: 5 }} />
+      ) : subjects == null ? (
+        <RetryNotice
+          tone="panel"
+          busy={subjectsQ.isFetching}
+          onRetry={() => void subjectsQ.refetch()}
+        />
+      ) : (
+        <>
+          {subjectsQ.isError && (
+            <RetryNotice
+              tone="strip"
+              busy={subjectsQ.isFetching}
+              onRetry={() => void subjectsQ.refetch()}
+            />
+          )}
+          <Card>
+            <Table<SubjectResponse>
+              rowKey="id"
+              dataSource={subjects}
+              pagination={{ pageSize: 20 }}
+              scroll={{ x: true }}
+              locale={{
+                emptyText:
+                  mode === "admin"
+                    ? "এখনো কোনো গ্লোবাল বিষয় নেই — উপরে বিষয় যোগ করুন।"
+                    : "এখনো কোনো বিষয় নেই — উপরে বিষয় যোগ করুন।",
+              }}
+              columns={[
+                // Both name columns stay, in their original order: this is a bilingual
+                // authoring grid where the two halves are separate editable fields, not a
+                // surface that picks one label to show (that rule is `nodeLabel`, used for the
+                // drawer title and the parent picker below).
+                { title: "নাম (ইংরেজি)", dataIndex: ["name", "en"], render: (v?: string) => v ?? "—" },
+                { title: "নাম (বাংলা)", dataIndex: ["name", "bn"], render: (v?: string) => v ?? "—" },
+                // A slug is an identifier — Latin, ratified.
+                { title: "স্লাগ", dataIndex: "slug" },
+                {
+                  title: "পরিধি", dataIndex: "scope",
+                  render: (s: "global" | "org") =>
+                    <Typography.Text type="secondary">{scopeLabel(s)}</Typography.Text>,
+                },
+                {
+                  title: "স্ট্যাটাস", dataIndex: "status",
+                  // Was the raw wire word. `SubjectResponse.status` is "active" | "archived",
+                  // both of which the shared content-status vocabulary already names.
+                  render: (s: "active" | "archived") => <ContentStatusChip status={s} />,
+                },
+                {
+                  title: "অ্যাকশন", key: "actions",
+                  render: (_, record) => (
+                    <Space>
+                      <Button size="small" onClick={() => setDrawerSubject(record)}>টপিক</Button>
+                      {canEdit(record.scope) && (
+                        <>
+                          <Button size="small" onClick={() => {
+                            setEditingSubject(record);
+                            subjForm.setFieldsValue({
+                              nameEn: record.name.en, nameBn: record.name.bn, slug: record.slug,
+                            });
+                            setSubjModalOpen(true);
+                          }}>সম্পাদনা</Button>
+                          <Popconfirm
+                            title="বিষয়টি মুছবেন?"
+                            description="কোনো টপিক না থাকলেই কেবল মোছা যাবে।"
+                            okText="মুছুন"
+                            cancelText="না"
+                            okButtonProps={{ danger: true }}
+                            onConfirm={async () => {
+                              try {
+                                await deleteSubj.mutateAsync(record.id);
+                                message.success("বিষয় মুছে ফেলা হয়েছে");
+                              } catch (e) {
+                                message.error(serverError(e, "মোছা যায়নি"));
+                              }
+                            }}
+                          >
+                            <Button size="small" danger>মুছুন</Button>
+                          </Popconfirm>
+                        </>
+                      )}
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+          </Card>
+        </>
+      )}
 
       <Modal
         open={subjModalOpen}
-        title={editingSubject ? "Edit subject" : "Add subject"}
+        title={editingSubject ? "বিষয় সম্পাদনা" : "নতুন বিষয়"}
         onCancel={() => setSubjModalOpen(false)}
         onOk={() => subjForm.submit()}
+        okText="সংরক্ষণ করুন"
+        cancelText="বাতিল"
         confirmLoading={createSubj.isPending || updateSubj.isPending}
       >
         <Form<SubjectFormValues> form={subjForm} layout="vertical" onFinish={onSubjectSubmit}>
-          <Form.Item name="nameEn" label="Name (English)">
-            <Input placeholder="e.g. Bangladesh Affairs" />
+          {/* The two name placeholders are each written in the language of their own field —
+              an English example under «নাম (ইংরেজি)» is the useful hint, not a Bengali one. */}
+          <Form.Item name="nameEn" label="নাম (ইংরেজি)">
+            <Input placeholder="যেমন Bangladesh Affairs" />
           </Form.Item>
-          <Form.Item name="nameBn" label="Name (Bangla)">
-            <Input placeholder="e.g. বাংলাদেশ বিষয়াবলী" />
+          <Form.Item name="nameBn" label="নাম (বাংলা)">
+            <Input placeholder="যেমন বাংলাদেশ বিষয়াবলী" />
           </Form.Item>
-          <Form.Item name="slug" label="Slug (optional; derived from English if blank)">
+          <Form.Item name="slug" label="স্লাগ (ঐচ্ছিক — ফাঁকা রাখলে ইংরেজি নাম থেকে তৈরি হবে)">
             <Input placeholder="bangladesh-affairs" />
           </Form.Item>
         </Form>
@@ -146,7 +264,7 @@ export function TaxonomyManager({ mode }: { mode: Mode }) {
         onClose={() => setDrawerSubject(null)}
         canEditScope={canEdit}
       />
-    </Card>
+    </>
   );
 }
 
@@ -158,6 +276,7 @@ function TopicsDrawer({
   onClose: () => void;
   canEditScope: (s: "global" | "org") => boolean;
 }) {
+  const { message } = App.useApp();
   const topicsQ = useTopics(mode, subject?.id ?? null);
   const createTopic = useCreateTopic(mode, subject?.id ?? "");
   const updateTopic = useUpdateTopic(mode, subject?.id ?? "");
@@ -193,17 +312,16 @@ function TopicsDrawer({
     try {
       if (editingTopic) {
         await updateTopic.mutateAsync({ id: editingTopic.id, body });
-        message.success("Topic updated");
+        message.success("টপিক হালনাগাদ হয়েছে");
       } else {
         await createTopic.mutateAsync(body);
-        message.success("Topic added");
+        message.success("টপিক যোগ হয়েছে");
       }
       setModalOpen(false);
       setEditingTopic(null);
       form.resetFields();
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: string } } };
-      message.error(err.response?.data?.error ?? "Save failed");
+    } catch (e) {
+      message.error(serverError(e, "সংরক্ষণ করা যায়নি"));
     }
   }
 
@@ -211,88 +329,123 @@ function TopicsDrawer({
     <Drawer
       open={!!subject}
       onClose={onClose}
-      title={`Topics — ${subject.name.en ?? subject.name.bn ?? subject.slug}`}
+      title={`টপিক — ${nodeLabel(subject.name, subject.slug)}`}
       size={640}
       extra={subjectIsEditable && (
         <Button type="primary" onClick={() => {
           setEditingTopic(null); form.resetFields(); setModalOpen(true);
-        }}>Add topic</Button>
+        }}>টপিক যোগ করুন</Button>
       )}
     >
-      <Table<TopicResponse>
-        rowKey="id"
-        size="small"
-        loading={topicsQ.isLoading}
-        dataSource={treeData}
-        pagination={false}
-        expandable={{ defaultExpandAllRows: true }}
-        columns={[
-          { title: "Name (EN)", dataIndex: ["name", "en"], render: (v?: string) => v ?? "—" },
-          { title: "Name (BN)", dataIndex: ["name", "bn"], render: (v?: string) => v ?? "—" },
-          { title: "Slug", dataIndex: "slug" },
-          {
-            title: "Scope", dataIndex: "scope",
-            render: (s: "global" | "org") =>
-              <Tag color={s === "global" ? "blue" : "purple"}>{s}</Tag>,
-          },
-          {
-            title: "Actions", key: "actions",
-            render: (_, record) =>
-              canEditScope(record.scope) && (
-                <Space>
-                  <Button size="small" onClick={() => {
-                    setEditingTopic(record);
-                    form.setFieldsValue({
-                      nameEn: record.name.en, nameBn: record.name.bn, slug: record.slug,
-                      parentTopicId: record.parentTopicId ?? undefined,
-                    });
-                    setModalOpen(true);
-                  }}>Edit</Button>
-                  <Popconfirm
-                    title="Delete topic?"
-                    description="Only allowed if it has no subtopics."
-                    onConfirm={async () => {
-                      try { await deleteTopic.mutateAsync(record.id); message.success("Deleted"); }
-                      catch (e: unknown) {
-                        const err = e as { response?: { data?: { error?: string } } };
-                        message.error(err.response?.data?.error ?? "Delete failed");
-                      }
-                    }}
-                  >
-                    <Button size="small" danger>Delete</Button>
-                  </Popconfirm>
-                </Space>
-              ),
-          },
-        ]}
-      />
+      {/* Same three-state rule as the subject list above, for the same reason. */}
+      {topicsQ.isPending ? (
+        <Skeleton active paragraph={{ rows: 4 }} />
+      ) : topicsQ.data == null ? (
+        <RetryNotice
+          tone="panel"
+          framed={false}
+          busy={topicsQ.isFetching}
+          onRetry={() => void topicsQ.refetch()}
+        />
+      ) : (
+        <>
+          {topicsQ.isError && (
+            <RetryNotice
+              tone="strip"
+              busy={topicsQ.isFetching}
+              onRetry={() => void topicsQ.refetch()}
+            />
+          )}
+          <Table<TopicResponse>
+            rowKey="id"
+            size="small"
+            dataSource={treeData}
+            pagination={false}
+            // Parity with the subject table: five columns plus a two-button action cell do not
+            // fit the 640px Drawer, so the overflow scrolls inside the table rather than pushing
+            // the drawer body sideways.
+            scroll={{ x: true }}
+            expandable={{ defaultExpandAllRows: true }}
+            locale={{
+              emptyText: subjectIsEditable
+                ? "এই বিষয়ে এখনো কোনো টপিক নেই — উপরে টপিক যোগ করুন।"
+                : "এই বিষয়ে এখনো কোনো টপিক নেই।",
+            }}
+            columns={[
+              { title: "নাম (ইংরেজি)", dataIndex: ["name", "en"], render: (v?: string) => v ?? "—" },
+              { title: "নাম (বাংলা)", dataIndex: ["name", "bn"], render: (v?: string) => v ?? "—" },
+              { title: "স্লাগ", dataIndex: "slug" },
+              {
+                title: "পরিধি", dataIndex: "scope",
+                render: (s: "global" | "org") =>
+                  <Typography.Text type="secondary">{scopeLabel(s)}</Typography.Text>,
+              },
+              {
+                title: "অ্যাকশন", key: "actions",
+                render: (_, record) =>
+                  canEditScope(record.scope) && (
+                    <Space>
+                      <Button size="small" onClick={() => {
+                        setEditingTopic(record);
+                        form.setFieldsValue({
+                          nameEn: record.name.en, nameBn: record.name.bn, slug: record.slug,
+                          parentTopicId: record.parentTopicId ?? undefined,
+                        });
+                        setModalOpen(true);
+                      }}>সম্পাদনা</Button>
+                      <Popconfirm
+                        title="টপিকটি মুছবেন?"
+                        description="কোনো সাব-টপিক না থাকলেই কেবল মোছা যাবে।"
+                        okText="মুছুন"
+                        cancelText="না"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={async () => {
+                          try {
+                            await deleteTopic.mutateAsync(record.id);
+                            message.success("টপিক মুছে ফেলা হয়েছে");
+                          } catch (e) {
+                            message.error(serverError(e, "মোছা যায়নি"));
+                          }
+                        }}
+                      >
+                        <Button size="small" danger>মুছুন</Button>
+                      </Popconfirm>
+                    </Space>
+                  ),
+              },
+            ]}
+          />
+        </>
+      )}
 
       <Modal
         open={modalOpen}
-        title={editingTopic ? "Edit topic" : "Add topic"}
+        title={editingTopic ? "টপিক সম্পাদনা" : "নতুন টপিক"}
         onCancel={() => setModalOpen(false)}
         onOk={() => form.submit()}
+        okText="সংরক্ষণ করুন"
+        cancelText="বাতিল"
         confirmLoading={createTopic.isPending || updateTopic.isPending}
       >
         <Form<TopicFormValues> form={form} layout="vertical" onFinish={onSubmit}>
-          <Form.Item name="nameEn" label="Name (English)">
+          <Form.Item name="nameEn" label="নাম (ইংরেজি)">
             <Input />
           </Form.Item>
-          <Form.Item name="nameBn" label="Name (Bangla)">
+          <Form.Item name="nameBn" label="নাম (বাংলা)">
             <Input />
           </Form.Item>
-          <Form.Item name="slug" label="Slug (optional)">
+          <Form.Item name="slug" label="স্লাগ (ঐচ্ছিক)">
             <Input />
           </Form.Item>
-          <Form.Item name="parentTopicId" label="Parent topic (makes this a subtopic)">
+          <Form.Item name="parentTopicId" label="প্যারেন্ট টপিক (দিলে এটি সাব-টপিক হবে)">
             <Select
               allowClear
-              placeholder="None — top-level topic"
+              placeholder="নেই — টপ-লেভেল টপিক"
               options={topLevel
                 .filter((t) => t.id !== editingTopic?.id)
                 .map((t) => ({
                   value: t.id,
-                  label: t.name.bn && t.name.en ? `${t.name.bn} — ${t.name.en}` : t.name.bn ?? t.name.en ?? t.slug,
+                  label: t.name.bn && t.name.en ? `${t.name.bn} — ${t.name.en}` : nodeLabel(t.name, t.slug),
                 }))}
             />
           </Form.Item>

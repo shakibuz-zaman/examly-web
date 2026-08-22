@@ -86,6 +86,18 @@ export function formatDhakaDayMonthBn(iso: string): string {
   return `${bnNum(d.getUTCDate())} ${MONTHS_BN[d.getUTCMonth()]}`;
 }
 
+// Dhaka-pinned (+06:00 fixed) date WITH the year, in Bengali digits: «২৫ জুলাই ২০২৬».
+// The two formatters above deliberately drop the year — a scheduled window and a chart tick
+// are both read in the present — but a record's birth date is not: an org created in ২০২৫
+// printed through formatDhakaShortBn reads as a date this year, and it carries a clock nobody
+// asked for. Returns "" on an unparseable instant, like every formatter here; the caller
+// decides what to print instead.
+export function formatDhakaFullDateBn(iso: string): string {
+  const d = dhakaInstant(iso);
+  if (!d) return "";
+  return `${bnNum(d.getUTCDate())} ${MONTHS_BN[d.getUTCMonth()]} ${bnNum(d.getUTCFullYear())}`;
+}
+
 // Bengali-numeral duration for card meta (§3.1 — prose counts use bnNum).
 export function formatDurationBn(minutes: number): string {
   const h = Math.floor(minutes / 60);
