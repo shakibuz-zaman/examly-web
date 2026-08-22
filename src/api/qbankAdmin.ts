@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { apiClient } from "./client";
 import type {
   AdminPaper,
@@ -36,6 +37,18 @@ export function useAdminPaper(id: string | undefined) {
     queryKey: ["admin-qbank", "paper", id],
     enabled: !!id,
     queryFn: async () => (await apiClient.get<AdminPaper>(`${base}/papers/${id}`)).data,
+    // A 404 here is a FINAL answer — the id is wrong or the paper is gone — and the page
+    // acts on it by navigating back to the list (AdminQbankPaperPage's `notFound` branch).
+    // Under the default policy that bounce waited out three retries with exponential
+    // backoff first, so a mistyped id sat on a skeleton for seconds before the toast. Same
+    // predicate `useMyOrg` (api/me.ts) already uses for the same reason — except that the
+    // fall-through keeps TanStack's OWN default of three attempts (`failureCount < 3`)
+    // rather than me.ts's two, so this hook's behaviour on every other status is byte-for-
+    // byte what it was: only the 404 path changes.
+    retry: (failureCount, error) => {
+      if (error instanceof AxiosError && error.response?.status === 404) return false;
+      return failureCount < 3;
+    },
   });
 }
 

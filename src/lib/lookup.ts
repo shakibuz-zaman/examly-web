@@ -5,8 +5,8 @@
 // a child. `Object.hasOwn` is the whole fix, and `??`/truthiness is not — which is why this is
 // a named import rather than a line each surface is trusted to remember.
 //
-// StatusChip and WalletPage still carry their own copies (WalletPage's is this function
-// verbatim); Task 8's sweep folds them in. New call sites import this one.
+// StatusChip and WalletPage carried their own copies until Task 8's sweep folded them in;
+// every string-keyed map read from the wire now goes through this one.
 export function lookup<T>(map: Record<string, T>, key: string): T | null {
   return Object.hasOwn(map, key) ? map[key] : null;
 }

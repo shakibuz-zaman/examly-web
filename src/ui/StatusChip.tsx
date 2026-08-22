@@ -1,5 +1,6 @@
 import { bnNum } from "../lib/bn";
 import { CONTENT_STATUS, DIFFICULTY } from "../lib/labels";
+import { lookup } from "../lib/lookup";
 import type { TimeStatus } from "../lib/catalogStatus";
 
 // §3.4 time-status chip: tint bg + dot + ink. Label is caller-supplied Bengali.
@@ -41,15 +42,15 @@ export type ContentStatus = "draft" | "active" | "published" | "archived";
 // active 6.81 / 7.61, published 4.53 / 4.97, archived 5.70 / 7.52 — all AA on the card
 // surface examiner tables paint on.
 export function ContentStatusChip({ status }: { status: ContentStatus }) {
-  // The prop is a closed union but the wire is untyped JSON and `strictNullChecks` is off,
-  // so an unknown status can still reach here at runtime. Neutral tint plus the raw key
-  // beats an unstyled transparent chip with an empty label.
-  // `typeof === "string"`, not truthiness (same guard as ExaminerHeader's breadcrumb walk):
-  // CONTENT_STATUS is a plain object literal, so a wire value like "constructor" resolves
-  // through Object.prototype to a *function* — truthy, so it would pick an unstyled tint
-  // class and then hand React a function as a child, which throws.
-  const hit = CONTENT_STATUS[status];
-  const label = typeof hit === "string" ? hit : null;
+  // The prop is a closed union, but the wire is untyped JSON — `strict` (and with it
+  // `strictNullChecks`) is ON under the pinned TypeScript 6, which types the boundary and
+  // does not police what actually arrives at runtime. So an unknown status can still reach
+  // here, and neutral tint plus the raw key beats an unstyled transparent chip with an empty
+  // label. `lookup` (lib/lookup) is the prototype-key guard, not truthiness: CONTENT_STATUS
+  // is a plain object literal, so a wire value like "constructor" resolves through
+  // Object.prototype to a *function* — truthy, so it would pick an unstyled tint class and
+  // then hand React a function as a child, which throws.
+  const label = lookup(CONTENT_STATUS, status);
   return (
     <span className={`ex-chipstat ex-chipstat--${label ? status : "archived"}`}>
       {label ?? status}
@@ -83,15 +84,15 @@ export type Difficulty = "easy" | "medium" | "hard";
 // §9 difficulty cell: colour dot + the Bengali word. The dot is aria-hidden — it restates
 // the label beside it, and the label is the fact AT reads. Colour alone never carries this.
 export function DifficultyDot({ difficulty }: { difficulty: Difficulty }) {
-  // typeof-guarded for the same reason as ContentStatusChip above: DIFFICULTY is a plain
-  // object literal, and a prototype key ("constructor") would otherwise reach React as a
-  // function child. The dot needs no guard — an unmatched modifier class just falls back
-  // to the ink-faint fill.
-  const hit = DIFFICULTY[difficulty];
+  // Guarded for the same reason as ContentStatusChip above: DIFFICULTY is a plain object
+  // literal, and a prototype key ("constructor") would otherwise reach React as a function
+  // child. The dot needs no guard — an unmatched modifier class just falls back to the
+  // ink-faint fill.
+  const hit = lookup(DIFFICULTY, difficulty);
   return (
     <span className="ex-diffdot">
       <span className={`ex-diffdot-mark ex-diffdot-mark--${difficulty}`} aria-hidden />
-      {typeof hit === "string" ? hit : difficulty}
+      {hit ?? difficulty}
     </span>
   );
 }

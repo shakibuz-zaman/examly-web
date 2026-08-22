@@ -1,9 +1,5 @@
 import { bnNum } from "./bn";
 
-export function formatDateTime(iso: string | null | undefined): string {
-  return iso ? new Date(iso).toLocaleString() : "—";
-}
-
 // "1 price" vs "12 prices". English has a singular, so a count line built as `${n} prices`
 // prints "1 prices" the moment the smallest real case shows up — a payout queue holding one
 // request, a standalone order for one exam. Both halves are passed in because the plural is not

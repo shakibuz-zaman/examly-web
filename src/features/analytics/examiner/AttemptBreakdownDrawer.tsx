@@ -15,6 +15,19 @@ export function AttemptBreakdownDrawer({
   const breakdown = useAttemptBreakdown(examId, row?.attemptId ?? null);
   const rows = breakdown.data ?? [];
 
+  // Lifted out of the bars branch so the EMPTY branch gets it too (T9 finding). The strip is
+  // the "these numbers are the old ones" caveat, and «এই অ্যাটেম্পটে এখনো কোনো উত্তর জমা পড়েনি»
+  // is a NUMBER — a held, possibly stale zero. Without the strip an examiner reads a refetch
+  // failure as a factual "nothing submitted", which is exactly the misreading the caveat
+  // exists to prevent. Same placement ExamAnalyticsTab uses for its own empty funnel.
+  const strip = breakdown.isError && (
+    <RetryNotice
+      tone="strip"
+      busy={breakdown.isFetching}
+      onRetry={() => void breakdown.refetch()}
+    />
+  );
+
   return (
     <Drawer
       open={row !== null}
@@ -51,16 +64,13 @@ export function AttemptBreakdownDrawer({
           onRetry={() => void breakdown.refetch()}
         />
       ) : rows.length === 0 ? (
-        <EmptyState variant="empty" message="এই অ্যাটেম্পটে এখনো কোনো উত্তর জমা পড়েনি।" />
+        <>
+          {strip}
+          <EmptyState variant="empty" message="এই অ্যাটেম্পটে এখনো কোনো উত্তর জমা পড়েনি।" />
+        </>
       ) : (
         <>
-          {breakdown.isError && (
-            <RetryNotice
-              tone="strip"
-              busy={breakdown.isFetching}
-              onRetry={() => void breakdown.refetch()}
-            />
-          )}
+          {strip}
           {rows.map((subject) => (
             <div key={subject.nodeId ?? "uncategorized"}>
               <StrengthBarRow row={subject} />

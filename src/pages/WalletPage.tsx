@@ -8,6 +8,7 @@ import {
 import type { WalletEntry, Withdrawal } from "../api/commerce";
 import { bnMoney } from "../lib/bn";
 import { formatDhakaShortBn } from "../lib/format";
+import { lookup } from "../lib/lookup";
 import { PageHeader } from "../ui/PageHeader";
 import { PillButton } from "../ui/PillButton";
 import { RetryNotice } from "../ui/RetryNotice";
@@ -33,14 +34,12 @@ function tableMoney(amount: number): string {
   return `${sign}৳${Math.abs(rounded).toLocaleString("en-IN")}`;
 }
 
-// `Object.hasOwn`, not truthiness: these are plain object literals and the wire `kind` /
-// `status` are bare strings, so a value like "constructor" resolves through Object.prototype
-// to a *function* — truthy, and reading `.label` off it hands React undefined inside a chip
-// with an `--undefined` modifier. Same guard StatusChip records for the same reason.
-function lookup<T>(map: Record<string, T>, key: string): T | null {
-  return Object.hasOwn(map, key) ? map[key] : null;
-}
-
+// The two maps below are read through `lookup` (lib/lookup), which is `Object.hasOwn` and
+// not truthiness: they are plain object literals and the wire `kind` / `status` are bare
+// strings, so a value like "constructor" resolves through Object.prototype to a *function* —
+// truthy, and reading `.label` off it hands React undefined inside a chip with an
+// `--undefined` modifier. This page carried its own copy of that guard until 7g Task 8
+// folded it into the shared one; StatusChip reads the same import for the same reason.
 const KIND: Record<string, { tone: MoneyTone; label: string }> = {
   sale_credit: { tone: "inflow", label: "বিক্রয়" },
   withdrawal_debit: { tone: "outflow", label: "উত্তোলন" },
@@ -116,8 +115,9 @@ export function WalletPage() {
       setDestination("");
       setAmount(minWithdrawal);
     } catch (e) {
-      // Server text is still English until Task 7 translates the commerce strings; the
-      // fallback below is the only half this page owns.
+      // The server's own sentence leads and it is Bengali as of 7g Task 7 (the three
+      // withdrawal gates in WalletService are examiner-reachable, so they were translated);
+      // the fallback below is the only half this page owns.
       message.error(serverError(e, "উত্তোলনের অনুরোধ পাঠানো যায়নি"));
     }
   };
@@ -218,7 +218,12 @@ export function WalletPage() {
       title: "কারণ",
       dataIndex: "rejectReason",
       key: "rejectReason",
-      // Admin-written free text; English until the payout queue is translated (T7).
+      // Two kinds of text land in this column and only one of them is ours. A payout the
+      // SERVER rejected carries the Bengali compensation sentence it wrote («ব্যালেন্স বদলে
+      // গেছে — আবার চেষ্টা করুন।», WalletService's balance-race branch, Bengali since T7). A
+      // payout an ADMIN rejected carries whatever that admin typed into the English payout
+      // queue, which stays English by D1 — an examiner surface cannot translate free text a
+      // human wrote. So this renders verbatim, whichever it is.
       render: (v: string | null) => v ?? "—",
     },
   ];
