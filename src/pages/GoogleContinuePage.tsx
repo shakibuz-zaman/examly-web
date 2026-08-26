@@ -76,6 +76,7 @@ export function GoogleContinuePage() {
 
   // Branch 2b: link ticket, signed out — OTP-sign-in as the matching account, then link.
   async function completeLinkSignIn(t: TokenResponse) {
+    spentRef.current = true;
     setToken(t.accessToken);
     try {
       await googleLink(link ?? "");
