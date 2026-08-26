@@ -4,6 +4,7 @@ import { LogOut, Moon, PanelLeft, Search, Sun } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { useThemeMode } from "../theme/ThemeContext";
+import { toLocalPhone } from "../lib/phone";
 import { BREADCRUMB_LABELS, ROLE_LABEL, SIDENAV_ID } from "./examinerNav";
 import { CommandPalette } from "./CommandPalette";
 
@@ -69,7 +70,9 @@ export function ExaminerHeader({
       type: "group" as const,
       label: (
         <span className="ex-usermenu-id">
-          <span className="ex-usermenu-email">{user?.email}</span>
+          <span className="ex-usermenu-email">
+            {user?.email ?? (user?.phone ? toLocalPhone(user.phone) : "")}
+          </span>
           <span className="ex-usermenu-role">{roleLabel}</span>
         </span>
       ),

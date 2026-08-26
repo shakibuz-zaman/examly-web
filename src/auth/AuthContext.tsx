@@ -1,49 +1,51 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { activeTrackStore } from "../features/tracks/activeTrackStore";
 import { tokenStore } from "./tokenStore";
-import { registerUnauthorizedHandler } from "../api/client";
+import { refreshAccessToken, registerUnauthorizedHandler } from "../api/client";
+import { ME_KEY, fetchMe, logoutServer } from "../api/auth";
+import type { MeUser, TokenResponse } from "../api/auth";
 
-export type DecodedClaims = {
-  sub: string;
-  email?: string;
-  name?: string;
-  role: string;
-  orgId?: string;
-  exp: number;
-};
-
-type AuthState = {
+export type AuthContextValue = {
   token: string | null;
-  user: DecodedClaims | null;
-};
-
-export type AuthContextValue = AuthState & {
+  user: MeUser | null;
+  isPending: boolean;
   setToken: (token: string) => void;
+  adoptSession: (t: TokenResponse) => void;
   logout: () => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
-function decodeJwt(token: string): DecodedClaims | null {
-  try {
-    const [, payload] = token.split(".");
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    // atob alone mangles multi-byte UTF-8 (Bangla names) — decode bytes explicitly.
-    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
-    const json = new TextDecoder("utf-8").decode(bytes);
-    return JSON.parse(json) as DecodedClaims;
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const [state, setState] = useState<AuthState>(() => {
-    const token = tokenStore.get();
-    return { token, user: token ? decodeJwt(token) : null };
+  const [token, setTokenState] = useState<string | null>(() => tokenStore.get());
+  // sessionStorage dies with the tab; the 30-day examly.rt cookie is the only cross-restart
+  // memory the design has. One silent refresh on a token-less boot redeems it (single attempt
+  // — a logged-out visitor costs exactly one 401 that also clears any dead cookie).
+  const [booting, setBooting] = useState(() => tokenStore.get() == null);
+
+  useEffect(() => {
+    if (!booting) return;
+    let alive = true;
+    void refreshAccessToken().then((t) => {
+      if (!alive) return;
+      if (t) setTokenState(t);
+      setBooting(false);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [booting]);
+
+  // user IS the /auth/me answer (role/orgId are resolved server-side per request — a token
+  // never names its own role, so decoding the JWT is gone for good).
+  const me = useQuery<MeUser>({
+    queryKey: ME_KEY,
+    queryFn: fetchMe,
+    enabled: token != null,
+    staleTime: 60_000,
   });
 
   // The QueryClient is module-scoped (ThemedApp) and no query key carries a student
@@ -58,12 +60,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const setToken = useCallback(
-    (token: string) => {
+    (next: string) => {
       clearSessionState();
-      tokenStore.set(token);
-      setState({ token, user: decodeJwt(token) });
+      tokenStore.set(next);
+      setTokenState(next);
     },
     [clearSessionState],
+  );
+
+  // Same identity, new session: /auth/password and /auth/phone/change/verify re-mint the
+  // session (new cookie + token) and the OLD token dies on its next sst check — the swap must
+  // be immediate. No cache clear: same person, and t.user is projected straight off the users
+  // doc, so seed then invalidate — GET /auth/me stays authoritative (admin allowlist drift).
+  const adoptSession = useCallback(
+    (t: TokenResponse) => {
+      tokenStore.set(t.accessToken);
+      setTokenState(t.accessToken);
+      queryClient.setQueryData(ME_KEY, t.user);
+      void queryClient.invalidateQueries({ queryKey: ME_KEY });
+    },
+    [queryClient],
   );
 
   // Measured on @tanstack/react-query 5.100.10: clear() empties the cache but does NOT
@@ -71,9 +87,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // edges unmount the student tree immediately after. An in-place account switch, or a
   // silent setToken refresh that keeps the tree mounted, would need an explicit remount.
   const logout = useCallback(() => {
+    void logoutServer(); // best effort: revokes the family, clears the cookie; never blocks
     tokenStore.clear();
     clearSessionState();
-    setState({ token: null, user: null });
+    setTokenState(null);
   }, [clearSessionState]);
 
   useEffect(() => {
@@ -81,8 +98,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ ...state, setToken, logout }),
-    [state, setToken, logout],
+    () => ({
+      token,
+      user: token != null ? (me.data ?? null) : null,
+      isPending: booting || (token != null && me.isPending),
+      setToken,
+      adoptSession,
+      logout,
+    }),
+    [token, me.data, me.isPending, booting, setToken, adoptSession, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
