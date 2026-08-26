@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+import type { InternalAxiosRequestConfig } from "axios";
 import { tokenStore } from "../auth/tokenStore";
 import { env } from "../lib/env";
 
@@ -21,13 +22,68 @@ export function registerUnauthorizedHandler(handler: () => void) {
   onUnauthorized = handler;
 }
 
+// Bare instance: no interceptors, so the refresh POST can never recurse through the 401
+// handler below, and it carries no bearer (the examly.rt cookie IS the credential — the
+// browser attaches it automatically on this same-origin, /api/v1/auth-scoped request).
+const refreshClient = axios.create({ baseURL: env.apiBaseUrl });
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function doRefresh(): Promise<string | null> {
+  try {
+    const { data } = await refreshClient.post<{ accessToken: string; expiresAt: string }>(
+      "/api/v1/auth/refresh",
+      null,
+    );
+    tokenStore.set(data.accessToken);
+    return data.accessToken;
+  } catch {
+    return null; // the API already cleared the dead cookie in its 401 response
+  }
+}
+
+// SINGLE-FLIGHT, and cross-tab serialized where the browser supports it. Refresh rotation is
+// zero-leeway on the API: two concurrent refreshes present the same cookie twice, and the
+// second one revokes the whole session family (= logs the user out on every device). One
+// in-flight promise covers this tab; navigator.locks covers sibling tabs sharing the cookie.
+export function refreshAccessToken(): Promise<string | null> {
+  refreshInFlight ??= (
+    typeof navigator !== "undefined" && navigator.locks
+      ? navigator.locks.request("examly.refresh", doRefresh)
+      : doRefresh()
+  ).finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean };
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401) {
+  async (error: AxiosError) => {
+    const config = error.config as RetriableConfig | undefined;
+    if (error.response?.status !== 401 || !config) throw error;
+
+    // A 401 that carries `{message}` is a CREDENTIAL answer (wrong OTP/password/expired code —
+    // otp/verify, login/password, phone/change/verify, google/complete). Surface it to the
+    // caller untouched; refreshing on it would be wrong and could burn the session.
+    const data = error.response.data as { message?: unknown } | undefined;
+    if (data && typeof data.message === "string") throw error;
+
+    // Empty-body 401 = dead/stale access token. One refresh, one retry, then hard logout.
+    if (!tokenStore.get() || config._retried) {
       tokenStore.clear();
       onUnauthorized?.();
+      throw error;
     }
-    return Promise.reject(error);
+    const token = await refreshAccessToken();
+    if (!token) {
+      tokenStore.clear();
+      onUnauthorized?.();
+      throw error;
+    }
+    config._retried = true;
+    return apiClient(config); // request interceptor re-reads tokenStore → new bearer
   },
 );
