@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { activeTrackStore } from "../features/tracks/activeTrackStore";
@@ -47,6 +47,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     enabled: token != null,
     staleTime: 60_000,
   });
+
+  // A refresh against the browser-wide cookie can swap identities WITHOUT passing through
+  // setToken (account B logs in from another tab while this tab holds account A). Same
+  // shared-key leak as the auth edges — on a sub transition, drop the outgoing identity's
+  // cache. The ref resets when user goes null, so a normal logout→login pair (already
+  // cleared by setToken) doesn't clear twice.
+  const lastSubRef = useRef<string | null>(null);
+  useEffect(() => {
+    const sub = me.data?.sub ?? null;
+    if (sub == null) {
+      lastSubRef.current = null;
+      return;
+    }
+    if (lastSubRef.current != null && lastSubRef.current !== sub) {
+      const fresh = me.data;
+      queryClient.clear();
+      activeTrackStore.clear();
+      queryClient.setQueryData(ME_KEY, fresh); // keep the incoming identity; consumers refetch under it
+    }
+    lastSubRef.current = sub;
+  }, [me.data, queryClient]);
 
   // The QueryClient is module-scoped (ThemedApp) and no query key carries a student
   // segment — two students on the same track share byte-identical keys. So every identity
