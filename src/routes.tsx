@@ -27,6 +27,7 @@ import { WithdrawalsPage } from "./pages/WithdrawalsPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { RosterPage } from "./pages/RosterPage";
 import { WalletPage } from "./pages/WalletPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { RequireRole } from "./auth/RequireRole";
@@ -127,6 +128,7 @@ export const routes: RouteObject[] = [
       { path: "selling/roster/:slotPurchaseId", element: <RosterPage /> },
       { path: "wallet", element: <WalletPage /> },
       { path: "org/profile", element: <OrgProfilePage /> },
+      { path: "settings", element: <SettingsPage /> },
       { path: "taxonomy", element: <TaxonomyPage /> },
       {
         path: "admin/taxonomy",
