@@ -6,6 +6,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { GoogleContinuePage } from "./pages/GoogleContinuePage";
 import { DevLoginPage } from "./pages/DevLoginPage";
 import { PricingPage } from "./pages/PricingPage";
+import { EmailVerifyPage } from "./pages/EmailVerifyPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QuestionsListPage } from "./pages/QuestionsListPage";
 import { QuestionEditorPage } from "./pages/QuestionEditorPage";
@@ -56,6 +57,7 @@ export const routes: RouteObject[] = [
   { path: "/login/google", element: <GoogleContinuePage /> },
   ...(import.meta.env.DEV ? [{ path: "/dev-login", element: <DevLoginPage /> }] : []),
   { path: "/pricing", element: <PricingPage /> },
+  { path: "/account/email/verify", element: <EmailVerifyPage /> },
   {
     path: "/onboarding",
     element: (
