@@ -2,11 +2,11 @@ import { useRef } from "react";
 import type { ClipboardEvent, KeyboardEvent } from "react";
 import { bnNum } from "../lib/bn";
 
-// The OTP SMS carries Western digits (identifier rule), but a Bengali keypad types ০-৯ —
+// The OTP SMS carries Western digits (identifier rule), but a Bengali keypad types ०-९ —
 // map at entry; the API's normaliser STRIPS Bengali digits rather than converting them.
 const BN_TO_EN: Record<string, string> = {
-  "০": "0", "१": "1", "२": "2", "३": "3", "४": "4",
-  "५": "5", "६": "6", "७": "7", "८": "8", "९": "9",
+  "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4",
+  "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9",
 };
 
 function toAsciiDigits(s: string): string {
