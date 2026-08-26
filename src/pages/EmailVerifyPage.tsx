@@ -9,18 +9,15 @@ export function EmailVerifyPage() {
   const token = params.get("token");
   const queryClient = useQueryClient();
   const firedRef = useRef(false);
-  const [state, setState] = useState<{ status: "pending" | "done" | "failed"; message: string }>({
-    status: "pending",
-    message: "",
-  });
+  const [state, setState] = useState<{ status: "pending" | "done" | "failed"; message: string }>(() =>
+    token
+      ? { status: "pending", message: "" }
+      : { status: "failed", message: "লিংকটি অবৈধ বা মেয়াদোত্তীর্ণ।" },
+  );
 
   useEffect(() => {
-    if (firedRef.current) return;
+    if (!token || firedRef.current) return;
     firedRef.current = true;
-    if (!token) {
-      setState({ status: "failed", message: "লিংকটি অবৈধ বা মেয়াদোত্তীর্ণ।" });
-      return;
-    }
     emailChangeVerify(token)
       .then((m) => {
         void queryClient.invalidateQueries({ queryKey: ME_KEY }); // same browser + signed in → fresh emailVerified
