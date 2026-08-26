@@ -258,12 +258,22 @@ export function useStubPay() {
 // /payment/return polls this until the gateway callback / sweep settles the order. The
 // interval stops itself on any terminal status — it re-arms only while the order is still
 // "pending" (or has not loaded yet), so paid / failed / voided / duplicate all end the poll.
+// It ALSO stops once the query has gone to `error`, which only happens after the default 3
+// retries: transient blips during gateway settlement still ride through, but a stale or
+// foreign order id (a deliberate, permanent owner-scoped 404) settles into the error state
+// instead of refetching every 3s for as long as the page stays mounted. A "no data yet" test
+// alone could not tell those apart — an errored query has no data either. Task 10's
+// /payment/return renders its RetryNotice off that error state.
 export function useOrderStatus(orderId: string | null) {
   return useQuery<OrderStatusInfo>({
     queryKey: ["commerce", "order-status", orderId],
     enabled: !!orderId,
     refetchInterval: (q) =>
-      q.state.data == null || q.state.data.status === "pending" ? 3000 : false,
+      q.state.status === "error"
+        ? false
+        : q.state.data == null || q.state.data.status === "pending"
+          ? 3000
+          : false,
     queryFn: async () =>
       (await apiClient.get<OrderStatusInfo>(`/api/v1/orders/${orderId}/status`)).data,
   });
