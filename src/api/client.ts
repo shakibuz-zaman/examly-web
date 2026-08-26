@@ -37,8 +37,13 @@ async function doRefresh(): Promise<string | null> {
     );
     tokenStore.set(data.accessToken);
     return data.accessToken;
-  } catch {
-    return null; // the API already cleared the dead cookie in its 401 response
+  } catch (e) {
+    // 401 = the cookie is genuinely dead (the API clears it in that same response).
+    if (e instanceof AxiosError && e.response?.status === 401) return null;
+    // Anything else (network, 5xx, 429) is transient: rethrow so callers keep the
+    // session — treating it as dead used to trigger logout(), which REVOKED a
+    // healthy family server-side over a hiccup.
+    throw e;
   }
 }
 
@@ -77,7 +82,12 @@ apiClient.interceptors.response.use(
       onUnauthorized?.();
       throw error;
     }
-    const token = await refreshAccessToken();
+    let token: string | null;
+    try {
+      token = await refreshAccessToken();
+    } catch {
+      throw error; // transient refresh failure: keep the token, the caller just fails this once
+    }
     if (!token) {
       tokenStore.clear();
       onUnauthorized?.();

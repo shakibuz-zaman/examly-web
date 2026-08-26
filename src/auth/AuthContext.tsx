@@ -29,11 +29,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!booting) return;
     let alive = true;
-    void refreshAccessToken().then((t) => {
-      if (!alive) return;
-      if (t) setTokenState(t);
-      setBooting(false);
-    });
+    void refreshAccessToken()
+      .then((t) => {
+        if (!alive) return;
+        if (t) setTokenState(t);
+        setBooting(false);
+      })
+      .catch(() => {
+        if (alive) setBooting(false);
+      });
     return () => {
       alive = false;
     };
