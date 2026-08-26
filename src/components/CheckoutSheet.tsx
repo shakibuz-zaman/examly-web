@@ -1,14 +1,18 @@
-// PHASE-10 SEAM. This sheet drives the full B2C purchase loop: checkout → payment → grant.
-// Only the DEV-STUB payment panel (phase "paying") is throwaway — Phase 10 replaces it with a
-// real gateway redirect (bKash/SSLCommerz). The checkout call, the state machine, the success/
-// failure handling, and the ownership invalidation (done inside useStubPay) all stay as-is; the
-// gateway just takes over from where the stub's "সফল পেমেন্ট / ব্যর্থ পেমেন্ট" buttons sit today.
+// This sheet drives the full B2C purchase loop: checkout → payment → grant. The Phase-10 seam
+// is CLOSED: the real gateway redirect is live, and which of the two "paying" branches renders
+// is decided by the wire, not by the build — checkout returns a redirectUrl and the sheet hands
+// the buyer to the provider's hosted page (the browser leaves; settlement lands server-side and
+// /payment/return picks it up), or it returns null and the DEV-STUB panel pays in-app through
+// useStubPay. Only that stub branch is dev-only now, and it is reachable only while the devstub
+// adapter is the configured provider. The checkout call, the state machine, the success/failure
+// handling and the ownership invalidation (done inside useStubPay) are unchanged.
 import { useState } from "react";
 import { Alert, Button, Drawer, Grid, Modal, Typography } from "antd";
 import { CheckCircleFilled } from "@ant-design/icons";
 import { AxiosError } from "axios";
 import { useCheckout, useStubPay } from "../api/commerce";
 import type { CheckoutResponse } from "../api/commerce";
+import { bnMoney } from "../lib/bn";
 
 type CheckoutSheetProps = {
   open: boolean;
@@ -45,12 +49,13 @@ export function CheckoutSheet({
   const checkout = useCheckout();
   const stubPay = useStubPay();
   const [phase, setPhase] = useState<Phase>("idle");
-  const [token, setToken] = useState<string | null>(null);
+  // The whole checkout session, not just its token: redirectUrl is what picks the paying branch.
+  const [session, setSession] = useState<CheckoutResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
     setPhase("idle");
-    setToken(null);
+    setSession(null);
     setError(null);
   }
 
@@ -66,7 +71,7 @@ export function CheckoutSheet({
     setPhase("ordering");
     try {
       const res = createOrder ? await createOrder() : await checkout.mutateAsync(listingId);
-      setToken(res.checkoutToken);
+      setSession(res);
       setPhase("paying");
     } catch (err) {
       setError(errorText(err));
@@ -75,10 +80,10 @@ export function CheckoutSheet({
   }
 
   async function pay(outcome: "complete" | "fail") {
-    if (!token) return;
+    if (!session) return;
     setError(null);
     try {
-      await stubPay.mutateAsync({ token, outcome });
+      await stubPay.mutateAsync({ token: session.checkoutToken, outcome });
       if (outcome === "complete") {
         onPurchased(); // ownership invalidations already ran inside useStubPay
         setPhase("done");
@@ -99,7 +104,9 @@ export function CheckoutSheet({
         <Typography.Text strong style={{ display: "block", fontSize: 16 }}>
           {title}
         </Typography.Text>
-        <Typography.Text style={{ color: "var(--ex-ink-soft)" }}>৳{priceBdt}</Typography.Text>
+        <Typography.Text style={{ color: "var(--ex-ink-soft)" }}>
+          {bnMoney(priceBdt)}
+        </Typography.Text>
       </div>
 
       {(phase === "idle" || phase === "ordering") && (
@@ -110,11 +117,22 @@ export function CheckoutSheet({
           loading={phase === "ordering"}
           onClick={startCheckout}
         >
-          কিনুন — ৳{priceBdt}
+          কিনুন — {bnMoney(priceBdt)}
         </Button>
       )}
 
-      {phase === "paying" && (
+      {phase === "paying" && session?.redirectUrl && (
+        <Button
+          type="primary"
+          size="large"
+          block
+          onClick={() => window.location.assign(session.redirectUrl!)}
+        >
+          পেমেন্ট করুন — {bnMoney(priceBdt)}
+        </Button>
+      )}
+
+      {phase === "paying" && !session?.redirectUrl && (
         <div
           style={{
             border: "1px dashed var(--ex-line)",
