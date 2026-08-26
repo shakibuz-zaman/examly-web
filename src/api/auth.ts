@@ -154,9 +154,11 @@ export function useUpdateName() {
 }
 
 export function useSetPassword() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: { currentPassword: string | null; newPassword: string }) =>
       (await apiClient.post<TokenResponse>("/api/v1/auth/password", body)).data,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["auth", "sessions"] }),
   });
 }
 
@@ -178,9 +180,11 @@ export function usePhoneChange() {
 }
 
 export function usePhoneChangeVerify() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: { newPhone: string; code: string }) =>
       (await apiClient.post<TokenResponse>("/api/v1/auth/phone/change/verify", body)).data,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["auth", "sessions"] }),
   });
 }
 
