@@ -9,6 +9,7 @@ import {
 import type { AllowlistReport, AllowlistRow, RosterMember } from "../api/commerce";
 import { bnNum } from "../lib/bn";
 import { formatDhakaShortBn } from "../lib/format";
+import { toLocalPhone } from "../lib/phone";
 import { PageHeader } from "../ui/PageHeader";
 import { PillButton } from "../ui/PillButton";
 import { RetryNotice } from "../ui/RetryNotice";
@@ -177,7 +178,7 @@ export function RosterPage() {
       // A phone number is an identifier — Latin digits, and tabular so a column of them
       // aligns (the ratified exception, same as the wallet's বিকাশ নম্বর column).
       className: "ex-num",
-      render: (v: string | null) => v ?? "—",
+      render: (v: string | null) => (v ? toLocalPhone(v) : "—"),
     },
     { title: "নাম", dataIndex: "name", key: "name", render: (v: string | null) => v ?? "—" },
     {
@@ -432,24 +433,28 @@ export function RosterPage() {
         </Typography.Paragraph>
       </Modal>
 
-      <Modal
-        title="রোস্টার থেকে সরাবেন?"
-        open={revokeRow !== null}
-        onCancel={() => setRevokeRow(null)}
-        onOk={submitRevoke}
-        okText="সরান"
-        cancelText="না"
-        okButtonProps={{ danger: true }}
-        confirmLoading={revoke.isPending}
-      >
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          {revokeRow?.name ?? revokeRow?.phone
-            ? `«${revokeRow?.name ?? revokeRow?.phone}» `
-            : "এই সদস্য "}
-          আর অ্যাক্সেস পাবেন না। তিনি এখনো কোনো পরীক্ষা শুরু না করে থাকলে সিটটি খালি হয়ে
-          যাবে; শুরু করে থাকলে সিটটি খরচ হয়ে গেছে এবং সরানো যাবে না।
-        </Typography.Paragraph>
-      </Modal>
+      {(() => {
+        const revokeLabel =
+          revokeRow?.name ?? (revokeRow?.phone ? toLocalPhone(revokeRow.phone) : null);
+        return (
+          <Modal
+            title="রোস্টার থেকে সরাবেন?"
+            open={revokeRow !== null}
+            onCancel={() => setRevokeRow(null)}
+            onOk={submitRevoke}
+            okText="সরান"
+            cancelText="না"
+            okButtonProps={{ danger: true }}
+            confirmLoading={revoke.isPending}
+          >
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+              {revokeLabel ? `«${revokeLabel}» ` : "এই সদস্য "}
+              আর অ্যাক্সেস পাবেন না। তিনি এখনো কোনো পরীক্ষা শুরু না করে থাকলে সিটটি খালি হয়ে
+              যাবে; শুরু করে থাকলে সিটটি খরচ হয়ে গেছে এবং সরানো যাবে না।
+            </Typography.Paragraph>
+          </Modal>
+        );
+      })()}
     </>
   );
 }

@@ -1,11 +1,14 @@
 import { Button, Card, Form, Input, Typography, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCreateMyOrg, useMyOrg } from "../api/me";
+import { ME_KEY, fetchMe } from "../api/auth";
 import type { CreateOrgRequest } from "../api/types";
 
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: existing } = useMyOrg();
   const create = useCreateMyOrg();
 
@@ -16,6 +19,8 @@ export function OnboardingPage() {
   async function onFinish(values: CreateOrgRequest) {
     try {
       await create.mutateAsync(values);
+      // The grant is a users-doc write; hold navigation until /auth/me reflects it.
+      await queryClient.fetchQuery({ queryKey: ME_KEY, queryFn: fetchMe }).catch(() => undefined);
       message.success("Organization created");
       navigate("/dashboard");
     } catch {

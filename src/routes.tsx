@@ -3,7 +3,10 @@ import { Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { Spin } from "antd";
 import { LoginPage } from "./pages/LoginPage";
+import { GoogleContinuePage } from "./pages/GoogleContinuePage";
+import { DevLoginPage } from "./pages/DevLoginPage";
 import { PricingPage } from "./pages/PricingPage";
+import { EmailVerifyPage } from "./pages/EmailVerifyPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QuestionsListPage } from "./pages/QuestionsListPage";
 import { QuestionEditorPage } from "./pages/QuestionEditorPage";
@@ -24,6 +27,7 @@ import { WithdrawalsPage } from "./pages/WithdrawalsPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { RosterPage } from "./pages/RosterPage";
 import { WalletPage } from "./pages/WalletPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireOnboarded } from "./auth/RequireOnboarded";
 import { RequireRole } from "./auth/RequireRole";
@@ -51,7 +55,10 @@ const StudentProgressPage = lazy(() =>
 
 export const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
+  { path: "/login/google", element: <GoogleContinuePage /> },
+  ...(import.meta.env.DEV ? [{ path: "/dev-login", element: <DevLoginPage /> }] : []),
   { path: "/pricing", element: <PricingPage /> },
+  { path: "/account/email/verify", element: <EmailVerifyPage /> },
   {
     path: "/onboarding",
     element: (
@@ -121,6 +128,7 @@ export const routes: RouteObject[] = [
       { path: "selling/roster/:slotPurchaseId", element: <RosterPage /> },
       { path: "wallet", element: <WalletPage /> },
       { path: "org/profile", element: <OrgProfilePage /> },
+      { path: "settings", element: <SettingsPage /> },
       { path: "taxonomy", element: <TaxonomyPage /> },
       {
         path: "admin/taxonomy",

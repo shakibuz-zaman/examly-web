@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Button,
   Collapse,
-  Descriptions,
   Divider,
   Empty,
   List,
@@ -23,6 +22,11 @@ import { TrackPicker } from "../features/tracks/TrackPicker";
 import { formatDhakaShortBn } from "../lib/format";
 import type { ThemeMode } from "../theme/tokens";
 import { PageContainer } from "../ui/PageContainer";
+import { NameSection } from "../features/account/NameSection";
+import { PhoneSection } from "../features/account/PhoneSection";
+import { EmailSection } from "../features/account/EmailSection";
+import { PasswordSection } from "../features/account/PasswordSection";
+import { SessionsSection } from "../features/account/SessionsSection";
 
 // Order status → { antd Tag color, Bangla label } (business plan order lifecycle).
 const ORDER_STATUS: Record<string, { color: string; label: string }> = {
@@ -90,6 +94,8 @@ export function StudentProfilePage() {
     navigate("/login");
   }
 
+  if (!user) return null;
+
   return (
     <PageContainer>
       <div style={{ maxWidth: 600, margin: "0 auto" }}>
@@ -97,10 +103,28 @@ export function StudentProfilePage() {
           প্রোফাইল
         </Typography.Title>
 
-        <Descriptions column={1} bordered size="small" style={{ marginTop: 8 }}
-          items={[{ key: "name", label: "নাম", children: user?.name ?? "—" }]}
+        <NameSection user={user} />
+        <Divider />
+        <PhoneSection user={user} />
+        <Divider />
+        <Collapse
+          ghost
+          items={[
+            {
+              key: "email",
+              label: (
+                <Typography.Text strong style={{ color: "var(--ex-ink)" }}>
+                  ইমেইল (ঐচ্ছিক)
+                </Typography.Text>
+              ),
+              children: <EmailSection user={user} bare />,
+            },
+          ]}
         />
-
+        <Divider />
+        <PasswordSection user={user} />
+        <Divider />
+        <SessionsSection />
         <Divider />
 
         <Typography.Title level={5} style={{ color: "var(--ex-ink)" }}>
@@ -156,6 +180,9 @@ export function StudentProfilePage() {
         <Divider />
 
         <Space orientation="vertical" style={{ width: "100%" }}>
+          <Button block onClick={() => navigate("/onboarding")}>
+            প্রতিষ্ঠান হিসেবে যোগ দিন
+          </Button>
           <Button danger block onClick={onLogout}>
             লগআউট
           </Button>

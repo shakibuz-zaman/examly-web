@@ -47,6 +47,7 @@ export const EXAMINER_NAV: NavGroup[] = [
       { to: "/wallet", label: "ওয়ালেট", Icon: Wallet, badge: "wallet" },
       { to: "/org/profile", label: "প্রতিষ্ঠান", Icon: Building2 },
       { to: "/taxonomy", label: "ট্যাক্সোনমি", Icon: FolderTree },
+      { to: "/settings", label: "সেটিংস", Icon: Settings2 },
     ],
   },
   {
@@ -60,6 +61,7 @@ export const EXAMINER_NAV: NavGroup[] = [
       { to: "/admin/platform-config", label: "কনফিগারেশন", Icon: Settings2 },
       { to: "/admin/withdrawals", label: "উত্তোলন", Icon: Landmark },
       { to: "/admin/orders", label: "অর্ডার", Icon: Receipt },
+      { to: "/settings", label: "সেটিংস", Icon: Settings2 },
     ],
   },
 ];
@@ -76,6 +78,7 @@ export const BREADCRUMB_LABELS: Record<string, string> = {
   org: "প্রতিষ্ঠান", profile: "প্রোফাইল", taxonomy: "ট্যাক্সোনমি", selling: "বিক্রয়",
   roster: "রোস্টার", admin: "প্ল্যাটফর্ম", categories: "ক্যাটাগরি", qbank: "প্রশ্নব্যাংক",
   "platform-config": "কনফিগারেশন", withdrawals: "উত্তোলন", orders: "অর্ডার",
+  settings: "সেটিংস",
 };
 
 // D5: the palette is navigation-only. Beyond the role-visible nav items it offers exactly

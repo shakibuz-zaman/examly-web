@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { apiClient } from "./client";
+import { ME_KEY } from "./auth";
 import type { CreateOrgRequest, OrgResponse, UpdateOrgRequest } from "./types";
 
 const MY_ORG_KEY = ["me", "org"] as const;
@@ -49,11 +50,20 @@ export function useMyOrg() {
 export function useCreateMyOrg() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: CreateOrgRequest) => {
-      const { data } = await apiClient.post<OrgResponse>("/api/v1/me/org", body);
-      return data;
+    mutationFn: async (body: CreateOrgRequest) =>
+      (await apiClient.post<OrgResponse>("/api/v1/me/org", body)).data,
+    onSuccess: (data) => {
+      qc.setQueryData(MY_ORG_KEY, data);
+      // Creating an org sets role=examiner on the users doc — the role lives there, not in
+      // the token, so the cached /auth/me is stale the moment this lands (spec: /me must not
+      // be cached across the org-create transition).
+      void qc.invalidateQueries({ queryKey: ME_KEY });
     },
-    onSuccess: (data) => qc.setQueryData(MY_ORG_KEY, data),
+    onError: (e) => {
+      // The API's 409 ("already owns an organization") ALSO re-drives the examiner grant.
+      if (e instanceof AxiosError && e.response?.status === 409)
+        void qc.invalidateQueries({ queryKey: ME_KEY });
+    },
   });
 }
 

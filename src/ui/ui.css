@@ -1078,3 +1078,46 @@
   .ex-qcard, .ex-qcard-body, .ex-qcard-caret, .ex-qcard-bodyinner { transition: none; }
   .ex-meter-fill { transition: none; }
 }
+
+/* ---- Identity (9b): OTP boxes, login shell, flow, account rows ---- */
+.ex-otp { display: flex; gap: 8px; justify-content: center; }
+.ex-otp-box {
+  width: 44px; height: 52px; text-align: center;
+  font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums;
+  color: var(--ex-ink); background: var(--ex-card);
+  border: 1px solid var(--ex-line-strong); border-radius: 10px; outline: none;
+}
+.ex-otp-box:focus { border-color: var(--ex-teal); box-shadow: 0 0 0 3px var(--ex-teal-tint); }
+.ex-otp-box:disabled { opacity: 0.6; }
+
+.ex-login {
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 24px 16px; background: var(--ex-bg);
+}
+.ex-login-card {
+  width: 100%; max-width: 400px; background: var(--ex-card);
+  border-radius: var(--ex-radius-card); box-shadow: var(--ex-shadow-1); padding: 24px 20px;
+}
+.ex-login-brand { font-size: 24px; font-weight: 700; color: var(--ex-teal); text-align: center; margin-bottom: 4px; }
+.ex-login-tagline { text-align: center; color: var(--ex-ink-soft); font-size: 13.5px; margin: 0 0 20px; }
+.ex-login-links { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 16px; }
+.ex-login-links > a:not(.ex-btn) { color: var(--ex-teal); }
+.ex-login-links > a:not(.ex-btn):visited { color: var(--ex-teal); }
+
+.ex-otpflow { display: flex; flex-direction: column; gap: 12px; }
+.ex-otpflow-label { font-size: 13px; font-weight: 600; color: var(--ex-ink-soft); }
+.ex-otpflow-phone { display: flex; gap: 8px; align-items: center; }
+.ex-otpflow-cc {
+  padding: 8px 10px; border-radius: 10px; background: var(--ex-teal-tint);
+  color: var(--ex-teal-ink); font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.ex-otpflow-cta { width: 100%; }
+.ex-otpflow-hint { color: var(--ex-ink-soft); font-size: 13.5px; margin: 0; }
+.ex-otpflow-error {
+  color: var(--ex-red); background: var(--ex-red-tint);
+  border-radius: 10px; padding: 8px 12px; font-size: 13.5px;
+}
+
+.ex-acct-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ex-acct-value { color: var(--ex-ink); font-size: 14.5px; overflow-wrap: anywhere; }
+.ex-acct-meta { color: var(--ex-ink-soft); font-size: 12.5px; }
