@@ -173,7 +173,7 @@ export function PlatformConfigPage() {
             )}
             <div>
               One Save writes the whole config: the B2B seat × exam matrix, the B2C marketplace
-              commission, the price floor and the withdrawal minimum.
+              commission, the VAT rate, the price floor and the withdrawal minimum.
             </div>
           </>
         }
@@ -265,6 +265,24 @@ export function PlatformConfigPage() {
                       style={{ width: 160 }}
                       value={draft.withdrawalMinBdt}
                       onChange={(v) => setDraft((d) => (d ? { ...d, withdrawalMinBdt: v ?? 0 } : d))}
+                    />
+                  </div>
+                </div>
+                {/* Percent, not a 0–1 fraction like the commission above — it is stamped onto
+                    every order at mint and printed on the receipt as a percentage, so the field
+                    holds the same number the buyer reads. Changing it moves NO existing order:
+                    each one answers for the rate frozen on it. */}
+                <div>
+                  <Typography.Text strong>VAT rate (%)</Typography.Text>
+                  <div>
+                    <InputNumber
+                      className="ex-num"
+                      min={0}
+                      max={99.99}
+                      step={0.5}
+                      style={{ width: 160 }}
+                      value={draft.vatRatePercent}
+                      onChange={(v) => setDraft((d) => (d ? { ...d, vatRatePercent: v ?? 0 } : d))}
                     />
                   </div>
                 </div>

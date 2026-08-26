@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { App, Button, Card, Descriptions, Input, Modal, Skeleton, Space, Typography } from "antd";
+import {
+  App, Button, Card, Descriptions, Input, Modal, Skeleton, Space, Table, Typography,
+} from "antd";
 import type { DescriptionsProps } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import type { AxiosError } from "axios";
-import { useAdminOrder, useVoidOrder } from "../api/commerce";
+import {
+  useAdminDuplicates, useAdminOrder, useResolveDuplicate, useVoidOrder,
+} from "../api/commerce";
 import { enMoney } from "../lib/bn";
 import { count, formatDhakaDateTimeEn } from "../lib/format";
 import { lookup } from "../lib/lookup";
 import { PageHeader } from "../ui/PageHeader";
+import { PillButton } from "../ui/PillButton";
 import { RetryNotice } from "../ui/RetryNotice";
 import { MoneyChip, type MoneyTone } from "../ui/StatusChip";
 import type { AdminOrder } from "../api/commerce";
@@ -42,6 +48,12 @@ function isB2c(order: AdminOrder): boolean {
 function Num({ children }: { children: string }) {
   return <span className="ex-num">{children}</span>;
 }
+
+// Explicit, for the same reason the void Modal passes `cancelText`: AppShell's ConfigProvider
+// carries antd's bn_BD locale, so an un-passed copy control tooltips itself «অনুলিপি» /
+// «অনুলিপি হয়েছে» — and that string is the button's aria-label too — in the middle of an
+// English admin page (D1).
+const COPY_TOOLTIPS: [string, string] = ["Copy", "Copied"];
 
 // The void-confirmation copy spells out the concrete effects, which differ by order kind.
 function voidEffects(order: AdminOrder): string {
@@ -79,6 +91,15 @@ function OrderDetail({ order, onVoided }: { order: AdminOrder; onVoided: () => v
     // untouched English bodies; D1 makes the digits English too, and the queue one page over
     // prints the same money the same way.
     { key: "amount", label: "Amount", children: <Num>{enMoney(order.amountBdt)}</Num> },
+    // The VAT stamp frozen at mint (D5), NOT a live recomputation off the current platform
+    // config: the rate can be changed on the config page, and an order settled last quarter
+    // answers for the rate it was actually charged at. Prices are VAT-inclusive, so this is a
+    // slice of the Amount row above, never something on top of it.
+    {
+      key: "vat",
+      label: "VAT",
+      children: <Num>{`${enMoney(order.vatBdt)} (${order.vatRatePercent}%)`}</Num>,
+    },
     ...(isB2c(order)
       ? [
           {
@@ -110,6 +131,23 @@ function OrderDetail({ order, onVoided }: { order: AdminOrder; onVoided: () => v
             ),
           },
         ]),
+    // Which adapter minted the session, and the gateway's own id for the settlement. Both are
+    // the trail an admin follows OFF this page — into the provider's dashboard — so the txn id
+    // is copyable rather than something to retype, and the provider key is printed raw: it is
+    // the adapter name the API answers with, and a prettified label would not match what the
+    // logs and the gateway console call it.
+    { key: "provider", label: "Provider", children: order.provider },
+    {
+      key: "gatewayTxn",
+      label: "Gateway txn",
+      children: order.gatewayTxnId ? (
+        <Typography.Text copyable={{ tooltips: COPY_TOOLTIPS }}>
+          {order.gatewayTxnId}
+        </Typography.Text>
+      ) : (
+        "—"
+      ),
+    },
     // Dhaka-pinned, like every other timestamp in the app: `toLocaleString()` printed the
     // reader's own timezone, so an admin abroad read a different paid-at than the ledger row
     // that answers for it.
@@ -199,6 +237,137 @@ function OrderDetail({ order, onVoided }: { order: AdminOrder; onVoided: () => v
   );
 }
 
+// The duplicate-payment queue (D6): the gateway settled the same intent twice, the buyer keeps
+// the one entitlement, and the second charge is money the platform owes back out-of-band. There
+// is no automated refund — ALL SALES FINAL cuts both ways — so "Mark refunded" is a bookkeeping
+// stamp an admin sets AFTER moving the money, not the thing that moves it.
+function DuplicatesCard() {
+  // AppShell mounts antd's `App` inside the admin ConfigProvider; the imported statics render
+  // into their own detached root and cannot see this theme (7g constraint).
+  const { message } = App.useApp();
+  const dupes = useAdminDuplicates();
+  const { data, refetch } = dupes;
+  const resolve = useResolveDuplicate();
+
+  const onResolve = async (id: string) => {
+    try {
+      await resolve.mutateAsync(id);
+      message.success("Marked refunded");
+    } catch (e) {
+      // 409: another admin already stamped it. Server message verbatim, then refetch so the
+      // row picks up the resolution that actually won.
+      message.error(serverError(e, "Could not resolve"));
+      void refetch();
+    }
+  };
+
+  const columns: ColumnsType<AdminOrder> = [
+    {
+      title: "Order",
+      dataIndex: "id",
+      key: "id",
+      // The WHOLE id, not the 6-char tail the detail card's title uses: this column exists to
+      // be pasted into the lookup box above it.
+      className: "ex-num",
+      render: (v: string) => (
+        <Typography.Text copyable={{ tooltips: COPY_TOOLTIPS }}>{v}</Typography.Text>
+      ),
+    },
+    { title: "Product", dataIndex: "productTitle", key: "productTitle" },
+    {
+      title: "Amount",
+      dataIndex: "amountBdt",
+      key: "amountBdt",
+      align: "right",
+      width: 130,
+      className: "ex-num",
+      render: (v: number) => enMoney(v),
+    },
+    {
+      title: "Gateway txn",
+      dataIndex: "gatewayTxnId",
+      key: "gatewayTxnId",
+      className: "ex-num",
+      render: (v: string | null) =>
+        v ? <Typography.Text copyable={{ tooltips: COPY_TOOLTIPS }}>{v}</Typography.Text> : "—",
+    },
+    {
+      title: "Paid",
+      dataIndex: "paidAt",
+      key: "paidAt",
+      width: 190,
+      className: "ex-num",
+      // `|| "—"`: the formatter returns "" on an unparseable instant (house convention), and a
+      // blank cell in a money queue reads as "this never happened".
+      render: (v: string | null) => (
+        <span style={{ whiteSpace: "nowrap" }}>{(v && formatDhakaDateTimeEn(v)) || "—"}</span>
+      ),
+    },
+    {
+      title: "Action",
+      key: "action",
+      width: 210,
+      // The server list keeps RESOLVED rows — `duplicateResolvedAt` is the only thing that
+      // separates outstanding from settled — so the queue shows both and the action column is
+      // where the difference reads.
+      render: (_, row) =>
+        row.duplicateResolvedAt ? (
+          <Typography.Text type="secondary" style={{ whiteSpace: "nowrap" }}>
+            Refunded {formatDhakaDateTimeEn(row.duplicateResolvedAt) || "—"}
+          </Typography.Text>
+        ) : (
+          <PillButton
+            size="sm"
+            disabled={resolve.isPending}
+            onClick={() => void onResolve(row.id)}
+          >
+            Mark refunded
+          </PillButton>
+        ),
+    },
+  ];
+
+  // The house three-state shape (see ui/RetryNotice): the branch keys on `!data`, never
+  // `isError`, so a failed refetch leaves the held queue on screen under the strip instead of
+  // replacing it with an empty table that would read as "nothing to refund".
+  return (
+    <Card title="Duplicate payments" style={{ marginTop: 16 }}>
+      {dupes.isPending ? (
+        <Skeleton active paragraph={{ rows: 4 }} />
+      ) : !data ? (
+        <RetryNotice
+          tone="panel"
+          busy={dupes.isFetching}
+          onRetry={() => void refetch()}
+          message="Couldn't load duplicate payments."
+          retryLabel="Try again"
+        />
+      ) : (
+        <>
+          {dupes.isError && (
+            <RetryNotice
+              tone="strip"
+              busy={dupes.isFetching}
+              onRetry={() => void refetch()}
+              message="Couldn't refresh — showing the previous data."
+              retryLabel="Try again"
+            />
+          )}
+          <Table<AdminOrder>
+            size="small"
+            rowKey="id"
+            columns={columns}
+            dataSource={data}
+            pagination={false}
+            locale={{ emptyText: "No duplicate orders." }}
+            scroll={{ x: true }}
+          />
+        </>
+      )}
+    </Card>
+  );
+}
+
 export function OrdersPage() {
   // The submitted (searched) id drives the lookup; the input box is separate so the query fires
   // only on Enter / Search, not on every keystroke.
@@ -266,6 +435,12 @@ export function OrdersPage() {
             <OrderDetail order={data} onVoided={() => void refetch()} />
           </>
         ))}
+
+      {/* Below the lookup — and below its ANSWER, so a searched order and the box that asked
+          for it stay adjacent. With no search running (the usual state of this page) the queue
+          sits directly under the lookup card, which is where it reads as the second thing an
+          admin comes here to do. */}
+      <DuplicatesCard />
     </>
   );
 }
