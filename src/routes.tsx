@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { Spin } from "antd";
 import { LoginPage } from "./pages/LoginPage";
+import { DevLoginPage } from "./pages/DevLoginPage";
 import { PricingPage } from "./pages/PricingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QuestionsListPage } from "./pages/QuestionsListPage";
@@ -51,6 +52,7 @@ const StudentProgressPage = lazy(() =>
 
 export const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
+  ...(import.meta.env.DEV ? [{ path: "/dev-login", element: <DevLoginPage /> }] : []),
   { path: "/pricing", element: <PricingPage /> },
   {
     path: "/onboarding",

@@ -1,70 +1,130 @@
-import { Button, Card, Form, Input, Select, Typography, message } from "antd";
+import { useState } from "react";
+import { Input } from "antd";
 import { Link, useNavigate } from "react-router-dom";
-import { apiClient } from "../api/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/useAuth";
-
-type FormValues = {
-  sub: string;
-  email: string;
-  name?: string;
-  phone?: string;
-  role: "platform_admin" | "examiner" | "student";
-  orgId?: string;
-};
+import { PhoneOtpFlow } from "../features/auth/PhoneOtpFlow";
+import { PillButton } from "../ui/PillButton";
+import { normalizePhone } from "../lib/phone";
+import {
+  ME_KEY,
+  fetchMe,
+  googleStartUrl,
+  identityError,
+  passwordLogin,
+  useProviders,
+  verifyOtp,
+} from "../api/auth";
+import type { TokenResponse } from "../api/auth";
 
 export function LoginPage() {
   const { setToken } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const providers = useProviders();
+  const [mode, setMode] = useState<"otp" | "password">("otp");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  async function onSubmit(values: FormValues) {
+  async function finishLogin(t: TokenResponse) {
+    setToken(t.accessToken);
+    // /auth/me is authoritative for role (the login payload can lag the admin allowlist).
+    const me = await queryClient
+      .fetchQuery({ queryKey: ME_KEY, queryFn: fetchMe })
+      .catch(() => t.user);
+    navigate(me.role === "student" ? "/student/home" : "/dashboard", { replace: true });
+  }
+
+  async function onPasswordLogin() {
+    if (!normalizePhone(phone)) {
+      setError("সঠিক মোবাইল নম্বর দিন (যেমন 01712345678)।");
+      return;
+    }
+    setBusy(true);
+    setError(null);
     try {
-      const { data } = await apiClient.post<{ token: string }>("/api/v1/dev/issue-token", values);
-      setToken(data.token);
-      message.success("Logged in");
-      navigate(values.role === "student" ? "/student/home" : "/dashboard");
-    } catch {
-      message.error("Token issuance failed");
+      await finishLogin(await passwordLogin(phone, password));
+    } catch (e) {
+      setError(identityError(e, "ফোন নম্বর বা পাসওয়ার্ড সঠিক নয়।"));
+    } finally {
+      setBusy(false);
     }
   }
 
+  const googleOn = providers.data?.includes("google") ?? false;
+
   return (
-    <Card style={{ maxWidth: 480, margin: "80px auto" }}>
-      <Typography.Title level={3}>Examly — Dev Login</Typography.Title>
-      <Typography.Paragraph type="secondary">
-        This screen issues a stub JWT via the dev-only endpoint. The real Identity service will replace it later.
-      </Typography.Paragraph>
-      <Form<FormValues> layout="vertical" onFinish={onSubmit} initialValues={{ role: "examiner" }}>
-        <Form.Item name="sub" label="User ID (sub)" rules={[{ required: true }]}>
-          <Input placeholder="user-1" />
-        </Form.Item>
-        <Form.Item name="email" label="Email" rules={[{ required: true, type: "email" }]}>
-          <Input placeholder="u@example.com" />
-        </Form.Item>
-        <Form.Item name="name" label="Display name">
-          <Input placeholder="Rahim Uddin" />
-        </Form.Item>
-        <Form.Item name="phone" label="Phone (dev)">
-          <Input placeholder="01700000000" />
-        </Form.Item>
-        <Form.Item name="role" label="Role" rules={[{ required: true }]}>
-          <Select
-            options={[
-              { value: "platform_admin", label: "Platform Admin" },
-              { value: "examiner", label: "Examiner" },
-              { value: "student", label: "Student" },
-            ]}
-          />
-        </Form.Item>
-        <Form.Item name="orgId" label="Org ID (examiners only)">
-          <Input placeholder="org-1" />
-        </Form.Item>
-        <Button type="primary" htmlType="submit" block>
-          Issue token and continue
-        </Button>
-      </Form>
-      <Typography.Paragraph style={{ textAlign: "center", marginTop: 16, marginBottom: 0 }}>
-        <Link to="/pricing">মূল্য তালিকা</Link>
-      </Typography.Paragraph>
-    </Card>
+    <div className="ex-login">
+      <div className="ex-login-card">
+        <div className="ex-login-brand">Examly</div>
+        <p className="ex-login-tagline">মোবাইল নম্বর দিয়ে লগইন করুন</p>
+        {mode === "otp" ? (
+          <PhoneOtpFlow verify={verifyOtp} onComplete={finishLogin} />
+        ) : (
+          <div className="ex-otpflow">
+            <label className="ex-otpflow-label" htmlFor="pw-phone">
+              মোবাইল নম্বর
+            </label>
+            <div className="ex-otpflow-phone">
+              <span className="ex-otpflow-cc">+880</span>
+              <Input
+                id="pw-phone"
+                className="ex-num"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="01XXXXXXXXX"
+                value={phone}
+                disabled={busy}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+            <label className="ex-otpflow-label" htmlFor="pw-pass">
+              পাসওয়ার্ড
+            </label>
+            <Input.Password
+              id="pw-pass"
+              autoComplete="current-password"
+              value={password}
+              disabled={busy}
+              onChange={(e) => setPassword(e.target.value)}
+              onPressEnter={() => void onPasswordLogin()}
+            />
+            <PillButton
+              variant="primary"
+              className="ex-otpflow-cta"
+              disabled={busy || !phone || !password}
+              onClick={() => void onPasswordLogin()}
+            >
+              লগইন
+            </PillButton>
+            {error && (
+              <div className="ex-otpflow-error" role="alert">
+                {error}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="ex-login-links">
+          {mode === "otp" ? (
+            <PillButton variant="ghost" size="sm" onClick={() => { setMode("password"); setError(null); }}>
+              পাসওয়ার্ড দিয়ে লগইন
+            </PillButton>
+          ) : (
+            <PillButton variant="ghost" size="sm" onClick={() => { setMode("otp"); setError(null); }}>
+              কোড দিয়ে লগইন
+            </PillButton>
+          )}
+          {googleOn && (
+            <a className="ex-btn ex-btn--outline" href={googleStartUrl("/")}>
+              Google দিয়ে চালিয়ে যান
+            </a>
+          )}
+          <Link to="/pricing">মূল্য তালিকা</Link>
+          {import.meta.env.DEV && <Link to="/dev-login">Dev login</Link>}
+        </div>
+      </div>
+    </div>
   );
 }
