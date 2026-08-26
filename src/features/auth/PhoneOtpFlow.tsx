@@ -56,11 +56,12 @@ export function PhoneOtpFlow({
     }
   }
 
-  async function submit(nameArg?: string) {
+  async function submit(nameArg?: string, codeArg?: string) {
     setBusy(true);
     setError(null);
     try {
-      const outcome = await verify(phone, code, nameArg);
+      const effectiveCode = codeArg ?? code;
+      const outcome = await verify(phone, effectiveCode, nameArg);
       if (isNeedsName(outcome)) {
         // Unknown phone, correct code: the challenge stays live ~2 min for exactly this
         // round trip — the SAME code is re-posted with the name.
@@ -108,7 +109,7 @@ export function PhoneOtpFlow({
           <p className="ex-otpflow-hint">
             {sentMessage} ({shownPhone})
           </p>
-          <OtpInput value={code} onChange={setCode} onComplete={() => void submit()} disabled={busy} />
+          <OtpInput value={code} onChange={setCode} onComplete={(c) => void submit(undefined, c)} disabled={busy} />
           <PillButton
             variant="primary"
             className="ex-otpflow-cta"
