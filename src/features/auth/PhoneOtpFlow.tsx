@@ -10,7 +10,7 @@ import type { TokenResponse, VerifyOutcome } from "../../api/auth";
 
 // Client-side pre-check message = the server's InvalidPhone string, so the user sees one
 // wording whichever side catches it.
-const INVALID_PHONE = "সঠিক মোবাইল নম্বর দিন (যেমন 01712345678).";
+const INVALID_PHONE = "সঠিক মোবাইল নম্বর দিন (যেমন 01712345678)।";
 
 type Step = "phone" | "code" | "name";
 
@@ -50,7 +50,7 @@ export function PhoneOtpFlow({
       setStep("code");
       resync(60);
     } catch (e) {
-      setError(identityError(e, "কোড পাঠানো যায়নি — একটু পরে আবার চেষ্টা করুন."));
+      setError(identityError(e, "কোড পাঠানো যায়নি — একটু পরে আবার চেষ্টা করুন।"));
     } finally {
       setBusy(false);
     }
@@ -69,7 +69,7 @@ export function PhoneOtpFlow({
       }
       await onComplete(outcome);
     } catch (e) {
-      setError(identityError(e, "কোডটি সঠিক নয় বা মেয়াদ শেষ."));
+      setError(identityError(e, "কোডটি সঠিক নয় বা মেয়াদ শেষ।"));
     } finally {
       setBusy(false);
     }
