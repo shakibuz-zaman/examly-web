@@ -243,8 +243,9 @@ function OrderDetail({ order, onVoided }: { order: AdminOrder; onVoided: () => v
 // stamp an admin sets AFTER moving the money, not the thing that moves it.
 function DuplicatesCard() {
   // AppShell mounts antd's `App` inside the admin ConfigProvider; the imported statics render
-  // into their own detached root and cannot see this theme (7g constraint).
-  const { message } = App.useApp();
+  // into their own detached root and cannot see this theme (7g constraint). `modal` comes from
+  // the same hook for the same reason — `Modal.confirm` as a static would render unthemed.
+  const { message, modal } = App.useApp();
   const dupes = useAdminDuplicates();
   const { data, refetch } = dupes;
   const resolve = useResolveDuplicate();
@@ -259,6 +260,31 @@ function DuplicatesCard() {
       message.error(serverError(e, "Could not resolve"));
       void refetch();
     }
+  };
+
+  // Gated behind a confirm for the same reason the void button is: the stamp is IRREVERSIBLE —
+  // it writes duplicateResolvedAt/By, a re-resolve answers 409, and there is no unresolve. A
+  // misclick in an Action column permanently records a refund that may never have been paid.
+  const confirmResolve = (id: string) => {
+    modal.confirm({
+      title: "Mark this duplicate as refunded?",
+      content: (
+        <>
+          <Typography.Paragraph>
+            This records that you already refunded this charge by hand in the gateway&apos;s own
+            panel. It does not move any money.
+          </Typography.Paragraph>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            This cannot be undone.
+          </Typography.Paragraph>
+        </>
+      ),
+      okText: "Mark refunded",
+      // Explicit, like the void Modal's: AppShell's ConfigProvider carries antd's bn_BD locale,
+      // so an un-passed cancel button prints «বাতিল» in the middle of an English page.
+      cancelText: "Cancel",
+      onOk: () => onResolve(id),
+    });
   };
 
   const columns: ColumnsType<AdminOrder> = [
@@ -319,7 +345,7 @@ function DuplicatesCard() {
           <PillButton
             size="sm"
             disabled={resolve.isPending}
-            onClick={() => void onResolve(row.id)}
+            onClick={() => confirmResolve(row.id)}
           >
             Mark refunded
           </PillButton>

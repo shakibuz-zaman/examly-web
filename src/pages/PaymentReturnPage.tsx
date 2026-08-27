@@ -26,14 +26,23 @@ function Frame({ children }: { children: ReactNode }) {
         background: "var(--ex-bg)",
       }}
     >
-      <div style={{ width: "100%", maxWidth: 420 }}>{children}</div>
+      {/* The live region sits HERE, on the column that holds every state's card, not on any one
+          state: this page settles itself while the buyer watches, and the swap from «পেমেন্ট
+          প্রসেস হচ্ছে» to the paid/failed/duplicate card is the whole answer they came for. A
+          region scoped to the waiting spinner alone announced the wait and then went silent at
+          the exact moment the outcome arrived. */}
+      <div style={{ width: "100%", maxWidth: 420 }} aria-live="polite">
+        {children}
+      </div>
     </div>
   );
 }
 
 function Waiting({ message }: { message: string }) {
   return (
-    <div style={{ textAlign: "center", padding: "24px 0" }} aria-live="polite">
+    // No aria-live of its own — the Frame's column is the live region now, and a nested one
+    // would announce the same waiting text twice.
+    <div style={{ textAlign: "center", padding: "24px 0" }}>
       <Spin />
       <p style={{ margin: "16px 0 0", fontSize: 14, color: "var(--ex-ink-soft)" }}>{message}</p>
     </div>
