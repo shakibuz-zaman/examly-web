@@ -14,33 +14,53 @@ import type { MyExamsResponse } from "./types";
 // One price cell of the seat×exam matrix (business plan §3.1).
 export type MatrixCell = { seatSlot: number; examSlot: number; priceBdt: number };
 
-// GET /api/v1/pricing (anon) + GET/PUT /api/v1/admin/platform-config body.
+// GET /api/v1/pricing (anon) + GET/PUT /api/v1/admin/platform-config body. vatRatePercent is
+// the rate stamped onto every order at mint (Phase 10 D5) — prices are VAT-INCLUSIVE, so this
+// is what the receipt breaks the amount down BY, never something added on at checkout.
 export type Pricing = {
   modelTestMatrix: MatrixCell[];
   standalonePrices: MatrixCell[];
   commissionRate: number;
   priceFloorBdt: number;
   withdrawalMinBdt: number;
+  vatRatePercent: number;
 };
 
 // POST /student/checkout + POST /slot-purchases response. checkoutToken is the payment
 // provider's session token (dev stub: the order id) handed to the gateway / stub route.
-export type CheckoutResponse = { orderId: string; checkoutToken: string; amountBdt: number };
+// redirectUrl is the gateway-hosted page to send the buyer to, and is null exactly when the
+// provider has none — the dev stub, which pays through the in-app panel instead.
+export type CheckoutResponse = {
+  orderId: string;
+  checkoutToken: string;
+  amountBdt: number;
+  redirectUrl: string | null;
+};
 
 // The slot upgrade route returns a checkout OR { appliedFree: true } when the delta is zero.
 export type UpgradeResult = CheckoutResponse | { appliedFree: true };
 
+// amountBdt is VAT-INCLUSIVE; vatBdt is the portion of it that is VAT, at the rate frozen on
+// the order at mint. Those two plus gatewayTxnId are the whole receipt (D7).
 export type OrderItem = {
   id: string;
   kind: string;
   listingId: string;
   productTitle: string;
   amountBdt: number;
+  vatBdt: number;
+  vatRatePercent: number;
+  gatewayTxnId: string | null;
   status: string;
   createdAt: string;
   paidAt: string | null;
 };
 export type OrdersResponse = { items: OrderItem[]; total: number; page: number; pageSize: number };
+
+// GET /api/v1/orders/{id}/status — the owner-scoped settlement probe the payment-return page
+// polls (404 for anyone but the buyer). status is one of pending | paid | failed | voided |
+// duplicate; everything but "pending" is terminal.
+export type OrderStatusInfo = { id: string; status: string; listingId: string; kind: string };
 
 // An examiner's B2B slot purchase (seat×exam grant + its invite code).
 export type SlotPurchase = {
@@ -114,6 +134,16 @@ export type AdminOrder = {
   voidedBy: string | null;
   commissionBdt: number | null;
   authorShareBdt: number | null;
+  // Phase 10, appended: which adapter minted the session, the gateway's own id for the
+  // settlement, the VAT stamp (D5) and the duplicate-resolution stamps (D6). A row in the
+  // duplicates queue is UNRESOLVED exactly while duplicateResolvedAt is null — the list keeps
+  // resolved rows, so that field is the only thing separating the two.
+  provider: string;
+  gatewayTxnId: string | null;
+  vatBdt: number;
+  vatRatePercent: number;
+  duplicateResolvedAt: string | null;
+  duplicateResolvedBy: string | null;
 };
 
 // GET/PUT /api/v1/listings/{productType}/{productId} response (examiner sell settings).
@@ -157,6 +187,15 @@ const OWNERSHIP_KEYS = [
 function invalidateOwnership(qc: ReturnType<typeof useQueryClient>) {
   for (const key of OWNERSHIP_KEYS) void qc.invalidateQueries({ queryKey: key });
   void qc.invalidateQueries({ queryKey: ["commerce", "orders"] });
+}
+
+// The post-purchase cache sweep, for callers that land on a settled order OUTSIDE a mutation:
+// the /payment/return page, whose grant was fulfilled server-side by the gateway callback (or
+// the sweep), so no client mutation ever ran. Same set useStubPay flushes on the dev-stub path.
+export function invalidatePurchaseCaches(qc: ReturnType<typeof useQueryClient>) {
+  invalidateOwnership(qc);
+  void qc.invalidateQueries({ queryKey: ["commerce", "slot-purchases"] });
+  void qc.invalidateQueries({ queryKey: ["commerce", "wallet"] });
 }
 
 // ---- Pricing (anonymous storefront) + admin platform-config ----
@@ -213,6 +252,30 @@ export function useStubPay() {
       void qc.invalidateQueries({ queryKey: ["commerce", "slot-purchases"] });
       void qc.invalidateQueries({ queryKey: ["commerce", "wallet"] });
     },
+  });
+}
+
+// /payment/return polls this until the gateway callback / sweep settles the order. The
+// interval stops itself on any terminal status — it re-arms only while the order is still
+// "pending" (or has not loaded yet), so paid / failed / voided / duplicate all end the poll.
+// It ALSO stops once the query has gone to `error`, which only happens after the default 3
+// retries: transient blips during gateway settlement still ride through, but a stale or
+// foreign order id (a deliberate, permanent owner-scoped 404) settles into the error state
+// instead of refetching every 3s for as long as the page stays mounted. A "no data yet" test
+// alone could not tell those apart — an errored query has no data either. Task 10's
+// /payment/return renders its RetryNotice off that error state.
+export function useOrderStatus(orderId: string | null) {
+  return useQuery<OrderStatusInfo>({
+    queryKey: ["commerce", "order-status", orderId],
+    enabled: !!orderId,
+    refetchInterval: (q) =>
+      q.state.status === "error"
+        ? false
+        : q.state.data == null || q.state.data.status === "pending"
+          ? 3000
+          : false,
+    queryFn: async () =>
+      (await apiClient.get<OrderStatusInfo>(`/api/v1/orders/${orderId}/status`)).data,
   });
 }
 
@@ -477,5 +540,26 @@ export function useVoidOrder() {
       // A void refunds the buyer and reverses the org's credit → wallet ledger changes.
       void qc.invalidateQueries({ queryKey: ["commerce", "wallet"] });
     },
+  });
+}
+
+// The duplicate-payment queue (D6): orders the gateway settled twice. The list keeps RESOLVED
+// rows too — `duplicateResolvedAt != null` is what tells the two apart, so the page filters,
+// it does not assume every row is outstanding.
+export function useAdminDuplicates() {
+  return useQuery<AdminOrder[]>({
+    queryKey: ["commerce", "admin-duplicates"],
+    queryFn: async () =>
+      (await apiClient.get<AdminOrder[]>("/api/v1/admin/orders/duplicates")).data,
+  });
+}
+
+export function useResolveDuplicate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderId: string) =>
+      (await apiClient.post<{ orderId: string; status: string }>(
+        `/api/v1/admin/orders/${orderId}/resolve-duplicate`)).data,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["commerce", "admin-duplicates"] }),
   });
 }

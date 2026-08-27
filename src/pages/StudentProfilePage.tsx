@@ -19,7 +19,9 @@ import { useMyTracks, useSaveMyTracks } from "../api/me";
 import { useMyOrders } from "../api/commerce";
 import { useThemeMode } from "../theme/ThemeContext";
 import { TrackPicker } from "../features/tracks/TrackPicker";
+import { bnMoney, bnNum } from "../lib/bn";
 import { formatDhakaShortBn } from "../lib/format";
+import { lookup } from "../lib/lookup";
 import type { ThemeMode } from "../theme/tokens";
 import { PageContainer } from "../ui/PageContainer";
 import { NameSection } from "../features/account/NameSection";
@@ -29,16 +31,21 @@ import { PasswordSection } from "../features/account/PasswordSection";
 import { SessionsSection } from "../features/account/SessionsSection";
 
 // Order status → { antd Tag color, Bangla label } (business plan order lifecycle).
+// `duplicate` (Phase 10 D6) is the gateway settling the same intent twice: the buyer already
+// has the entitlement, so the second charge is money the platform owes back. Amber, not red —
+// nothing went wrong for the student, and the label says what happens next rather than naming
+// the internal state.
 const ORDER_STATUS: Record<string, { color: string; label: string }> = {
   paid: { color: "green", label: "সম্পন্ন" },
   pending: { color: "gold", label: "চলমান" },
   failed: { color: "red", label: "ব্যর্থ" },
   voided: { color: "default", label: "বাতিল" },
+  duplicate: { color: "orange", label: "ডুপ্লিকেট — ফেরত দেওয়া হবে" },
 };
 
 function OrdersHistory() {
   const orders = useMyOrders();
-  if (orders.isLoading) return <Spin />;
+  if (orders.isPending) return <Spin />;
   const items = orders.data?.items ?? [];
   if (items.length === 0) {
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="কোনো অর্ডার নেই" />;
@@ -47,7 +54,11 @@ function OrdersHistory() {
     <List
       dataSource={items}
       renderItem={(o) => {
-        const s = ORDER_STATUS[o.status] ?? { color: "default", label: o.status };
+        // Through `lookup`, not `ORDER_STATUS[o.status]`: a wire status of "constructor"
+        // resolves through Object.prototype to a function, which `??` keeps and React then
+        // throws on (lib/lookup.ts). The `?? {…}` fallback is unchanged — an unreadable state
+        // prints itself in the neutral colour.
+        const s = lookup(ORDER_STATUS, o.status) ?? { color: "default", label: o.status };
         return (
           <List.Item>
             <Space orientation="vertical" size={2} style={{ width: "100%" }}>
@@ -56,9 +67,18 @@ function OrdersHistory() {
                 <Tag color={s.color}>{s.label}</Tag>
               </Space>
               <Space wrap>
-                <Typography.Text>৳{o.amountBdt}</Typography.Text>
+                <Typography.Text>{bnMoney(o.amountBdt)}</Typography.Text>
                 <Typography.Text type="secondary">{formatDhakaShortBn(o.createdAt)}</Typography.Text>
               </Space>
+              {/* Prices are VAT-INCLUSIVE (D5): this line breaks the amount above down, it never
+                  adds to it — hence «অন্তর্ভুক্ত». Only on a settled order, and only when the
+                  order actually carries a stamp: orders minted before Phase 10 have vatBdt 0,
+                  and «ভ্যাট ৳০ (০%) অন্তর্ভুক্ত» is a claim about tax we did not collect. */}
+              {o.status === "paid" && o.vatBdt > 0 && (
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  ভ্যাট {bnMoney(o.vatBdt)} ({bnNum(o.vatRatePercent)}%) অন্তর্ভুক্ত
+                </Typography.Text>
+              )}
             </Space>
           </List.Item>
         );

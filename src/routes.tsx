@@ -16,6 +16,7 @@ import { ExamResultsPage } from "./pages/ExamResultsPage";
 import { ModelTestsListPage } from "./pages/ModelTestsListPage";
 import { ModelTestBuilderPage } from "./pages/ModelTestBuilderPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
+import { PaymentReturnPage } from "./pages/PaymentReturnPage";
 import { OrgProfilePage } from "./pages/OrgProfilePage";
 import { TaxonomyPage } from "./pages/TaxonomyPage";
 import { AdminTaxonomyPage } from "./pages/AdminTaxonomyPage";
@@ -64,6 +65,14 @@ export const routes: RouteObject[] = [
     element: (
       <RequireAuth>
         <OnboardingPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/payment/return",
+    element: (
+      <RequireAuth>
+        <PaymentReturnPage />
       </RequireAuth>
     ),
   },
