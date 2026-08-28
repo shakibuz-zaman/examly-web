@@ -169,8 +169,15 @@ export type SaveListingRequest = {
   mode: string;
   status: string;
 };
-export type SlotPurchaseRequest = { listingId: string; seatSlot: number; examSlot: number };
-export type UpgradeRequest = { seatSlot: number; examSlot: number };
+// method is the buyer's picked provider key (wire DTO field `Method`; null → the default
+// adapter, the shipped 10a behaviour). Phase 10b threads it onto both slot bodies.
+export type SlotPurchaseRequest = {
+  listingId: string;
+  seatSlot: number;
+  examSlot: number;
+  method: string | null;
+};
+export type UpgradeRequest = { seatSlot: number; examSlot: number; method: string | null };
 export type WithdrawalRequest = { amountBdt: number; destination: string };
 export type RescheduleRequest = { windowStartUtc: string; windowEndUtc: string };
 
@@ -229,11 +236,29 @@ export function useSavePlatformConfig() {
 
 // ---- B2C checkout + payment stub + free register + seat claim ----
 
+// GET /api/v1/payments/methods (Phase 10b Task 1) → the host-configured, buyer-selectable
+// method keys, a subset of ["bkash","nagad","card"] in that fixed order, EMPTY on a
+// default-only host. The picker only renders when this is non-empty (D11). Host config is a
+// process-lifetime constant, so a 5-minute staleTime keeps it out of the request path — the
+// CheckoutSheet is mounted with the student route (no per-open refetch), and the buy button
+// is held until this first resolves so a fast tap can't skip a picker-enabled host.
+export function useCheckoutMethods() {
+  return useQuery<{ methods: string[] }>({
+    queryKey: ["commerce", "payment-methods"],
+    staleTime: 5 * 60_000,
+    queryFn: async () =>
+      (await apiClient.get<{ methods: string[] }>("/api/v1/payments/methods")).data,
+  });
+}
+
 export function useCheckout() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (listingId: string) =>
-      (await apiClient.post<CheckoutResponse>("/api/v1/student/checkout", { listingId })).data,
+    // method is the buyer's picked provider key (null when the host exposes no picker → the
+    // server routes to its default adapter, the shipped 10a behaviour).
+    mutationFn: async ({ listingId, method }: { listingId: string; method: string | null }) =>
+      (await apiClient.post<CheckoutResponse>("/api/v1/student/checkout", { listingId, method }))
+        .data,
     // The order is created pending; ownership flips only when the stub-pay callback fulfils it.
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["commerce", "orders"] }),
   });
