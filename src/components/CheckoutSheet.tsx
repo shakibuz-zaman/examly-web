@@ -10,9 +10,18 @@ import { useState } from "react";
 import { Alert, Button, Drawer, Grid, Modal, Typography } from "antd";
 import { CheckCircleFilled } from "@ant-design/icons";
 import { AxiosError } from "axios";
-import { useCheckout, useStubPay } from "../api/commerce";
+import { useCheckout, useCheckoutMethods, useStubPay } from "../api/commerce";
 import type { CheckoutResponse } from "../api/commerce";
+import { PillButton } from "../ui/PillButton";
 import { bnMoney } from "../lib/bn";
+
+// Bengali labels for the known provider keys; an unknown key from the wire renders its raw
+// name (the house fallback rule — the picker asserts nothing about the configured set).
+const METHOD_LABELS: Record<string, string> = {
+  bkash: "বিকাশ",
+  nagad: "নগদ",
+  card: "কার্ড",
+};
 
 type CheckoutSheetProps = {
   open: boolean;
@@ -24,7 +33,9 @@ type CheckoutSheetProps = {
   // B2B seam (Task 17): when provided, the order is created by this callback instead of the
   // B2C student checkout — the stub-pay panel below is identical, so the examiner seat-slot buy/
   // upgrade flows reuse this same sheet. Defaults to the student checkout for existing callers.
-  createOrder?: () => Promise<CheckoutResponse>;
+  // Phase 10b: the buyer's picked method (null when no picker) threads through so the B2B slot
+  // bodies carry it too.
+  createOrder?: (method: string | null) => Promise<CheckoutResponse>;
 };
 
 type Phase = "idle" | "ordering" | "paying" | "done" | "failed";
@@ -48,15 +59,25 @@ export function CheckoutSheet({
   const isDesktop = Grid.useBreakpoint().md;
   const checkout = useCheckout();
   const stubPay = useStubPay();
+  const methods = useCheckoutMethods();
+  const available = methods.data?.methods ?? [];
+  const firstMethod = available[0] ?? null;
   const [phase, setPhase] = useState<Phase>("idle");
   // The whole checkout session, not just its token: redirectUrl is what picks the paying branch.
   const [session, setSession] = useState<CheckoutResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The buyer's EXPLICIT pick, or null until they tap an option. The effective method defaults
+  // to the first configured key (`firstMethod`), so no effect is needed to seed it — and it is
+  // simply null when the host exposes no picker (the shipped 10a default route, byte-for-byte).
+  // reset() clears the override so a reopened sheet starts on the first option again.
+  const [methodOverride, setMethodOverride] = useState<string | null>(null);
+  const method = methodOverride ?? firstMethod;
 
   function reset() {
     setPhase("idle");
     setSession(null);
     setError(null);
+    setMethodOverride(null);
   }
 
   function close() {
@@ -70,7 +91,9 @@ export function CheckoutSheet({
     setError(null);
     setPhase("ordering");
     try {
-      const res = createOrder ? await createOrder() : await checkout.mutateAsync(listingId);
+      const res = createOrder
+        ? await createOrder(method)
+        : await checkout.mutateAsync({ listingId, method });
       setSession(res);
       setPhase("paying");
     } catch (err) {
@@ -109,12 +132,53 @@ export function CheckoutSheet({
         </Typography.Text>
       </div>
 
+      {(phase === "idle" || phase === "ordering") && available.length > 0 && (
+        <div>
+          <Typography.Text
+            id="ex-method-label"
+            strong
+            style={{ display: "block", marginBottom: 8, color: "var(--ex-ink-soft)" }}
+          >
+            পেমেন্ট মাধ্যম
+          </Typography.Text>
+          {/* House PillButton carries the tokens/focus-ring/hover; tonal = selected, outline =
+              not. Options lock during `ordering` so a mid-flight pick can't move aria-pressed
+              onto a method the already-minted order doesn't carry. */}
+          <div
+            role="group"
+            aria-labelledby="ex-method-label"
+            style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+          >
+            {available.map((key) => {
+              const selected = key === method;
+              return (
+                <PillButton
+                  key={key}
+                  variant={selected ? "tonal" : "outline"}
+                  aria-pressed={selected}
+                  disabled={phase === "ordering"}
+                  onClick={() => setMethodOverride(key)}
+                  style={{ flex: 1, minWidth: 88 }}
+                >
+                  {METHOD_LABELS[key] ?? key}
+                </PillButton>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {(phase === "idle" || phase === "ordering") && (
         <Button
           type="primary"
           size="large"
           block
-          loading={phase === "ordering"}
+          // Held while the methods query is in flight so a fast first tap can't post
+          // method:null and skip the picker on a picker-enabled host. On query ERROR isPending
+          // clears with no data → available is [] → no picker, null method → default route
+          // (degrades safely to the shipped 10a behaviour).
+          loading={phase === "ordering" || methods.isPending}
+          disabled={methods.isPending}
           onClick={startCheckout}
         >
           কিনুন — {bnMoney(priceBdt)}

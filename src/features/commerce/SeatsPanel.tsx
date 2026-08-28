@@ -27,7 +27,7 @@ type Props = {
 type SheetState = {
   title: string;
   priceBdt: number;
-  createOrder: () => Promise<CheckoutResponse>;
+  createOrder: (method: string | null) => Promise<CheckoutResponse>;
 };
 
 // A clickable seat×exam price grid. Cells render their price (buy) or the upgrade delta caption;
@@ -172,8 +172,8 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
       setSheet({
         title: `${cell.seatSlot} সিট × ${cell.examSlot} পরীক্ষা`,
         priceBdt: cell.priceBdt,
-        createOrder: () =>
-          buy.mutateAsync({ listingId, seatSlot: cell.seatSlot, examSlot: cell.examSlot }),
+        createOrder: (method) =>
+          buy.mutateAsync({ listingId, seatSlot: cell.seatSlot, examSlot: cell.examSlot, method }),
       });
     };
 
@@ -240,32 +240,30 @@ export function SeatsPanel({ productType, productId, memberCount }: Props) {
     const cell = upgradeSelected;
     const body = { seatSlot: cell.seatSlot, examSlot: cell.examSlot };
     try {
-      const res = await upgrade.mutateAsync({ id: purchase.id, body });
+      // Pre-mint (before the picker is shown) routes to the default adapter → method null.
+      const res = await upgrade.mutateAsync({ id: purchase.id, body: { ...body, method: null } });
       if ("appliedFree" in res) {
         message.success("স্লট আপগ্রেড হয়েছে — কোনো টাকা লাগেনি");
         setUpgradeSelected(null);
         return;
       }
-      // Paid upgrade. The pending order already exists, so the sheet must NOT re-mint on its
-      // first checkout — it consumes this held response. A retry after a failed payment falls
-      // through to a fresh mutateAsync; the server reuses/re-mints the pending order correctly.
-      let held: CheckoutResponse | null = res;
+      // Paid upgrade. The pre-mint (method:null) above ONLY told us it isn't free and gave the
+      // price for the sheet — it is NOT handed back, or the buyer's pick would be discarded and
+      // they'd silently pay through the default adapter. Once the sheet has a method, ALWAYS
+      // re-mint with it: SlotService reuses the pending quote when its provider matches and
+      // fails+re-mints when it differs (Provider-staleness check), so this is one cheap POST
+      // and the picked method always drives the session the buyer is sent to.
       setSheet({
         title: `আপগ্রেড — ${cell.seatSlot} সিট × ${cell.examSlot} পরীক্ষা`,
         priceBdt: res.amountBdt,
-        createOrder: async () => {
-          if (held) {
-            const first = held;
-            held = null;
-            return first;
-          }
-          const retry = await upgrade.mutateAsync({ id: purchase.id, body });
-          if ("appliedFree" in retry) {
+        createOrder: async (method) => {
+          const minted = await upgrade.mutateAsync({ id: purchase.id, body: { ...body, method } });
+          if ("appliedFree" in minted) {
             // The upgrade became free between attempts (e.g. server state shifted). No payment
             // to collect — bounce the examiner back to a clean slate via the failed-state retry.
             throw new Error("এই আপগ্রেড এখন ফ্রি — প্যানেলটি বন্ধ করে আবার খুলুন।");
           }
-          return retry;
+          return minted;
         },
       });
     } catch (e) {

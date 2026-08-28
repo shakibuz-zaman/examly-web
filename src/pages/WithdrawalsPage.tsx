@@ -5,7 +5,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { AxiosError } from "axios";
 import {
-  useAdminWithdrawals, useMarkPaid, useRejectWithdrawal,
+  useAdminWithdrawals, useApproveWithdrawal, useRejectWithdrawal, useRetryWithdrawal,
 } from "../api/commerce";
 import type { Withdrawal } from "../api/commerce";
 import { enMoney } from "../lib/bn";
@@ -19,33 +19,50 @@ function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
 }
 
-// The API's status values are exactly requested / paid / rejected (WalletEndpoints /
-// Withdrawal domain). Tones are the SAME readings WalletPage gives the examiner's own copy of
-// this table — amber is still queued, neutral went out, coral went wrong — so an admin and an
-// examiner looking at one payout see one colour. Labels are the English half (D1).
+// The API's status values are exactly requested / processing / paid / payout_failed / rejected
+// (WalletEndpoints / Withdrawal domain). Tones are the SAME readings WalletPage gives the
+// examiner's own copy of this table — amber is still queued (requested AND processing, both
+// money in flight), neutral went out, coral went wrong (payout_failed AND rejected) — so an
+// admin and an examiner looking at one payout see one colour. Labels are the English half (D1).
 const STATUS: Record<string, { tone: MoneyTone; label: string }> = {
   requested: { tone: "queued", label: "Queued" },
+  processing: { tone: "queued", label: "Processing" },
   paid: { tone: "outflow", label: "Paid" },
+  payout_failed: { tone: "danger", label: "Payout failed" },
   rejected: { tone: "danger", label: "Rejected" },
 };
 
-type StatusFilter = "requested" | "paid" | "rejected";
+type StatusFilter = "requested" | "processing" | "payout_failed" | "paid" | "rejected";
 
 // One entry per filter: how the header counts the rows, what the empty table says, and whether
 // a summed ৳ total means anything. The singular is not decoration — the queue routinely holds
 // exactly one request, and "1 requests awaiting payout" is the plural bug a Task 4 review
 // caught on another header.
 //
-// `total: false` on rejected is the same kind of claim-control: the sum of the OTHER two is
-// money the platform owes or has sent, which is what an admin opening this queue is counting.
-// Rejected requests moved no money at all — the debit was reversed back into the org's wallet —
-// so «৳500 total» there would total up a number that never left, sitting in the same slot where
-// the other two filters print real liability.
+// `total` is claim-control, not a display toggle: a ৳ total renders ONLY where the sum is real
+// platform liability — money the platform still owes (requested, processing, payout_failed: the
+// debit is written at request time and sits out of the balance until the payout settles or is
+// reversed) or money it has actually sent (paid). All four clear that bar, so all four carry
+// `total: true`. Rejected is the sole exception: a rejected request moved no money at all — the
+// debit was reversed back into the org's wallet — so «৳500 total» there would sum a number that
+// never left, sitting in the same slot where the liability filters print real exposure.
 const FILTER: Record<StatusFilter, { one: string; many: string; empty: string; total: boolean }> = {
   requested: {
     one: "request awaiting payout",
     many: "requests awaiting payout",
     empty: "No withdrawal requests are waiting.",
+    total: true,
+  },
+  processing: {
+    one: "payout in flight",
+    many: "payouts in flight",
+    empty: "No payouts are in flight.",
+    total: true,
+  },
+  payout_failed: {
+    one: "failed payout",
+    many: "failed payouts",
+    empty: "No payouts have failed.",
     total: true,
   },
   paid: {
@@ -71,20 +88,61 @@ export function WithdrawalsPage() {
   const [status, setStatus] = useState<StatusFilter>("requested");
   const queue = useAdminWithdrawals(status);
   const { data, refetch } = queue;
-  const markPaid = useMarkPaid();
+  const approve = useApproveWithdrawal();
+  const retry = useRetryWithdrawal();
   const reject = useRejectWithdrawal();
 
   const [rejectTarget, setRejectTarget] = useState<Withdrawal | null>(null);
   const [reason, setReason] = useState("");
 
-  const onMarkPaid = async (w: Withdrawal) => {
+  // Approve AND retry return 200 for ALL THREE non-error verdicts — the server does not fail the
+  // request when the GATEWAY refuses. `paid` really went out; `payout_failed` means the gateway
+  // refused (or a bounced attempt was reconfirmed unpaid); `processing` means the disbursement is
+  // in flight OR (on retry) the prior attempt could not be re-queried, so nothing was re-sent. A
+  // flat "Payout sent" would paint a green success over a refusal while the row slid to a tab the
+  // admin isn't looking at — so we read the returned status and tell the admin where the row went.
+  // `w.status` is `string`, NOT a union, so this switch is NOT compiler-checked: the vocabulary is
+  // the server's five values (requested / processing / paid / payout_failed / rejected), and any
+  // value we don't case falls to the neutral default arm BY DESIGN (the house raw-render rule — a
+  // value we can't read asserts nothing). The flip side of that safety net is that a typo'd case
+  // label would silently fall through to the default instead of erroring, so the comment is the
+  // guard here; read the labels against the wire vocabulary, don't trust the compiler.
+  const announce = (w: Withdrawal) => {
+    switch (w.status) {
+      case "paid":
+        return message.success(`Payout went through — txn ${w.payoutTxnId ?? "recorded"}.`);
+      case "payout_failed":
+        return message.error(
+          `Payout failed — ${w.payoutFailReason ?? "gateway refused"}. See the Failed tab.`);
+      case "processing":
+        return message.info(
+          "Payout is in flight — awaiting gateway confirmation. See the Processing tab.");
+      default:
+        // A status we do not model — assert nothing beyond echoing the raw wire value.
+        return message.info(`Payout status: ${w.status}. See the matching tab.`);
+    }
+  };
+
+  const onApprove = async (w: Withdrawal) => {
     try {
-      await markPaid.mutateAsync(w.id);
-      message.success("Marked paid");
+      announce(await approve.mutateAsync(w.id));
+      void refetch();
     } catch (e) {
-      // 409 already-processed (a racing admin acted first) → show the server message and refetch
-      // so the queue drops the now-terminal row.
-      message.error(serverError(e, "Could not mark paid"));
+      // 409 (a racing admin acted first, wrong state, KYC refusal, or a gateway-ambiguity
+      // refusal) → surface the server's own sentence and refetch so the queue drops the row that
+      // just moved on. Same shape the old mark-paid handler used.
+      message.error(serverError(e, "Could not approve"));
+      void refetch();
+    }
+  };
+
+  const onRetry = async (w: Withdrawal) => {
+    try {
+      announce(await retry.mutateAsync(w.id));
+      void refetch();
+    } catch (e) {
+      // 409 (wrong state or a gateway-ambiguity refusal) → surface the server sentence, refetch.
+      message.error(serverError(e, "Could not retry"));
       void refetch();
     }
   };
@@ -101,8 +159,25 @@ export function WithdrawalsPage() {
       setRejectTarget(null);
       setReason("");
     } catch (e) {
+      // Reject can 409 in two different ways, and the modal must react differently to each.
+      //   • "settled as paid" — the failed attempt was re-confirmed PAID, the row is now terminal
+      //     `paid` and there is nothing left to reject. Close the modal.
+      //   • "cannot confirm yet" (gateway Unknown) — the row STAYS `payout_failed`; the admin can
+      //     reject again once the gateway answers, so keep the modal (and the typed reason) open.
+      // We tell the two apart off the refetched queue. Reject renders on BOTH the Requested and
+      // Failed tabs (any row the admin can still act on), so this isn't a Failed-tab-only handler —
+      // but the close-on-left-`payout_failed` heuristic holds regardless of origin tab: a 409 on a
+      // requested row ALSO means the row moved on (someone approved or already rejected it), so it
+      // likewise no longer appears as `payout_failed`, and closing the modal is the right call.
       message.error(serverError(e, "Could not reject"));
-      void refetch();
+      const targetId = rejectTarget.id;
+      const res = await refetch();
+      const stillFailed = res.data?.some(
+        (r) => r.id === targetId && r.status === "payout_failed") ?? false;
+      if (!stillFailed) {
+        setRejectTarget(null);
+        setReason("");
+      }
     }
   };
 
@@ -130,6 +205,10 @@ export function WithdrawalsPage() {
       key: "destination",
       // A bKash number is an identifier — Latin digits, and tabular so a column of them aligns.
       className: "ex-num",
+      // The server stamps `bkash:{E.164}` only at approval (D4); a still-`requested` row carries
+      // "", so strip the transport prefix and go «—» until there is a number. Same expression as
+      // the examiner's own copy of this table (Task 9).
+      render: (v: string) => (v ? v.replace(/^bkash:/, "") : "—"),
     },
     {
       title: "Requested",
@@ -160,42 +239,90 @@ export function WithdrawalsPage() {
       },
     },
     {
+      title: "Payout txn",
+      dataIndex: "payoutTxnId",
+      key: "payoutTxnId",
+      width: 220,
+      // The gateway's own id for a settled payout (dev stub writes `DEV-…`) — an identifier, so
+      // monospaced Latin; «—» until a payout has actually gone out.
+      render: (v: string | null) => (v ? <Typography.Text code>{v}</Typography.Text> : "—"),
+    },
+    {
       title: "Reason",
-      dataIndex: "rejectReason",
-      key: "rejectReason",
-      render: (v: string | null) => v ?? "—",
+      // Neutral key: this cell renders EITHER field, so it is bound to no single one.
+      key: "reason",
+      // Order is load-bearing, not a "never both" convenience. RejectWithdrawal accepts a
+      // payout_failed → rejected transition and does NOT clear the stale payoutFailReason, so a
+      // rejected-after-failed row carries both: the admin's rejection sentence is the current,
+      // authoritative reason and wins; the retained gateway note is the older line beneath it.
+      // Same expression as the examiner's copy (Task 9).
+      render: (_, w) => w.rejectReason ?? w.payoutFailReason ?? "—",
     },
     {
       title: "Actions",
       key: "actions",
-      render: (_, w) =>
-        w.status === "requested" ? (
-          <Space>
-            <Popconfirm
-              title="Mark this withdrawal paid?"
-              description="Confirms the payout was sent to the destination. This is terminal."
-              okText="Mark paid"
-              // Explicit: AppShell's ConfigProvider carries antd's bn_BD locale, so an
-              // un-passed cancel button prints «বাতিল» in the middle of an English page.
-              cancelText="Cancel"
-              onConfirm={() => onMarkPaid(w)}
-            >
-              <Button size="small" type="primary">Mark paid</Button>
-            </Popconfirm>
-            <Button
-              size="small"
-              danger
-              onClick={() => {
-                setRejectTarget(w);
-                setReason("");
-              }}
-            >
-              Reject
-            </Button>
-          </Space>
-        ) : (
-          "—"
-        ),
+      render: (_, w) => {
+        if (w.status === "requested") {
+          return (
+            <Space>
+              <Popconfirm
+                title="Send this payout via bKash?"
+                description={`Pays ${enMoney(w.amountBdt)} to the org owner's verified login number. This moves real money.`}
+                okText="Approve"
+                // Explicit: AppShell's ConfigProvider carries antd's bn_BD locale, so an
+                // un-passed cancel button prints «বাতিল» in the middle of an English page.
+                cancelText="Cancel"
+                onConfirm={() => onApprove(w)}
+              >
+                <Button size="small" type="primary">Approve</Button>
+              </Popconfirm>
+              <Button
+                size="small"
+                danger
+                onClick={() => {
+                  setRejectTarget(w);
+                  setReason("");
+                }}
+              >
+                Reject
+              </Button>
+            </Space>
+          );
+        }
+        if (w.status === "payout_failed") {
+          return (
+            <Space>
+              <Popconfirm
+                title="Retry this payout?"
+                description="Re-queries the previous attempt first; pays again only if it never went through."
+                okText="Retry"
+                cancelText="Cancel"
+                onConfirm={() => onRetry(w)}
+              >
+                <Button size="small" type="primary">Retry</Button>
+              </Popconfirm>
+              <Button
+                size="small"
+                danger
+                onClick={() => {
+                  setRejectTarget(w);
+                  setReason("");
+                }}
+              >
+                Reject
+              </Button>
+            </Space>
+          );
+        }
+        // `processing` is mid-settlement — no manual action; the reconciliation sweep resolves it,
+        // and the tooltip says so. Terminal rows (paid / rejected) get a bare em-dash.
+        if (w.status === "processing") {
+          return (
+            <span title="Settling — the reconciliation sweep resolves this.">—</span>
+          );
+        }
+        return "—";
+      },
     },
   ];
 
@@ -217,6 +344,8 @@ export function WithdrawalsPage() {
             onChange={(v) => setStatus(v as StatusFilter)}
             options={[
               { label: "Requested", value: "requested" },
+              { label: "Processing", value: "processing" },
+              { label: "Failed", value: "payout_failed" },
               { label: "Paid", value: "paid" },
               { label: "Rejected", value: "rejected" },
             ]}

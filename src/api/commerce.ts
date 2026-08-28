@@ -104,6 +104,10 @@ export type WalletResponse = {
   pageSize: number;
 };
 
+// destination is server-stamped `bkash:{E.164}` at admin approval time — "" until then, so a
+// still-`requested` row carries none (D4: the client no longer names a payout target). status
+// is now requested | processing | paid | payout_failed | rejected; payoutTxnId is the gateway's
+// id for a settled payout, payoutFailReason the gateway's own words on a failed one.
 export type Withdrawal = {
   id: string;
   orgId: string;
@@ -112,6 +116,8 @@ export type Withdrawal = {
   status: string;
   requestedAt: string;
   rejectReason: string | null;
+  payoutTxnId: string | null;
+  payoutFailReason: string | null;
 };
 
 // GET /api/v1/admin/orders/{id} (platform_admin) — the order-void lookup. Carries both the B2C
@@ -169,9 +175,18 @@ export type SaveListingRequest = {
   mode: string;
   status: string;
 };
-export type SlotPurchaseRequest = { listingId: string; seatSlot: number; examSlot: number };
-export type UpgradeRequest = { seatSlot: number; examSlot: number };
-export type WithdrawalRequest = { amountBdt: number; destination: string };
+// method is the buyer's picked provider key (wire DTO field `Method`; null → the default
+// adapter, the shipped 10a behaviour). Phase 10b threads it onto both slot bodies.
+export type SlotPurchaseRequest = {
+  listingId: string;
+  seatSlot: number;
+  examSlot: number;
+  method: string | null;
+};
+export type UpgradeRequest = { seatSlot: number; examSlot: number; method: string | null };
+// D4: the client no longer names a payout target — the server resolves it from the org owner's
+// verified login phone at admin approval time. Amount only.
+export type WithdrawalRequest = { amountBdt: number };
 export type RescheduleRequest = { windowStartUtc: string; windowEndUtc: string };
 
 // Query keys that reflect *ownership* — a completed purchase / claim / free-register flips
@@ -229,11 +244,30 @@ export function useSavePlatformConfig() {
 
 // ---- B2C checkout + payment stub + free register + seat claim ----
 
+// GET /api/v1/payments/methods (Phase 10b Task 1) → the host-configured, buyer-selectable
+// method keys, a subset of ["bkash","nagad","card"] in that fixed order, EMPTY on a
+// default-only host. The picker only renders when this is non-empty (D11). Host config is a
+// process-lifetime constant, so a 5-minute staleTime keeps it out of the request path. The sheet
+// is mounted with the page on student routes, and at sheet-open in SeatsPanel (the B2B caller);
+// either way there is no per-open refetch guarantee, which is why the buy button is held until
+// this first resolves so a fast tap can't skip a picker-enabled host.
+export function useCheckoutMethods() {
+  return useQuery<{ methods: string[] }>({
+    queryKey: ["commerce", "payment-methods"],
+    staleTime: 5 * 60_000,
+    queryFn: async () =>
+      (await apiClient.get<{ methods: string[] }>("/api/v1/payments/methods")).data,
+  });
+}
+
 export function useCheckout() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (listingId: string) =>
-      (await apiClient.post<CheckoutResponse>("/api/v1/student/checkout", { listingId })).data,
+    // method is the buyer's picked provider key (null when the host exposes no picker → the
+    // server routes to its default adapter, the shipped 10a behaviour).
+    mutationFn: async ({ listingId, method }: { listingId: string; method: string | null }) =>
+      (await apiClient.post<CheckoutResponse>("/api/v1/student/checkout", { listingId, method }))
+        .data,
     // The order is created pending; ownership flips only when the stub-pay callback fulfils it.
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["commerce", "orders"] }),
   });
@@ -498,11 +532,31 @@ export function useAdminWithdrawals(status?: string) {
   });
 }
 
-export function useMarkPaid() {
+// Approve = the money valve: the server resolves the org owner's verified login phone, stamps
+// `destination`, and disburses via the configured rail (dev stub pays instantly). Same
+// invalidation shape the old mark-paid hook had — the debit was written at REQUEST time, so no
+// wallet key moves here; the queue is the only thing that changes tone.
+export function useApproveWithdrawal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) =>
-      (await apiClient.post<Withdrawal>(`/api/v1/admin/withdrawals/${id}/mark-paid`)).data,
+    // Returns the UPDATED Withdrawal: a 200 carries any of paid / payout_failed / processing (the
+    // server does not fail the request on a gateway refusal), so the caller must read `.status`.
+    mutationFn: async (id: string): Promise<Withdrawal> =>
+      (await apiClient.post<Withdrawal>(`/api/v1/admin/withdrawals/${id}/approve`)).data,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["commerce", "admin-withdrawals"] }),
+  });
+}
+
+// Retry a bounced payout: the server re-queries the prior attempt first and pays again only if
+// it never went through (a non-queryable rail trusts the recorded failure). No ledger row moves.
+export function useRetryWithdrawal() {
+  const qc = useQueryClient();
+  return useMutation({
+    // Like approve, a 200 carries any of paid / payout_failed / processing — the `processing`
+    // return also covers the ambiguous-query-no-send path (the prior attempt could not be
+    // re-queried, so nothing was re-sent). The caller reads `.status` to say which happened.
+    mutationFn: async (id: string): Promise<Withdrawal> =>
+      (await apiClient.post<Withdrawal>(`/api/v1/admin/withdrawals/${id}/retry`)).data,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["commerce", "admin-withdrawals"] }),
   });
 }
