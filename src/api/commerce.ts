@@ -531,11 +531,31 @@ export function useAdminWithdrawals(status?: string) {
   });
 }
 
-export function useMarkPaid() {
+// Approve = the money valve: the server resolves the org owner's verified login phone, stamps
+// `destination`, and disburses via the configured rail (dev stub pays instantly). Same
+// invalidation shape the old mark-paid hook had — the debit was written at REQUEST time, so no
+// wallet key moves here; the queue is the only thing that changes tone.
+export function useApproveWithdrawal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) =>
-      (await apiClient.post<Withdrawal>(`/api/v1/admin/withdrawals/${id}/mark-paid`)).data,
+    // Returns the UPDATED Withdrawal: a 200 carries any of paid / payout_failed / processing (the
+    // server does not fail the request on a gateway refusal), so the caller must read `.status`.
+    mutationFn: async (id: string): Promise<Withdrawal> =>
+      (await apiClient.post<Withdrawal>(`/api/v1/admin/withdrawals/${id}/approve`)).data,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["commerce", "admin-withdrawals"] }),
+  });
+}
+
+// Retry a bounced payout: the server re-queries the prior attempt first and pays again only if
+// it never went through (a non-queryable rail trusts the recorded failure). No ledger row moves.
+export function useRetryWithdrawal() {
+  const qc = useQueryClient();
+  return useMutation({
+    // Like approve, a 200 carries any of paid / payout_failed / processing — the `processing`
+    // return also covers the ambiguous-query-no-send path (the prior attempt could not be
+    // re-queried, so nothing was re-sent). The caller reads `.status` to say which happened.
+    mutationFn: async (id: string): Promise<Withdrawal> =>
+      (await apiClient.post<Withdrawal>(`/api/v1/admin/withdrawals/${id}/retry`)).data,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["commerce", "admin-withdrawals"] }),
   });
 }
