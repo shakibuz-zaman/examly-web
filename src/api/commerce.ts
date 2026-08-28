@@ -247,9 +247,10 @@ export function useSavePlatformConfig() {
 // GET /api/v1/payments/methods (Phase 10b Task 1) → the host-configured, buyer-selectable
 // method keys, a subset of ["bkash","nagad","card"] in that fixed order, EMPTY on a
 // default-only host. The picker only renders when this is non-empty (D11). Host config is a
-// process-lifetime constant, so a 5-minute staleTime keeps it out of the request path — the
-// CheckoutSheet is mounted with the student route (no per-open refetch), and the buy button
-// is held until this first resolves so a fast tap can't skip a picker-enabled host.
+// process-lifetime constant, so a 5-minute staleTime keeps it out of the request path. The sheet
+// is mounted with the page on student routes, and at sheet-open in SeatsPanel (the B2B caller);
+// either way there is no per-open refetch guarantee, which is why the buy button is held until
+// this first resolves so a fast tap can't skip a picker-enabled host.
 export function useCheckoutMethods() {
   return useQuery<{ methods: string[] }>({
     queryKey: ["commerce", "payment-methods"],

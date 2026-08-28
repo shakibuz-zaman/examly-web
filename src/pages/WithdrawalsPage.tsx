@@ -101,17 +101,22 @@ export function WithdrawalsPage() {
   // in flight OR (on retry) the prior attempt could not be re-queried, so nothing was re-sent. A
   // flat "Payout sent" would paint a green success over a refusal while the row slid to a tab the
   // admin isn't looking at — so we read the returned status and tell the admin where the row went.
-  // `w` is typed Withdrawal (the mutationFn's return), so the branch is compiler-checked.
+  // `w.status` is `string`, NOT a union, so this switch is NOT compiler-checked: the vocabulary is
+  // the server's five values (requested / processing / paid / payout_failed / rejected), and any
+  // value we don't case falls to the neutral default arm BY DESIGN (the house raw-render rule — a
+  // value we can't read asserts nothing). The flip side of that safety net is that a typo'd case
+  // label would silently fall through to the default instead of erroring, so the comment is the
+  // guard here; read the labels against the wire vocabulary, don't trust the compiler.
   const announce = (w: Withdrawal) => {
     switch (w.status) {
       case "paid":
-        return message.success(`Payout sent — txn ${w.payoutTxnId ?? "recorded"}`);
+        return message.success(`Payout went through — txn ${w.payoutTxnId ?? "recorded"}.`);
       case "payout_failed":
         return message.error(
           `Payout failed — ${w.payoutFailReason ?? "gateway refused"}. See the Failed tab.`);
       case "processing":
         return message.info(
-          "Payout submitted — awaiting gateway confirmation. See the Processing tab.");
+          "Payout is in flight — awaiting gateway confirmation. See the Processing tab.");
       default:
         // A status we do not model — assert nothing beyond echoing the raw wire value.
         return message.info(`Payout status: ${w.status}. See the matching tab.`);
@@ -159,8 +164,11 @@ export function WithdrawalsPage() {
       //     `paid` and there is nothing left to reject. Close the modal.
       //   • "cannot confirm yet" (gateway Unknown) — the row STAYS `payout_failed`; the admin can
       //     reject again once the gateway answers, so keep the modal (and the typed reason) open.
-      // We tell the two apart off the refetched queue: the reject action only fires from the
-      // Failed tab, so a target that no longer appears as `payout_failed` has moved on.
+      // We tell the two apart off the refetched queue. Reject renders on BOTH the Requested and
+      // Failed tabs (any row the admin can still act on), so this isn't a Failed-tab-only handler —
+      // but the close-on-left-`payout_failed` heuristic holds regardless of origin tab: a 409 on a
+      // requested row ALSO means the row moved on (someone approved or already rejected it), so it
+      // likewise no longer appears as `payout_failed`, and closing the modal is the right call.
       message.error(serverError(e, "Could not reject"));
       const targetId = rejectTarget.id;
       const res = await refetch();
