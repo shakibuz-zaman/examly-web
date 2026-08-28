@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { App, Card, Input, InputNumber, Modal, Skeleton, Space, Table, Typography } from "antd";
+import { App, Card, InputNumber, Modal, Skeleton, Space, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { AxiosError } from "axios";
 import {
   useMyWithdrawals, usePricing, useRequestWithdrawal, useWallet,
 } from "../api/commerce";
 import type { WalletEntry, Withdrawal } from "../api/commerce";
+import { useAuth } from "../auth/useAuth";
 import { bnMoney, enMoney } from "../lib/bn";
 import { formatDhakaShortBn } from "../lib/format";
 import { lookup } from "../lib/lookup";
@@ -52,36 +53,46 @@ const KIND: Record<string, { tone: MoneyTone; label: string }> = {
   withdrawal_reject_reversal: { tone: "inflow", label: "উত্তোলন ফেরত" },
 };
 
-// API statuses are exactly requested / paid / rejected (WalletEndpoints / Withdrawal domain).
+// API statuses are requested / processing / paid / payout_failed / rejected (WalletEndpoints /
+// Withdrawal domain). `processing` is an approved request the payout gateway is settling —
+// queued tone, the same "still moving" cue as `requested`. `payout_failed` is a settlement the
+// gateway bounced back; it reads as danger and its কারণ column carries the gateway's own words.
 const WITHDRAWAL_STATUS: Record<string, { tone: MoneyTone; label: string }> = {
   requested: { tone: "queued", label: "অপেক্ষমাণ" },
+  processing: { tone: "queued", label: "প্রসেস হচ্ছে" },
   paid: { tone: "outflow", label: "পরিশোধিত" },
+  payout_failed: { tone: "danger", label: "পেমেন্ট ব্যর্থ" },
   rejected: { tone: "danger", label: "বাতিল" },
 };
 
-// Sums over the payout list, not the ledger, because the ledger cannot answer either tile:
-// `withdrawal_debit` is written at REQUEST time, not at payout — WalletService's
-// `RequestWithdrawalAsync` inserts the Withdrawal row and its negative WalletEntry in the same
-// call (WalletEntry.cs annotates the kind as "− a withdrawal request"). A queued request and a
-// paid one are therefore INDISTINGUISHABLE in the ledger; only `Withdrawal.status` separates
-// them.
+// The five statuses partition into three money buckets, and the two tiles below name two of
+// them. IN_FLIGHT is every NON-TERMINAL payout — requested, processing AND payout_failed: the
+// debit is written at REQUEST time and never re-driven per status (WalletService's
+// `RequestWithdrawalAsync` inserts the Withdrawal row and its negative WalletEntry in one call;
+// approve/processing/failure move `status` but touch no ledger row), so all three are money that
+// has already left `balance` and has not come back. `paid` is terminal-out; `rejected` is the
+// only status that credits the money back (via `withdrawal_reject_reversal`, the inflow kind
+// above) — so it belongs to `balance`, not to either tile. The partition the tiles must keep:
+// balance + IN_FLIGHT + paid accounts for every taka, with rejected already folded back into
+// balance. If «অপেক্ষমাণ উত্তোলন» summed only `requested`, a processing or payout_failed row's
+// money would vanish from every tile while still sitting outside the balance — which is exactly
+// the under-report this set closes.
 //
-// The consequence any other surface must inherit: ব্যালেন্স ALREADY has queued payouts taken
-// out of it. «অপেক্ষমাণ উত্তোলন» is a breakdown of money that has *left* the balance and is
-// waiting on an admin — never a pending deduction, and never something to subtract from
-// `balance` a second time. (Rejecting a request credits it back through
-// `withdrawal_reject_reversal`, which is why that kind reads as an inflow above.)
-//
-// Both tiles read the one source, so they go «—» together when it is missing rather than one
-// of them quietly asserting ৳০.
-function sumBy(rows: Withdrawal[], status: string): number {
-  return rows.reduce((acc, w) => (w.status === status ? acc + w.amountBdt : acc), 0);
+// Sums over the payout list, not the ledger, because the ledger cannot tell a queued request
+// from a paid one: both are the same `withdrawal_debit`, and only `Withdrawal.status` separates
+// them. Both tiles read the one source, so they go «—» together when it is missing rather than
+// one of them quietly asserting ৳০.
+const IN_FLIGHT_STATUSES = ["requested", "processing", "payout_failed"] as const;
+
+function sumBy(rows: Withdrawal[], statuses: readonly string[]): number {
+  return rows.reduce((acc, w) => (statuses.includes(w.status) ? acc + w.amountBdt : acc), 0);
 }
 
 export function WalletPage() {
   // AppShell mounts antd's `App` inside the examiner ConfigProvider; the imported statics
   // render into their own detached root and cannot see this theme (7g constraint).
   const { message } = App.useApp();
+  const { user } = useAuth();
   const [page, setPage] = useState(1);
   const wallet = useWallet(page);
   const withdrawals = useMyWithdrawals();
@@ -98,7 +109,6 @@ export function WalletPage() {
 
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState<number | null>(null);
-  const [destination, setDestination] = useState("");
 
   const balance = w?.balance ?? 0;
   const canWithdraw = w != null && balance >= minWithdrawal;
@@ -108,15 +118,12 @@ export function WalletPage() {
       message.error(`সর্বনিম্ন ${bnMoney(minWithdrawal)} উত্তোলন করা যায়`);
       return;
     }
-    if (!destination.trim()) {
-      message.error("বিকাশ নম্বর দিন");
-      return;
-    }
+    // D4: no destination field — the server stamps the payout target from the org owner's
+    // verified login phone at admin approval time. The body is amount only.
     try {
-      await request.mutateAsync({ amountBdt: amount, destination: destination.trim() });
+      await request.mutateAsync({ amountBdt: amount });
       message.success("উত্তোলনের অনুরোধ পাঠানো হয়েছে");
       setOpen(false);
-      setDestination("");
       setAmount(minWithdrawal);
     } catch (e) {
       // The server's own sentence leads and it is Bengali as of 7g Task 7 (the three
@@ -207,6 +214,9 @@ export function WalletPage() {
       key: "destination",
       // A phone number is an identifier — Latin digits, and tabular so a column of them aligns.
       className: "ex-num",
+      // The server stamps `bkash:{E.164}` only at admin approval (D4); a still-`requested` row
+      // carries "", so strip the transport prefix and go «—» until there is a number to show.
+      render: (v: string) => (v ? v.replace(/^bkash:/, "") : "—"),
     },
     {
       title: "স্ট্যাটাস",
@@ -221,15 +231,20 @@ export function WalletPage() {
     },
     {
       title: "কারণ",
-      dataIndex: "rejectReason",
-      key: "rejectReason",
-      // Two kinds of text land in this column and only one of them is ours. A payout the
-      // SERVER rejected carries the Bengali compensation sentence it wrote («ব্যালেন্স বদলে
-      // গেছে — আবার চেষ্টা করুন।», WalletService's balance-race branch, Bengali since T7). A
-      // payout an ADMIN rejected carries whatever that admin typed into the English payout
-      // queue, which stays English by D1 — an examiner surface cannot translate free text a
-      // human wrote. So this renders verbatim, whichever it is.
-      render: (v: string | null) => v ?? "—",
+      // Neutral key: this cell renders EITHER field, so it is bound to no single one.
+      key: "reason",
+      // Two failure texts can land here and neither is ours to translate — same verbatim-render
+      // rule as the admin free text. `rejectReason` is what an admin typed rejecting the request
+      // (English by D1, or the Bengali balance-race sentence WalletService writes since T7).
+      // `payoutFailReason` is the gateway's own words when an APPROVED payout bounced — the
+      // examiner's only answer to "where is my money".
+      //
+      // A single row CAN carry BOTH: RejectWithdrawalAsync accepts a payout_failed → rejected
+      // transition and does NOT clear the stale payoutFailReason. So the order is load-bearing,
+      // not a "never both" convenience — rejectReason wins because on a rejected-after-failed row
+      // the admin's rejection sentence is the current, authoritative reason and the retained
+      // payoutFailReason is the older gateway note beneath it.
+      render: (_, row) => row.rejectReason ?? row.payoutFailReason ?? "—",
     },
   ];
 
@@ -287,16 +302,18 @@ export function WalletPage() {
           )}
           <div className="ex-stattiles ex-stattiles--3">
             <StatTile label="ব্যালেন্স" value={bnMoney(balance)} />
-            {/* «—» rather than ৳০ when the payout list is missing: zero queued and unknown
-                are different facts, and this tile is the one an examiner checks before
-                asking where their money is. */}
+            {/* Every IN-FLIGHT payout, not just `requested`: a processing or payout_failed row
+                is money already out of the balance and not yet paid or reversed, so it belongs
+                here too — summing only `requested` would drop it from every tile. «—» rather
+                than ৳০ when the list is missing: zero in-flight and unknown are different facts,
+                and this is the tile an examiner checks before asking where their money is. */}
             <StatTile
               label="অপেক্ষমাণ উত্তোলন"
-              value={rows ? bnMoney(sumBy(rows, "requested")) : "—"}
+              value={rows ? bnMoney(sumBy(rows, IN_FLIGHT_STATUSES)) : "—"}
             />
             <StatTile
               label="মোট উত্তোলিত"
-              value={rows ? bnMoney(sumBy(rows, "paid")) : "—"}
+              value={rows ? bnMoney(sumBy(rows, ["paid"])) : "—"}
             />
           </div>
 
@@ -386,16 +403,20 @@ export function WalletPage() {
               সর্বনিম্ন {bnMoney(minWithdrawal)} · ব্যালেন্স {bnMoney(balance)}
             </Typography.Text>
           </div>
-          <div>
-            <Typography.Text strong>বিকাশ নম্বর</Typography.Text>
-            {/* The placeholder stays Latin — it is the shape of an identifier the examiner
-                types on a Latin-digit keypad, not prose. */}
-            <Input
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              placeholder="01XXXXXXXXX"
-            />
-          </div>
+          {/* D4: the examiner no longer types a destination — the server pays out to the org
+              owner's verified login বিকাশ number, resolved at admin approval. So this is a
+              read-only statement of where the money goes, not a field. The phone is an
+              identifier (Latin digits, ratified); «—» for a legacy doc that carries none.
+              INVARIANT (fragile): this prints the REQUESTER's phone (useAuth().user.phone), but
+              the server pays the ORG OWNER's phone (Organization.OwnerUserId → users doc). Those
+              are the same number only by construction — org creation stamps the creator as owner
+              and nothing enforces requester == owner. The first multi-examiner org would make
+              this copy name the WRONG number; the durable fix is a server-provided destination
+              preview on the request response, not a client-side identity read. Copy itself is
+              spec §7 verbatim. */}
+          <Typography.Text style={{ color: "var(--ex-ink-soft)" }}>
+            টাকা যাবে আপনার লগইন বিকাশ নম্বরে: <span className="ex-num">{user?.phone || "—"}</span>
+          </Typography.Text>
         </Space>
       </Modal>
     </>

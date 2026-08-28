@@ -104,6 +104,10 @@ export type WalletResponse = {
   pageSize: number;
 };
 
+// destination is server-stamped `bkash:{E.164}` at admin approval time — "" until then, so a
+// still-`requested` row carries none (D4: the client no longer names a payout target). status
+// is now requested | processing | paid | payout_failed | rejected; payoutTxnId is the gateway's
+// id for a settled payout, payoutFailReason the gateway's own words on a failed one.
 export type Withdrawal = {
   id: string;
   orgId: string;
@@ -112,6 +116,8 @@ export type Withdrawal = {
   status: string;
   requestedAt: string;
   rejectReason: string | null;
+  payoutTxnId: string | null;
+  payoutFailReason: string | null;
 };
 
 // GET /api/v1/admin/orders/{id} (platform_admin) — the order-void lookup. Carries both the B2C
@@ -178,7 +184,9 @@ export type SlotPurchaseRequest = {
   method: string | null;
 };
 export type UpgradeRequest = { seatSlot: number; examSlot: number; method: string | null };
-export type WithdrawalRequest = { amountBdt: number; destination: string };
+// D4: the client no longer names a payout target — the server resolves it from the org owner's
+// verified login phone at admin approval time. Amount only.
+export type WithdrawalRequest = { amountBdt: number };
 export type RescheduleRequest = { windowStartUtc: string; windowEndUtc: string };
 
 // Query keys that reflect *ownership* — a completed purchase / claim / free-register flips
