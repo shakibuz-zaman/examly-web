@@ -1,4 +1,4 @@
-import type { ExamResponse, SaveExamRequest } from "../../api/types";
+import type { ExamResponse, QuestionResponse, SaveExamRequest } from "../../api/types";
 
 export type DraftQuestion = {
   questionId: string;
@@ -123,4 +123,20 @@ export function draftTotalMarks(draft: ExamDraft): number {
 
 export function allQuestionIds(draft: ExamDraft): string[] {
   return draft.sections.flatMap((s) => s.questions.map((q) => q.questionId));
+}
+
+// A question the author drawer just created. The full response carries stemHtml (the
+// picker's summary only has an excerpt), and it is `active` by construction — the drawer
+// saves only that status because ExamService.ApplyAsync refuses any other (spec D2).
+export function toDraftQuestionFromResponse(q: QuestionResponse): DraftQuestion {
+  return {
+    questionId: q.id,
+    marksOverride: null,
+    stemHtml: q.stemHtml,
+    stemExcerpt: null,
+    bankStatus: q.status,
+    multipleCorrect: q.multipleCorrect,
+    optionCount: q.options.length,
+    difficulty: q.difficulty,
+  };
 }

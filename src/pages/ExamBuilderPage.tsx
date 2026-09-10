@@ -15,6 +15,7 @@ import { SectionCard } from "../features/exams/SectionCard";
 import { SellingCard } from "../features/exams/SellingCard";
 import { SeatsPanel } from "../features/commerce/SeatsPanel";
 import { SortableList } from "../features/exams/SortableList";
+import { QuestionAuthorDrawer } from "../features/questions/QuestionAuthorDrawer";
 import {
   allQuestionIds, draftQuestionCount, draftTotalMarks, emptyDraft, fromResponse,
   nextKey, toSaveRequest,
@@ -40,7 +41,8 @@ export function ExamBuilderPage() {
   const [dirty, setDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
-  const [picker, setPicker] = useState<{ sectionKey: string; tab: "browse" | "random" } | null>(null);
+  const [picker, setPicker] =
+    useState<{ sectionKey: string; tab: "browse" | "random" | "author" } | null>(null);
   // Load the fetched exam into local state exactly once per id — a react-query
   // window-focus refetch must never wipe unsaved edits (same guard as the question editor).
   const loadedForIdRef = useRef<string | null>(null);
@@ -155,9 +157,15 @@ export function ExamBuilderPage() {
         }
         actions={
           <Space size={8} wrap>
-            <PillButton variant="ghost" onClick={() => navigate("/exams")}>
-              ফিরে যান
-            </PillButton>
+            {exam?.modelTestId ? (
+              <PillButton variant="ghost" onClick={() => navigate(`/model-tests/${exam.modelTestId}`)}>
+                মডেল টেস্টে ফিরুন
+              </PillButton>
+            ) : (
+              <PillButton variant="ghost" onClick={() => navigate("/exams")}>
+                ফিরে যান
+              </PillButton>
+            )}
             {exam && (
               <PillButton variant="outline" onClick={() => setPreview((p) => !p)}>
                 {preview ? "সম্পাদনায় ফিরুন" : "প্রিভিউ"}
@@ -350,6 +358,7 @@ export function ExamBuilderPage() {
               mutate({ sections: draft.sections.filter((s) => s.key !== section.key) })}
             onAddQuestions={() => setPicker({ sectionKey: section.key, tab: "browse" })}
             onRandomFill={() => setPicker({ sectionKey: section.key, tab: "random" })}
+            onAuthorQuestion={() => setPicker({ sectionKey: section.key, tab: "author" })}
           />
         )}
       />
@@ -397,12 +406,20 @@ export function ExamBuilderPage() {
         </>
       )}
 
-      {picker && (
+      {picker && picker.tab !== "author" && (
         <QuestionPickerDrawer
           open
           initialTab={picker.tab}
           existingIds={allQuestionIds(draft)}
           onAdd={(questions) => addQuestions(picker.sectionKey, questions)}
+          onAuthor={() => setPicker({ sectionKey: picker.sectionKey, tab: "author" })}
+          onClose={() => setPicker(null)}
+        />
+      )}
+      {picker?.tab === "author" && (
+        <QuestionAuthorDrawer
+          open
+          onCreated={(q) => addQuestions(picker.sectionKey, [q])}
           onClose={() => setPicker(null)}
         />
       )}

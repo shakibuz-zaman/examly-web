@@ -2,9 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { apiClient } from "./client";
 import type {
+  ExamResponse,
   ModelTestListFilters,
   ModelTestListResponse,
   ModelTestResponse,
+  SaveExamRequest,
   SaveModelTestRequest,
 } from "./types";
 
@@ -95,6 +97,17 @@ export function useRestoreModelTest() {
   return useMutation({
     mutationFn: async (id: string) =>
       (await apiClient.post<ModelTestResponse>(`/api/v1/model-tests/${id}/restore`)).data,
+    onSuccess: () => invalidateBoth(qc),
+  });
+}
+
+// POST /api/v1/model-tests/{id}/exams — an exam born inside a draft bundle (spec C1). The
+// server appends it to the bundle and sets the back-reference, so both caches go stale.
+export function useCreateBundleExam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ modelTestId, body }: { modelTestId: string; body: SaveExamRequest }) =>
+      (await apiClient.post<ExamResponse>(`/api/v1/model-tests/${modelTestId}/exams`, body)).data,
     onSuccess: () => invalidateBoth(qc),
   });
 }

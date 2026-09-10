@@ -1,26 +1,50 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Alert, Button, Card, Input, Popconfirm, Select, Space, Spin, Typography, message,
+  Alert, Card, Input, Popconfirm, Select, Space, Spin, Typography, message,
 } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
 import type { AxiosError } from "axios";
 import { CategoryTreeSelect } from "../features/categories/CategoryTreeSelect";
-import { useExams } from "../api/exams";
+import { useExams, useSaveExam } from "../api/exams";
 import {
-  useModelTest, usePublishModelTest, useSaveModelTest, useUnpublishModelTest,
+  useCreateBundleExam, useModelTest, usePublishModelTest, useSaveModelTest,
+  useUnpublishModelTest,
 } from "../api/modelTests";
+import { BundleExamCard, type ExamDraftState } from "../features/exams/BundleExamCard";
+import { NewBundleExamModal } from "../features/exams/NewBundleExamModal";
+import { QuestionPickerDrawer } from "../features/exams/QuestionPickerDrawer";
+import { QuestionAuthorDrawer } from "../features/questions/QuestionAuthorDrawer";
 import { SellingCard } from "../features/exams/SellingCard";
 import { SeatsPanel } from "../features/commerce/SeatsPanel";
 import { SortableList } from "../features/exams/SortableList";
-import type { ModelTestExamItem } from "../api/types";
+import {
+  allQuestionIds, draftQuestionCount, emptyDraft, fromResponse, toSaveRequest,
+  type DraftQuestion, type ExamDraft,
+} from "../features/exams/examDraft";
+import type { ExamResponse, ModelTestExamItem } from "../api/types";
 import { bnNum } from "../lib/bn";
 import { PageHeader } from "../ui/PageHeader";
 import { PillButton } from "../ui/PillButton";
-import { ContentStatusChip } from "../ui/StatusChip";
 
 function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
+}
+
+// C4 step 3 focus. Two things defeat a single rAF here. The card's body paints a frame after
+// the card itself; and on the FIRST-save path the page re-mounts behind its `<Spin>`
+// (navigate → `useModelTest(newId)` goes pending) a few frames later, which throws the focus
+// straight back to `<body>` — measured live at t+110ms focused, t+139ms unmounted, t+204ms
+// back. So this WATCHES for a bounded window instead of firing once, and only ever takes
+// focus FROM `<body>`: a caret the examiner has since put somewhere real is never stolen.
+// Gives up silently. `preventScroll` keeps the smooth scroll from being cut short.
+function focusAddQuestions(examId: string, framesLeft = 60) {
+  const host = document.getElementById(`bundle-exam-${examId}`);
+  const btn = host?.querySelector<HTMLButtonElement>('button[data-action="add-questions"]');
+  if (btn && (document.activeElement === null || document.activeElement === document.body)) {
+    host?.scrollIntoView({ behavior: "smooth", block: "start" });
+    btn.focus({ preventScroll: true });
+  }
+  if (framesLeft > 0) requestAnimationFrame(() => focusAddQuestions(examId, framesLeft - 1));
 }
 
 type BundleDraft = {
@@ -104,11 +128,103 @@ export function ModelTestBuilderPage() {
     });
   };
 
+  // ---- nested exam state (spec C2) ----
+  const [examDrafts, setExamDrafts] = useState<Record<string, ExamDraftState>>({});
+  // Mirror of `examDrafts` written eagerly, in the handler, on every change. Save-all runs
+  // across awaits and MUST see edits that land mid-flight; a functional `setExamDrafts`
+  // updater would only run at the next render, i.e. too late to read from. This helper is
+  // the single writer, so the ref can never drift from the state.
+  const examDraftsRef = useRef(examDrafts);
+  const updateExamDrafts = useCallback(
+    (fn: (m: Record<string, ExamDraftState>) => Record<string, ExamDraftState>) => {
+      const next = fn(examDraftsRef.current);
+      if (next === examDraftsRef.current) return;
+      examDraftsRef.current = next;
+      setExamDrafts(next);
+    },
+    [],
+  );
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [picker, setPicker] =
+    useState<{ examId: string; sectionKey: string; tab: "browse" | "random" | "author" } | null>(
+      null,
+    );
+  const [newExamOpen, setNewExamOpen] = useState(false);
+  const createExam = useCreateBundleExam();
+  const saveExam = useSaveExam();
+
+  const anyExamDirty = Object.values(examDrafts).some((s) => s.dirty);
+  const totalQuestions = draft.exams.reduce(
+    (n, e) => n + (examDrafts[e.id] ? draftQuestionCount(examDrafts[e.id].draft) : e.questionCount),
+    0,
+  );
+
+  // Seed once per id: a card's `onLoaded` fires on every fresh `useExam` payload, and a
+  // card created through the modal is already seeded — neither may clobber live edits.
+  const onExamLoaded = useCallback(
+    (examId: string, loaded: ExamDraft) =>
+      updateExamDrafts((m) => (m[examId] ? m : { ...m, [examId]: { draft: loaded, dirty: false, error: null } })),
+    [updateExamDrafts],
+  );
+  const onExamChange = (examId: string, next: ExamDraft) =>
+    updateExamDrafts((m) => ({ ...m, [examId]: { draft: next, dirty: true, error: null } }));
+  const toggle = (examId: string) =>
+    setExpanded((s) => {
+      const n = new Set(s);
+      if (n.has(examId)) n.delete(examId); else n.add(examId);
+      return n;
+    });
+
+  // D8: removal is a bundle edit only — the exam document is untouched and becomes standalone
+  // again when the bundle saves. Dropping the draft entry also drops any unsaved edits to it.
+  const removeExam = (examId: string) => {
+    mutate({ exams: draft.exams.filter((x) => x.id !== examId) });
+    updateExamDrafts((m) => Object.fromEntries(Object.entries(m).filter(([k]) => k !== examId)));
+    setExpanded((s) => {
+      const n = new Set(s);
+      n.delete(examId);
+      return n;
+    });
+  };
+
+  // Reads the entry INSIDE the updater (ExamBuilderPage's `setDraft((d) => …)` discipline):
+  // a drawer add must merge into whatever the card holds now, never revert it to the draft
+  // that existed when the drawer opened.
+  const addQuestionsTo = (examId: string, sectionKey: string, questions: DraftQuestion[]) =>
+    updateExamDrafts((m) => {
+      const st = m[examId];
+      if (!st) return m;
+      const existing = new Set(allQuestionIds(st.draft));
+      const fresh = questions.filter((q) => !existing.has(q.questionId));
+      if (fresh.length === 0) return m;
+      return {
+        ...m,
+        [examId]: {
+          draft: {
+            ...st.draft,
+            sections: st.draft.sections.map((s) =>
+              s.key === sectionKey ? { ...s, questions: [...s.questions, ...fresh] } : s),
+          },
+          dirty: true,
+          error: null,
+        },
+      };
+    });
+
+  // Row-summary refresh that must NOT flip the bundle dirty flag (it is a server echo).
+  const mutateExamItem = (examId: string, patch: Partial<ModelTestExamItem>) =>
+    setDraft((d) => ({ ...d, exams: d.exams.map((e) => (e.id === examId ? { ...e, ...patch } : e)) }));
+
+  // Bundle first, then each loaded-and-dirty exam in bundle order, one PUT each. A failed
+  // exam keeps its error on the card and stays dirty; the bundle save is not rolled back
+  // (independent documents, D9). Resolves to the bundle id ONLY when everything succeeded,
+  // so publish (below) can never run over a half-saved bundle.
   const onSave = async (): Promise<string | null> => {
     if (!draft.title.trim()) {
       message.error("শিরোনাম দিতে হবে");
       return null;
     }
+    let bundleId: string;
     try {
       const saved = await save.mutateAsync({
         id: modelTest?.id,
@@ -119,16 +235,99 @@ export function ModelTestBuilderPage() {
           examIds: draft.exams.map((e) => e.id),
         },
       });
+      bundleId = saved.id;
       setDirty(false);
-      message.success("খসড়া সংরক্ষিত হয়েছে");
       if (!modelTest) {
         loadedForIdRef.current = saved.id;
         navigate(`/model-tests/${saved.id}`, { replace: true });
       }
-      return saved.id;
     } catch (e) {
       message.error(serverError(e, "সংরক্ষণ করা যায়নি"));
       return null;
+    }
+
+    let failures = 0;
+    for (const item of draft.exams) {
+      // Freshest entry, not the click-time closure: a card edited after the click still
+      // gets saved in this round.
+      const st = examDraftsRef.current[item.id];
+      if (!st?.dirty) continue;
+      const sent = st.draft;
+      try {
+        const saved: ExamResponse = await saveExam.mutateAsync({
+          id: item.id, body: toSaveRequest(sent),
+        });
+        // Clear `dirty` ONLY if the draft we PUT is still the one the card holds. A keystroke
+        // that landed while the request was in flight is not in that body, so marking it
+        // clean would silently drop it.
+        updateExamDrafts((m) => (m[item.id]?.draft === sent
+          ? { ...m, [item.id]: { draft: sent, dirty: false, error: null } }
+          : m));
+        mutateExamItem(item.id, {
+          title: saved.title, questionCount: saved.questionCount,
+          totalMarks: saved.totalMarks, durationMinutes: saved.durationMinutes,
+        });
+      } catch (e) {
+        failures += 1;
+        const err = serverError(e, "সংরক্ষণ করা যায়নি");
+        // `removeExam` can have dropped this entry while the PUT was in flight. Re-creating
+        // it here would resurrect a ghost `dirty: true` entry that no card renders, pinning
+        // the unsaved-changes marker in the header forever — so only annotate one still present.
+        const present = examDraftsRef.current[item.id] !== undefined;
+        updateExamDrafts((m) =>
+          (m[item.id] ? { ...m, [item.id]: { ...m[item.id], error: err } } : m));
+        // The error strip lives in the card BODY, so a collapsed card would show nothing but
+        // «· অসংরক্ষিত» while the toast points at it.
+        if (present) setExpanded((s) => new Set(s).add(item.id));
+      }
+    }
+    // Anything still dirty (a mid-PUT edit, or a card touched during another exam's request)
+    // is NOT on the server — the round did not succeed and publish must not follow it.
+    const raced = failures === 0 && draft.exams.some((e) => examDraftsRef.current[e.id]?.dirty);
+    if (failures === 0 && !raced) {
+      message.success("খসড়া সংরক্ষিত হয়েছে");
+      return bundleId;
+    }
+    message.error(raced
+      ? "সংরক্ষণের সময় নতুন পরিবর্তন হয়েছে — আবার সংরক্ষণ করুন"
+      : "কিছু পরীক্ষা সংরক্ষণ হয়নি — কার্ডে দেখুন");
+    return null;
+  };
+
+  // Spec C4: a never-saved bundle is saved first (it needs an id to hang the exam on).
+  const onCreateExam = async ({ title, durationMinutes }: {
+    title: string; durationMinutes: number;
+  }) => {
+    let bundleId = modelTest?.id ?? null;
+    if (!bundleId) {
+      bundleId = await onSave();
+      if (!bundleId) return;
+    }
+    try {
+      const created = await createExam.mutateAsync({
+        modelTestId: bundleId,
+        body: toSaveRequest({ ...emptyDraft(), title, durationMinutes }),
+      });
+      // Membership is already persisted server-side (D11), so the bundle is NOT marked dirty.
+      setDraft((d) => ({
+        ...d,
+        exams: [...d.exams, {
+          id: created.id, title: created.title, status: created.status,
+          questionCount: created.questionCount, totalMarks: created.totalMarks,
+          durationMinutes: created.durationMinutes, isArchived: false,
+        }],
+      }));
+      updateExamDrafts((m) => ({
+        ...m, [created.id]: { draft: fromResponse(created), dirty: false, error: null },
+      }));
+      setExpanded((s) => new Set(s).add(created.id));
+      setNewExamOpen(false);
+      message.success("পরীক্ষা তৈরি হয়েছে — এবার প্রশ্ন যোগ করুন");
+      // Spec C4 step 3: scroll the new card into view AND put the caret on the one thing the
+      // examiner came here to do.
+      focusAddQuestions(created.id);
+    } catch (e) {
+      message.error(serverError(e, "পরীক্ষা তৈরি করা যায়নি"));
     }
   };
 
@@ -166,8 +365,8 @@ export function ModelTestBuilderPage() {
         title={draft.title.trim() || "নতুন মডেল টেস্ট"}
         summary={
           <Space size={8} wrap>
-            <span>{bnNum(draft.exams.length)}টি পরীক্ষা</span>
-            {dirty && (
+            <span>{bnNum(draft.exams.length)}টি পরীক্ষা · {bnNum(totalQuestions)}টি প্রশ্ন</span>
+            {(dirty || anyExamDirty) && (
               <span style={{ color: "var(--ex-amber)", fontWeight: 600 }}>
                 · অসংরক্ষিত পরিবর্তন
               </span>
@@ -182,7 +381,7 @@ export function ModelTestBuilderPage() {
             {!readOnly && (
               <PillButton
                 variant="primary"
-                disabled={save.isPending}
+                disabled={save.isPending || saveExam.isPending}
                 onClick={() => void onSave()}
               >
                 খসড়া সংরক্ষণ
@@ -197,7 +396,10 @@ export function ModelTestBuilderPage() {
                 cancelText="না"
                 onConfirm={() => void onPublish()}
               >
-                <PillButton variant="tonal" disabled={publish.isPending}>
+                <PillButton
+                  variant="tonal"
+                  disabled={publish.isPending || save.isPending || saveExam.isPending}
+                >
                   বান্ডেল প্রকাশ করুন
                 </PillButton>
               </Popconfirm>
@@ -269,8 +471,8 @@ export function ModelTestBuilderPage() {
             <Typography.Text strong>পরীক্ষা (ক্রমানুসারে)</Typography.Text>
             {draft.exams.length === 0 && (
               <Typography.Paragraph type="secondary" style={{ marginTop: 4 }}>
-                এখনো কোনো পরীক্ষা নেই। শুধু খসড়া স্ট্যান্ডঅ্যালোন পরীক্ষা যোগ করা যায় — প্রকাশিত
-                পরীক্ষা আগে আনপাবলিশ করতে হবে।
+                এখনো কোনো পরীক্ষা নেই। «নতুন পরীক্ষা» দিয়ে এখানেই তৈরি করুন, অথবা খসড়া
+                স্ট্যান্ডঅ্যালোন পরীক্ষা যোগ করুন — প্রকাশিত পরীক্ষা আগে আনপাবলিশ করতে হবে।
               </Typography.Paragraph>
             )}
             <SortableList
@@ -279,52 +481,43 @@ export function ModelTestBuilderPage() {
               disabled={readOnly}
               onReorder={(exams) => mutate({ exams })}
               renderItem={(e, index) => (
-                <div
-                  style={{
-                    display: "flex", alignItems: "center", gap: 12,
-                    padding: "8px 0", borderBottom: "1px solid var(--ex-line)",
-                  }}
-                >
-                  {/* Positional identifier in a dense ordered list — Western digits, the
-                      ratified exception, matching the exam builder's question rows. */}
-                  <span className="ex-num" style={{ color: "var(--ex-ink-soft)", minWidth: 24 }}>
-                    {index + 1}.
-                  </span>
-                  <Typography.Link onClick={() => navigate(`/exams/${e.id}`)} style={{ flex: 1 }}>
-                    {e.title}
-                  </Typography.Link>
-                  <ContentStatusChip status={e.status} />
-                  {e.isArchived && (
-                    <span className="ex-chipstat ex-chipstat--danger">
-                      আর্কাইভড — শিক্ষার্থীরা দেখবে না
-                    </span>
-                  )}
-                  <Typography.Text type="secondary">
-                    {bnNum(e.questionCount)}টি প্রশ্ন · {bnNum(e.totalMarks)} মার্ক ·{" "}
-                    {bnNum(e.durationMinutes)} মিনিট
-                  </Typography.Text>
-                  {!readOnly && (
-                    <Button
-                      size="small" type="text" danger icon={<DeleteOutlined />}
-                      aria-label="বান্ডেল থেকে সরান"
-                      onClick={() =>
-                        mutate({ exams: draft.exams.filter((x) => x.id !== e.id) })}
-                    />
-                  )}
+                <div id={`bundle-exam-${e.id}`} style={{ scrollMarginTop: 80 }}>
+                  <BundleExamCard
+                    item={e}
+                    index={index}
+                    readOnly={readOnly}
+                    expanded={expanded.has(e.id)}
+                    onToggle={() => toggle(e.id)}
+                    state={examDrafts[e.id]}
+                    onLoaded={(d) => onExamLoaded(e.id, d)}
+                    onChange={(d) => onExamChange(e.id, d)}
+                    onClearError={() =>
+                      updateExamDrafts((m) =>
+                        m[e.id] ? { ...m, [e.id]: { ...m[e.id], error: null } } : m)}
+                    onRemove={() => removeExam(e.id)}
+                    onOpenPicker={(sectionKey, tab) => setPicker({ examId: e.id, sectionKey, tab })}
+                  />
                 </div>
               )}
             />
             {!readOnly && (
-              <Select
-                showSearch
-                placeholder="খসড়া স্ট্যান্ডঅ্যালোন পরীক্ষা যোগ করুন…"
-                style={{ width: 420, marginTop: 12 }}
-                value={null}
-                onChange={(v) => { if (v) addExam(v); }}
-                options={addableOptions}
-                optionFilterProp="label"
-                notFoundContent="যোগ করার মতো খসড়া স্ট্যান্ডঅ্যালোন পরীক্ষা নেই"
-              />
+              <Space wrap style={{ marginTop: 12 }}>
+                {/* tonal, not primary: «খসড়া সংরক্ষণ» in the PageHeader is the page's ONE
+                    primary pill */}
+                <PillButton variant="tonal" onClick={() => setNewExamOpen(true)}>
+                  নতুন পরীক্ষা
+                </PillButton>
+                <Select
+                  showSearch
+                  placeholder="অথবা খসড়া স্ট্যান্ডঅ্যালোন পরীক্ষা যোগ করুন…"
+                  style={{ width: 420 }}
+                  value={null}
+                  onChange={(v) => { if (v) addExam(v); }}
+                  options={addableOptions}
+                  optionFilterProp="label"
+                  notFoundContent="যোগ করার মতো খসড়া স্ট্যান্ডঅ্যালোন পরীক্ষা নেই"
+                />
+              </Space>
             )}
           </div>
         </Space>
@@ -349,6 +542,32 @@ export function ModelTestBuilderPage() {
             বিক্রয় সেটিংস ঠিক করতে আগে খসড়া সংরক্ষণ করুন।
           </Typography.Text>
         </Card>
+      )}
+
+      <NewBundleExamModal
+        open={newExamOpen}
+        busy={createExam.isPending || save.isPending}
+        onCancel={() => setNewExamOpen(false)}
+        onCreate={(v) => void onCreateExam(v)}
+      />
+      {/* One drawer at a time, keyed by { examId, sectionKey, tab } — same discipline as
+          ExamBuilderPage, extended with the exam the section belongs to. */}
+      {picker && picker.tab !== "author" && examDrafts[picker.examId] && (
+        <QuestionPickerDrawer
+          open
+          initialTab={picker.tab}
+          existingIds={allQuestionIds(examDrafts[picker.examId].draft)}
+          onAdd={(qs) => addQuestionsTo(picker.examId, picker.sectionKey, qs)}
+          onAuthor={() => setPicker({ ...picker, tab: "author" })}
+          onClose={() => setPicker(null)}
+        />
+      )}
+      {picker?.tab === "author" && (
+        <QuestionAuthorDrawer
+          open
+          onCreated={(q) => addQuestionsTo(picker.examId, picker.sectionKey, [q])}
+          onClose={() => setPicker(null)}
+        />
       )}
     </div>
   );
