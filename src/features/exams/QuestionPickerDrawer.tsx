@@ -103,9 +103,14 @@ function FilterBar({ filters, onChange }: FilterBarProps) {
   );
 }
 
-type BrowseTabProps = { existingIds: string[]; onAdd: (questions: DraftQuestion[]) => void };
+type BrowseTabProps = {
+  existingIds: string[];
+  onAdd: (questions: DraftQuestion[]) => void;
+  // Spec A3: the "not in the bank yet" escape hatch. Rendered only when provided.
+  onAuthor?: () => void;
+};
 
-function BrowseTab({ existingIds, onAdd }: BrowseTabProps) {
+function BrowseTab({ existingIds, onAdd, onAuthor }: BrowseTabProps) {
   const [filters, setFilters] = useState<PickerFilters>({});
   const [page, setPage] = useState(1);
   const listFilters: QuestionListFilters = {
@@ -149,6 +154,12 @@ function BrowseTab({ existingIds, onAdd }: BrowseTabProps) {
 
   return (
     <>
+      {onAuthor && (
+        <Typography.Paragraph style={{ marginBottom: 8 }}>
+          খুঁজে পাচ্ছেন না?{" "}
+          <Typography.Link onClick={onAuthor}>নতুন প্রশ্ন লিখুন</Typography.Link>
+        </Typography.Paragraph>
+      )}
       <FilterBar
         filters={filters}
         onChange={(patch) => { setFilters((f) => ({ ...f, ...patch })); setPage(1); }}
@@ -229,10 +240,12 @@ type QuestionPickerDrawerProps = {
   existingIds: string[];
   onAdd: (questions: DraftQuestion[]) => void;
   onClose: () => void;
+  // Spec A3: hosts that can author pass this; the browse tab links to it.
+  onAuthor?: () => void;
 };
 
 export function QuestionPickerDrawer({
-  open, initialTab, existingIds, onAdd, onClose,
+  open, initialTab, existingIds, onAdd, onClose, onAuthor,
 }: QuestionPickerDrawerProps) {
   return (
     <Drawer
@@ -248,7 +261,7 @@ export function QuestionPickerDrawer({
           {
             key: "browse",
             label: "ব্যাংক ঘাঁটুন",
-            children: <BrowseTab existingIds={existingIds} onAdd={onAdd} />,
+            children: <BrowseTab existingIds={existingIds} onAdd={onAdd} onAuthor={onAuthor} />,
           },
           {
             key: "random",

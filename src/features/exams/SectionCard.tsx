@@ -1,5 +1,5 @@
 import { Button, Card, Empty, Input, InputNumber, Popconfirm, Space, Tag, Typography } from "antd";
-import { DeleteOutlined, PlusOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, PlusOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { QuestionContentView } from "../questions/QuestionContentView";
 import { SortableList } from "./SortableList";
 import type { DraftQuestion, DraftSection } from "./examDraft";
@@ -27,11 +27,13 @@ type SectionCardProps = {
   // Wired in Task 12 (question picker). Buttons render only when provided.
   onAddQuestions?: () => void;
   onRandomFill?: () => void;
+  // Spec A3: opens the author drawer for this section. Rendered only when provided.
+  onAuthorQuestion?: () => void;
 };
 
 export function SectionCard({
   section, index, sectionCount, readOnly, defaultMarks,
-  onChange, onRemove, onAddQuestions, onRandomFill,
+  onChange, onRemove, onAddQuestions, onRandomFill, onAuthorQuestion,
 }: SectionCardProps) {
   const updateQuestion = (questionId: string, patch: Partial<DraftQuestion>) =>
     onChange({
@@ -67,6 +69,11 @@ export function SectionCard({
       extra={
         !readOnly && (
           <Space>
+            {onAuthorQuestion && (
+              <Button size="small" icon={<EditOutlined />} onClick={onAuthorQuestion}>
+                নতুন প্রশ্ন লিখুন
+              </Button>
+            )}
             {onAddQuestions && (
               <Button size="small" icon={<PlusOutlined />} onClick={onAddQuestions}>
                 প্রশ্ন যোগ করুন
