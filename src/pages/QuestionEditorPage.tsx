@@ -26,10 +26,13 @@ export function QuestionEditorPage() {
   }, [isError, navigate]);
 
   const onSave = async (status: "draft" | "active") => {
-    const body = await formRef.current?.submit(status);
-    if (!body) return;
+    // `submitting` goes up BEFORE validation, not after: RHF's resolver is async, and two
+    // clicks inside that window would both fall through to `save.mutateAsync`. The bail-out
+    // for a failed validation lives inside the `try` so `finally` always clears the flag.
     setSubmitting(true);
     try {
+      const body = await formRef.current?.submit(status);
+      if (!body) return;
       await save.mutateAsync({ id, body });
       message.success(
         status === "draft" ? "খসড়া সংরক্ষণ হয়েছে" : "প্রশ্ন সংরক্ষণ করে সক্রিয় করা হয়েছে",
@@ -67,7 +70,8 @@ export function QuestionEditorPage() {
             </Space>
             {/* PillButton is a bare <button> with no antd spinner, so an in-flight save shows
                 as disabled rather than as a spinner. `disabled` is the honest half of what
-                `loading` used to do — it still blocks the double-submit. */}
+                `loading` used to do — and because `submitting` covers validation AND the POST
+                as one span, it still blocks the double-submit. */}
             <PillButton variant="ghost" onClick={() => navigate("/questions")}>
               বাতিল
             </PillButton>

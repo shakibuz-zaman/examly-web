@@ -89,7 +89,7 @@ export function QuestionAuthorDrawer({ open, onCreated, onClose }: QuestionAutho
       }
       footer={
         <Space size={8} style={{ justifyContent: "flex-end", width: "100%" }}>
-          <PillButton variant="ghost" onClick={requestClose}>বাতিল</PillButton>
+          <PillButton variant="ghost" disabled={saving} onClick={requestClose}>বাতিল</PillButton>
           <PillButton variant="outline" disabled={saving} onClick={() => void onSaveAndNext()}>
             সংরক্ষণ ও পরেরটি
           </PillButton>

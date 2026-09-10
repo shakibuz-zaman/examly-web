@@ -30,6 +30,23 @@ function serverError(e: unknown, fallback: string): string {
   return (e as AxiosError<{ error?: string }>).response?.data?.error ?? fallback;
 }
 
+// C4 step 3 focus. Two things defeat a single rAF here. The card's body paints a frame after
+// the card itself; and on the FIRST-save path the page re-mounts behind its `<Spin>`
+// (navigate → `useModelTest(newId)` goes pending) a few frames later, which throws the focus
+// straight back to `<body>` — measured live at t+110ms focused, t+139ms unmounted, t+204ms
+// back. So this WATCHES for a bounded window instead of firing once, and only ever takes
+// focus FROM `<body>`: a caret the examiner has since put somewhere real is never stolen.
+// Gives up silently. `preventScroll` keeps the smooth scroll from being cut short.
+function focusAddQuestions(examId: string, framesLeft = 60) {
+  const host = document.getElementById(`bundle-exam-${examId}`);
+  const btn = host?.querySelector<HTMLButtonElement>('button[data-action="add-questions"]');
+  if (btn && (document.activeElement === null || document.activeElement === document.body)) {
+    host?.scrollIntoView({ behavior: "smooth", block: "start" });
+    btn.focus({ preventScroll: true });
+  }
+  if (framesLeft > 0) requestAnimationFrame(() => focusAddQuestions(examId, framesLeft - 1));
+}
+
 type BundleDraft = {
   title: string;
   description: string;
@@ -253,10 +270,15 @@ export function ModelTestBuilderPage() {
       } catch (e) {
         failures += 1;
         const err = serverError(e, "সংরক্ষণ করা যায়নি");
-        updateExamDrafts((m) => ({ ...m, [item.id]: { ...(m[item.id] ?? st), error: err } }));
+        // `removeExam` can have dropped this entry while the PUT was in flight. Re-creating
+        // it here would resurrect a ghost `dirty: true` entry that no card renders, pinning
+        // the unsaved-changes marker in the header forever — so only annotate one still present.
+        const present = examDraftsRef.current[item.id] !== undefined;
+        updateExamDrafts((m) =>
+          (m[item.id] ? { ...m, [item.id]: { ...m[item.id], error: err } } : m));
         // The error strip lives in the card BODY, so a collapsed card would show nothing but
         // «· অসংরক্ষিত» while the toast points at it.
-        setExpanded((s) => new Set(s).add(item.id));
+        if (present) setExpanded((s) => new Set(s).add(item.id));
       }
     }
     // Anything still dirty (a mid-PUT edit, or a card touched during another exam's request)
@@ -302,16 +324,8 @@ export function ModelTestBuilderPage() {
       setNewExamOpen(false);
       message.success("পরীক্ষা তৈরি হয়েছে — এবার প্রশ্ন যোগ করুন");
       // Spec C4 step 3: scroll the new card into view AND put the caret on the one thing the
-      // examiner came here to do. The body paints a frame after the card itself, hence the
-      // nested rAF; `preventScroll` keeps the smooth scroll above from being cut short.
-      requestAnimationFrame(() => {
-        document.getElementById(`bundle-exam-${created.id}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-        requestAnimationFrame(() =>
-          document.getElementById(`bundle-exam-${created.id}`)
-            ?.querySelector<HTMLButtonElement>('button[data-action="add-questions"]')
-            ?.focus({ preventScroll: true }));
-      });
+      // examiner came here to do.
+      focusAddQuestions(created.id);
     } catch (e) {
       message.error(serverError(e, "পরীক্ষা তৈরি করা যায়নি"));
     }
@@ -382,7 +396,10 @@ export function ModelTestBuilderPage() {
                 cancelText="না"
                 onConfirm={() => void onPublish()}
               >
-                <PillButton variant="tonal" disabled={publish.isPending}>
+                <PillButton
+                  variant="tonal"
+                  disabled={publish.isPending || save.isPending || saveExam.isPending}
+                >
                   বান্ডেল প্রকাশ করুন
                 </PillButton>
               </Popconfirm>
