@@ -75,7 +75,14 @@ export function SectionCard({
               </Button>
             )}
             {onAddQuestions && (
-              <Button size="small" icon={<PlusOutlined />} onClick={onAddQuestions}>
+              // `data-action` is the stable hook the model-test page focuses after creating a
+              // new exam (spec C4 step 3) — never match this button on its label text.
+              <Button
+                size="small"
+                icon={<PlusOutlined />}
+                data-action="add-questions"
+                onClick={onAddQuestions}
+              >
                 প্রশ্ন যোগ করুন
               </Button>
             )}

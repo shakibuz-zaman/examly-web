@@ -26,6 +26,9 @@ export function NewBundleExamModal({ open, busy, onCancel, onCreate }: NewBundle
 
   const titleError = touched && !title.trim() ? "শিরোনাম দিতে হবে" : undefined;
   const submit = () => {
+    // `confirmLoading` greys the OK button but leaves `onPressEnter` live: without this a
+    // second Enter while the first create is in flight would create a second exam.
+    if (busy) return;
     setTouched(true);
     if (!title.trim()) return;
     onCreate({ title: title.trim(), durationMinutes: duration });

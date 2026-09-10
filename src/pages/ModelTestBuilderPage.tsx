@@ -113,6 +113,20 @@ export function ModelTestBuilderPage() {
 
   // ---- nested exam state (spec C2) ----
   const [examDrafts, setExamDrafts] = useState<Record<string, ExamDraftState>>({});
+  // Mirror of `examDrafts` written eagerly, in the handler, on every change. Save-all runs
+  // across awaits and MUST see edits that land mid-flight; a functional `setExamDrafts`
+  // updater would only run at the next render, i.e. too late to read from. This helper is
+  // the single writer, so the ref can never drift from the state.
+  const examDraftsRef = useRef(examDrafts);
+  const updateExamDrafts = useCallback(
+    (fn: (m: Record<string, ExamDraftState>) => Record<string, ExamDraftState>) => {
+      const next = fn(examDraftsRef.current);
+      if (next === examDraftsRef.current) return;
+      examDraftsRef.current = next;
+      setExamDrafts(next);
+    },
+    [],
+  );
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [picker, setPicker] =
     useState<{ examId: string; sectionKey: string; tab: "browse" | "random" | "author" } | null>(
@@ -132,11 +146,11 @@ export function ModelTestBuilderPage() {
   // card created through the modal is already seeded — neither may clobber live edits.
   const onExamLoaded = useCallback(
     (examId: string, loaded: ExamDraft) =>
-      setExamDrafts((m) => (m[examId] ? m : { ...m, [examId]: { draft: loaded, dirty: false, error: null } })),
-    [],
+      updateExamDrafts((m) => (m[examId] ? m : { ...m, [examId]: { draft: loaded, dirty: false, error: null } })),
+    [updateExamDrafts],
   );
   const onExamChange = (examId: string, next: ExamDraft) =>
-    setExamDrafts((m) => ({ ...m, [examId]: { draft: next, dirty: true, error: null } }));
+    updateExamDrafts((m) => ({ ...m, [examId]: { draft: next, dirty: true, error: null } }));
   const toggle = (examId: string) =>
     setExpanded((s) => {
       const n = new Set(s);
@@ -148,7 +162,7 @@ export function ModelTestBuilderPage() {
   // again when the bundle saves. Dropping the draft entry also drops any unsaved edits to it.
   const removeExam = (examId: string) => {
     mutate({ exams: draft.exams.filter((x) => x.id !== examId) });
-    setExamDrafts((m) => Object.fromEntries(Object.entries(m).filter(([k]) => k !== examId)));
+    updateExamDrafts((m) => Object.fromEntries(Object.entries(m).filter(([k]) => k !== examId)));
     setExpanded((s) => {
       const n = new Set(s);
       n.delete(examId);
@@ -156,18 +170,29 @@ export function ModelTestBuilderPage() {
     });
   };
 
-  const addQuestionsTo = (examId: string, sectionKey: string, questions: DraftQuestion[]) => {
-    const st = examDrafts[examId];
-    if (!st) return;
-    const existing = new Set(allQuestionIds(st.draft));
-    const fresh = questions.filter((q) => !existing.has(q.questionId));
-    if (fresh.length === 0) return;
-    onExamChange(examId, {
-      ...st.draft,
-      sections: st.draft.sections.map((s) =>
-        s.key === sectionKey ? { ...s, questions: [...s.questions, ...fresh] } : s),
+  // Reads the entry INSIDE the updater (ExamBuilderPage's `setDraft((d) => …)` discipline):
+  // a drawer add must merge into whatever the card holds now, never revert it to the draft
+  // that existed when the drawer opened.
+  const addQuestionsTo = (examId: string, sectionKey: string, questions: DraftQuestion[]) =>
+    updateExamDrafts((m) => {
+      const st = m[examId];
+      if (!st) return m;
+      const existing = new Set(allQuestionIds(st.draft));
+      const fresh = questions.filter((q) => !existing.has(q.questionId));
+      if (fresh.length === 0) return m;
+      return {
+        ...m,
+        [examId]: {
+          draft: {
+            ...st.draft,
+            sections: st.draft.sections.map((s) =>
+              s.key === sectionKey ? { ...s, questions: [...s.questions, ...fresh] } : s),
+          },
+          dirty: true,
+          error: null,
+        },
+      };
     });
-  };
 
   // Row-summary refresh that must NOT flip the bundle dirty flag (it is a server echo).
   const mutateExamItem = (examId: string, patch: Partial<ModelTestExamItem>) =>
@@ -206,16 +231,21 @@ export function ModelTestBuilderPage() {
 
     let failures = 0;
     for (const item of draft.exams) {
-      const st = examDrafts[item.id];
+      // Freshest entry, not the click-time closure: a card edited after the click still
+      // gets saved in this round.
+      const st = examDraftsRef.current[item.id];
       if (!st?.dirty) continue;
+      const sent = st.draft;
       try {
         const saved: ExamResponse = await saveExam.mutateAsync({
-          id: item.id, body: toSaveRequest(st.draft),
+          id: item.id, body: toSaveRequest(sent),
         });
-        setExamDrafts((m) => ({
-          ...m,
-          [item.id]: { draft: m[item.id]?.draft ?? st.draft, dirty: false, error: null },
-        }));
+        // Clear `dirty` ONLY if the draft we PUT is still the one the card holds. A keystroke
+        // that landed while the request was in flight is not in that body, so marking it
+        // clean would silently drop it.
+        updateExamDrafts((m) => (m[item.id]?.draft === sent
+          ? { ...m, [item.id]: { draft: sent, dirty: false, error: null } }
+          : m));
         mutateExamItem(item.id, {
           title: saved.title, questionCount: saved.questionCount,
           totalMarks: saved.totalMarks, durationMinutes: saved.durationMinutes,
@@ -223,14 +253,22 @@ export function ModelTestBuilderPage() {
       } catch (e) {
         failures += 1;
         const err = serverError(e, "সংরক্ষণ করা যায়নি");
-        setExamDrafts((m) => ({ ...m, [item.id]: { ...(m[item.id] ?? st), error: err } }));
+        updateExamDrafts((m) => ({ ...m, [item.id]: { ...(m[item.id] ?? st), error: err } }));
+        // The error strip lives in the card BODY, so a collapsed card would show nothing but
+        // «· অসংরক্ষিত» while the toast points at it.
+        setExpanded((s) => new Set(s).add(item.id));
       }
     }
-    if (failures === 0) {
+    // Anything still dirty (a mid-PUT edit, or a card touched during another exam's request)
+    // is NOT on the server — the round did not succeed and publish must not follow it.
+    const raced = failures === 0 && draft.exams.some((e) => examDraftsRef.current[e.id]?.dirty);
+    if (failures === 0 && !raced) {
       message.success("খসড়া সংরক্ষিত হয়েছে");
       return bundleId;
     }
-    message.error("কিছু পরীক্ষা সংরক্ষণ হয়নি — কার্ডে দেখুন");
+    message.error(raced
+      ? "সংরক্ষণের সময় নতুন পরিবর্তন হয়েছে — আবার সংরক্ষণ করুন"
+      : "কিছু পরীক্ষা সংরক্ষণ হয়নি — কার্ডে দেখুন");
     return null;
   };
 
@@ -257,15 +295,23 @@ export function ModelTestBuilderPage() {
           durationMinutes: created.durationMinutes, isArchived: false,
         }],
       }));
-      setExamDrafts((m) => ({
+      updateExamDrafts((m) => ({
         ...m, [created.id]: { draft: fromResponse(created), dirty: false, error: null },
       }));
       setExpanded((s) => new Set(s).add(created.id));
       setNewExamOpen(false);
       message.success("পরীক্ষা তৈরি হয়েছে — এবার প্রশ্ন যোগ করুন");
-      requestAnimationFrame(() =>
+      // Spec C4 step 3: scroll the new card into view AND put the caret on the one thing the
+      // examiner came here to do. The body paints a frame after the card itself, hence the
+      // nested rAF; `preventScroll` keeps the smooth scroll above from being cut short.
+      requestAnimationFrame(() => {
         document.getElementById(`bundle-exam-${created.id}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "start" }));
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        requestAnimationFrame(() =>
+          document.getElementById(`bundle-exam-${created.id}`)
+            ?.querySelector<HTMLButtonElement>('button[data-action="add-questions"]')
+            ?.focus({ preventScroll: true }));
+      });
     } catch (e) {
       message.error(serverError(e, "পরীক্ষা তৈরি করা যায়নি"));
     }
@@ -429,7 +475,7 @@ export function ModelTestBuilderPage() {
                     onLoaded={(d) => onExamLoaded(e.id, d)}
                     onChange={(d) => onExamChange(e.id, d)}
                     onClearError={() =>
-                      setExamDrafts((m) =>
+                      updateExamDrafts((m) =>
                         m[e.id] ? { ...m, [e.id]: { ...m[e.id], error: null } } : m)}
                     onRemove={() => removeExam(e.id)}
                     onOpenPicker={(sectionKey, tab) => setPicker({ examId: e.id, sectionKey, tab })}
